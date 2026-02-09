@@ -1,0 +1,129 @@
+<div class="mx-auto max-w-2xl">
+  <!-- Header -->
+  <div class="mb-9">
+    <a routerLink="/admin/users" class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 text-sm font-medium mb-4 inline-block">
+      &larr; Back to Users
+    </a>
+    <h1 class="text-3xl font-bold text-gray-900 dark:text-white">{{ isEditMode ? 'Edit User' : 'Create New User' }}</h1>
+    <p class="mt-2 text-gray-600 dark:text-gray-400">{{ isEditMode ? 'Update user account details' : 'Create a new user account' }}</p>
+  </div>
+
+  <!-- Form -->
+  <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8">
+    @if (errorMessage) {
+      <div class="mb-6 p-4 bg-red-50 dark:bg-red-900 border border-red-200 dark:border-red-700 rounded-lg">
+        <p class="text-red-800 dark:text-red-200">{{ errorMessage }}</p>
+      </div>
+    }
+
+    <form (ngSubmit)="submitForm()" class="space-y-6">
+      <!-- Name -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Full Name *</label>
+        <input 
+          [(ngModel)]="name"
+          name="name"
+          type="text" 
+          placeholder="Enter user's full name"
+          class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        />
+        @if (submitted && !name.trim()) {
+          <p class="mt-1 text-sm text-red-600 dark:text-red-400">Name is required</p>
+        }
+      </div>
+
+      <!-- Email -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Email Address *</label>
+        <input 
+          [(ngModel)]="email"
+          name="email"
+          type="email" 
+          placeholder="user@example.com"
+          class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        />
+        @if (submitted && !email.trim()) {
+          <p class="mt-1 text-sm text-red-600 dark:text-red-400">Email is required</p>
+        }
+        @if (submitted && email.trim() && !isValidEmail(email)) {
+          <p class="mt-1 text-sm text-red-600 dark:text-red-400">Please enter a valid email address</p>
+        }
+      </div>
+
+      <!-- Department -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Department</label>
+        <input 
+          [(ngModel)]="department"
+          name="department"
+          type="text" 
+          placeholder="e.g., Sales, IT, Marketing"
+          class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        />
+      </div>
+
+      <!-- Role -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Role *</label>
+        <select 
+          [(ngModel)]="role"
+          name="role"
+          class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        >
+          <option value="user">User (Standard Access)</option>
+          <option value="manager">Manager (Elevated Access)</option>
+          <option value="admin">Admin (Full Access)</option>
+        </select>
+        <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+          <span class="font-semibold">User:</span> Limited access to assigned resources<br>
+          <span class="font-semibold">Manager:</span> Access to team resources and reports<br>
+          <span class="font-semibold">Admin:</span> Full system access and user management
+        </p>
+      </div>
+
+      <!-- Status -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Account Status *</label>
+        <select 
+          [(ngModel)]="status"
+          name="status"
+          class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        >
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+        </select>
+        <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+          Inactive users cannot log in to the system
+        </p>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="flex gap-3 pt-6 border-t border-gray-200 dark:border-gray-600">
+        <button 
+          type="submit"
+          class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors"
+        >
+          {{ isEditMode ? 'Update User' : 'Create User' }}
+        </button>
+        <button 
+          type="button"
+          (click)="cancel()"
+          class="flex-1 bg-gray-300 hover:bg-gray-400 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-900 dark:text-white font-semibold py-3 px-4 rounded-lg transition-colors"
+        >
+          Cancel
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Help Section -->
+  <div class="mt-8 bg-blue-50 dark:bg-blue-900 rounded-lg p-6">
+    <h3 class="font-semibold text-blue-900 dark:text-blue-200 mb-2">User Management Tips</h3>
+    <ul class="text-sm text-blue-800 dark:text-blue-300 space-y-1">
+      <li>• Users will receive a welcome email with setup instructions (if configured)</li>
+      <li>• Email addresses must be unique across the system</li>
+      <li>• Admin users have access to all system features and user management</li>
+      <li>• Inactive accounts can be reactivated at any time</li>
+    </ul>
+  </div>
+</div>

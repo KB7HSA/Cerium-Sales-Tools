@@ -1,0 +1,12 @@
+/* User Management Component Styles */
+:host {
+  display: block;
+  padding: 1.5rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  :host {
+    padding: 1rem;
+  }
+}

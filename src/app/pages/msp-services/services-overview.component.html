@@ -1,0 +1,59 @@
+<div class="mx-auto max-w-7xl">
+  <!-- Header -->
+  <div class="mb-9">
+    <h1 class="text-3xl font-bold text-gray-900 dark:text-white">MSP Services Overview</h1>
+    <p class="mt-2 text-gray-600 dark:text-gray-400">Comprehensive managed services solutions for your business</p>
+  </div>
+
+  <!-- Services Grid -->
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    @for (service of services; track service.id) {
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md dark:shadow-lg p-6 hover:shadow-lg dark:hover:shadow-xl transition-shadow duration-300">
+        <!-- Icon -->
+        <div class="text-4xl mb-4">{{ service.icon }}</div>
+        
+        <!-- Title -->
+        <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">{{ service.name }}</h3>
+        
+        <!-- Description -->
+        <p class="text-gray-600 dark:text-gray-400 text-sm mb-4">{{ service.description }}</p>
+        
+        <!-- Features -->
+        <div class="space-y-2 mb-4">
+          @for (feature of service.features; track feature) {
+            <div class="flex items-center text-sm text-gray-700 dark:text-gray-300">
+              <svg class="w-4 h-4 text-blue-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+              </svg>
+              {{ feature }}
+            </div>
+          }
+        </div>
+        
+        <!-- Action Button -->
+        <button routerLink="/msp-quote" [queryParams]="{ service: service.name }" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200">
+          Create Quote
+        </button>
+      </div>
+    }
+  </div>
+
+  <!-- Additional Info Section -->
+  <div class="mt-12 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-700 rounded-lg p-8">
+    <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">Welcome to Cerium MSP services</h2>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+      <div>
+        <h3 class="font-semibold text-gray-900 dark:text-white mb-2">24/7 Support</h3>
+        <p class="text-gray-600 dark:text-gray-400">Round-the-clock monitoring and support our customers</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-gray-900 dark:text-white mb-2">Expert Team</h3>
+        <p class="text-gray-600 dark:text-gray-400">Cisco, Microsoft and VMware certified professionals</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-gray-900 dark:text-white mb-2">Cost Effective</h3>
+        <p class="text-gray-600 dark:text-gray-400">Predictable pricing models tailored to our customers</p>
+      </div>
+    </div>
+  </div>
+</div>

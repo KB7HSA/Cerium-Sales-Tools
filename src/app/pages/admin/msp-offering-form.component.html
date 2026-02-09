@@ -1,0 +1,572 @@
+<div class="mx-auto max-w-4xl">
+  <!-- Header -->
+  <div class="mb-9">
+    <a routerLink="/admin/offerings" class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 text-sm font-medium mb-4 inline-block">
+      &larr; Back to Offerings
+    </a>
+    <h1 class="text-3xl font-bold text-gray-900 dark:text-white">{{ isEditMode ? 'Edit Offering' : 'Create New Offering' }}</h1>
+    <p class="mt-2 text-gray-600 dark:text-gray-400">{{ isEditMode ? 'Update offering details and pricing' : 'Add a new service offering' }}</p>
+  </div>
+
+  <!-- Form -->
+  <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8 space-y-8">
+    <!-- Messages -->
+    @if (errorMessage) {
+      <div class="p-4 bg-red-50 dark:bg-red-900 border border-red-200 dark:border-red-700 rounded-lg">
+        <p class="text-red-800 dark:text-red-200">{{ errorMessage }}</p>
+      </div>
+    }
+    @if (successMessage) {
+      <div class="p-4 bg-green-50 dark:bg-green-900 border border-green-200 dark:border-green-700 rounded-lg">
+        <p class="text-green-800 dark:text-green-200">{{ successMessage }}</p>
+      </div>
+    }
+
+    <form (ngSubmit)="submitForm()" class="space-y-6">
+      <!-- Basic Info -->
+      <div class="space-y-6">
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-3">Basic Information</h2>
+
+        <!-- Name -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Offering Name *</label>
+          <input
+            [(ngModel)]="name"
+            name="name"
+            type="text"
+            placeholder="e.g., Druva M365 Backup"
+            class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+          @if (submitted && !name.trim()) {
+            <p class="mt-1 text-sm text-red-600 dark:text-red-400">Name is required</p>
+          }
+        </div>
+
+        <!-- Description -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Description *</label>
+          <textarea
+            [(ngModel)]="description"
+            name="description"
+            rows="3"
+            placeholder="Describe this offering and its benefits"
+            class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+          ></textarea>
+          @if (submitted && !description.trim()) {
+            <p class="mt-1 text-sm text-red-600 dark:text-red-400">Description is required</p>
+          }
+        </div>
+
+        <!-- Category -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Category *</label>
+          <select
+            [(ngModel)]="category"
+            name="category"
+            class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          >
+            @for (cat of categories; track cat.value) {
+              <option [value]="cat.value">{{ cat.label }}</option>
+            }
+          </select>
+        </div>
+
+        <!-- Status -->
+        <div class="flex items-center gap-4">
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input
+              [(ngModel)]="isActive"
+              name="isActive"
+              type="checkbox"
+              class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500"
+            />
+            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Active</span>
+          </label>
+          <p class="text-xs text-gray-500 dark:text-gray-400">Inactive offerings won't be available for quoting</p>
+        </div>
+      </div>
+
+      <!-- Pricing -->
+      <div class="space-y-6">
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-3">Pricing</h2>
+
+        <!-- Setup Fee -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Setup Fee (one-time)</label>
+          <div class="relative">
+            <span class="absolute left-4 top-2 text-gray-500 dark:text-gray-400">$</span>
+            <input
+              [(ngModel)]="setupFee"
+              name="setupFee"
+              type="number"
+              min="0"
+              step="0.01"
+              placeholder="0.00"
+              class="w-full pl-8 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+          @if (submitted && setupFee < 0) {
+            <p class="mt-1 text-sm text-red-600 dark:text-red-400">Fee cannot be negative</p>
+          }
+        </div>
+      </div>
+
+      <!-- Service Levels -->
+      <div class="space-y-6">
+        <div class="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 pb-3">
+          <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Service Levels *</h2>
+          @if (!showLevelForm) {
+            <button
+              type="button"
+              (click)="showLevelForm = true"
+              class="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors"
+            >
+              <svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+              </svg>
+              Add Level
+            </button>
+          }
+        </div>
+
+        @if (showLevelForm) {
+          <div class="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Level Name</label>
+              <input
+                [(ngModel)]="newLevelName"
+                name="newLevelName"
+                type="text"
+                placeholder="e.g., Basic, Standard, Premium"
+                class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Base Price</label>
+              <div class="relative">
+                <span class="absolute left-4 top-2 text-gray-500 dark:text-gray-400">$</span>
+                <input
+                  [(ngModel)]="newLevelPrice"
+                  name="newLevelPrice"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="0.00"
+                  class="w-full pl-8 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Unit of Measure</label>
+              <select
+                [(ngModel)]="newLevelPricingUnit"
+                name="newLevelPricingUnit"
+                class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                @for (unit of pricingUnits; track unit.value) {
+                  <option [value]="unit.value">{{ unit.label }}</option>
+                }
+              </select>
+            </div>
+
+            <div class="flex gap-2">
+              <button
+                type="button"
+                (click)="addServiceLevel()"
+                class="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors"
+              >
+                Add Level
+              </button>
+              <button
+                type="button"
+                (click)="showLevelForm = false"
+                class="flex-1 px-4 py-2 bg-gray-400 hover:bg-gray-500 text-white font-semibold rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        }
+
+        @if (serviceLevels.length > 0) {
+          <div class="space-y-3">
+            @for (level of serviceLevels; track level.id; let i = $index) {
+              <div class="p-4 rounded-lg border border-gray-200 dark:border-gray-700" [class.bg-blue-50]="selectedLevelId === level.id" [class.dark:bg-blue-900/30]="selectedLevelId === level.id">
+                <div class="flex items-start justify-between mb-4">
+                  <div class="flex items-center gap-3">
+                    <h4 class="font-semibold text-gray-900 dark:text-white">Level {{ i + 1 }}</h4>
+                    <button
+                      type="button"
+                      (click)="selectLevel(level)"
+                      class="text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline"
+                    >
+                      {{ selectedLevelId === level.id ? 'Selected' : 'Select' }}
+                    </button>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    @if (!editingLevels[level.id]) {
+                      <button
+                        type="button"
+                        (click)="startEditLevel(level)"
+                        class="px-3 py-1 text-sm font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                      >
+                        Edit
+                      </button>
+                    }
+                    <button
+                      type="button"
+                      (click)="removeServiceLevel(i)"
+                      class="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                    >
+                      <svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M19 6.41L17.59 5L12 10.59L6.41 5L5 6.41L10.59 12L5 17.59L6.41 19L12 13.41L17.59 19L19 17.59L13.41 12L19 6.41Z" fill="currentColor"></path>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+
+                @if (!editingLevels[level.id]) {
+                  <div class="space-y-2">
+                    <p class="text-sm text-gray-900 dark:text-white font-medium">{{ level.name }}</p>
+                    <p class="text-sm text-gray-600 dark:text-gray-400">${{ level.basePrice }}{{ getPricingUnitLabel(level.pricingUnit) }}</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Options: {{ level.options.length }}</p>
+                  </div>
+                } @else {
+                  <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Level Name</label>
+                      <input
+                        [(ngModel)]="levelDrafts[level.id].name"
+                        [name]="'levelName-' + i"
+                        type="text"
+                        class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Base Price</label>
+                      <div class="relative">
+                        <span class="absolute left-4 top-2 text-gray-500 dark:text-gray-400">$</span>
+                        <input
+                          [(ngModel)]="levelDrafts[level.id].basePrice"
+                          [name]="'levelPrice-' + i"
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          class="w-full pl-8 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Unit of Measure</label>
+                      <select
+                        [(ngModel)]="levelDrafts[level.id].pricingUnit"
+                        [name]="'levelUnit-' + i"
+                        class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      >
+                        @for (unit of pricingUnits; track unit.value) {
+                          <option [value]="unit.value">{{ unit.label }}</option>
+                        }
+                      </select>
+                    </div>
+                  </div>
+                  <div class="mt-4 flex items-center gap-2">
+                    <button
+                      type="button"
+                      (click)="saveEditLevel(level)"
+                      class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors"
+                    >
+                      Save
+                    </button>
+                    <button
+                      type="button"
+                      (click)="cancelEditLevel(level)"
+                      class="px-4 py-2 bg-gray-300 hover:bg-gray-400 dark:bg-gray-600 dark:hover:bg-gray-500 text-gray-900 dark:text-white text-sm font-semibold rounded-lg transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        }
+
+        @if (submitted && serviceLevels.length === 0) {
+          <p class="text-sm text-red-600 dark:text-red-400">At least one service level is required</p>
+        }
+      </div>
+
+      <!-- Features -->
+      <div class="space-y-6">
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-3">Key Features *</h2>
+
+        @if (features.length > 0) {
+          <div class="space-y-2">
+            @for (feature of features; track $index; let i = $index) {
+              <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                <span class="text-sm text-gray-700 dark:text-gray-300">{{ feature }}</span>
+                <button
+                  type="button"
+                  (click)="removeFeature(i)"
+                  class="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                >
+                  <svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M19 6.41L17.59 5L12 10.59L6.41 5L5 6.41L10.59 12L5 17.59L6.41 19L12 13.41L17.59 19L19 17.59L13.41 12L19 6.41Z" fill="currentColor"></path>
+                  </svg>
+                </button>
+              </div>
+            }
+          </div>
+        }
+
+        <div class="flex gap-2">
+          <input
+            [(ngModel)]="newFeature"
+            name="newFeature"
+            type="text"
+            placeholder="Add a feature (e.g., 'Encryption')"
+            class="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+          <button
+            type="button"
+            (click)="addFeature()"
+            class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors"
+          >
+            Add
+          </button>
+        </div>
+
+        @if (submitted && features.length === 0) {
+          <p class="text-sm text-red-600 dark:text-red-400">At least one feature is required</p>
+        }
+      </div>
+
+      <!-- Options/Add-ons -->
+      <div class="space-y-6">
+        <div class="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 pb-3">
+          <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Add-on Options</h2>
+          @if (!showOptionForm) {
+            <button
+              type="button"
+              (click)="showOptionForm = true"
+              class="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors"
+              [disabled]="!selectedLevel"
+              [class.opacity-60]="!selectedLevel"
+              [class.cursor-not-allowed]="!selectedLevel"
+            >
+              <svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+              </svg>
+              Add Option
+            </button>
+          }
+        </div>
+
+        @if (!selectedLevel) {
+          <p class="text-sm text-gray-600 dark:text-gray-400">Select a service level to manage its add-on options.</p>
+        }
+
+        <!-- Option Form -->
+        @if (showOptionForm && selectedLevel) {
+          <div class="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Option Name</label>
+              <input
+                [(ngModel)]="newOptionName"
+                name="newOptionName"
+                type="text"
+                placeholder="e.g., Advanced Ransomware Protection"
+                class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Description</label>
+              <input
+                [(ngModel)]="newOptionDescription"
+                name="newOptionDescription"
+                type="text"
+                placeholder="Brief description of the option"
+                class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Monthly Price</label>
+              <div class="relative">
+                <span class="absolute left-4 top-2 text-gray-500 dark:text-gray-400">$</span>
+                <input
+                  [(ngModel)]="newOptionPrice"
+                  name="newOptionPrice"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="0.00"
+                  class="w-full pl-8 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Unit of Measure</label>
+              <select
+                [(ngModel)]="newOptionPricingUnit"
+                name="newOptionPricingUnit"
+                class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                @for (unit of pricingUnits; track unit.value) {
+                  <option [value]="unit.value">{{ unit.label }}</option>
+                }
+              </select>
+            </div>
+
+            <div class="flex gap-2">
+              <button
+                type="button"
+                (click)="addOption()"
+                class="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors"
+              >
+                Add Option
+              </button>
+              <button
+                type="button"
+                (click)="showOptionForm = false"
+                class="flex-1 px-4 py-2 bg-gray-400 hover:bg-gray-500 text-white font-semibold rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        }
+
+        <!-- Options List -->
+        @if (selectedLevel && selectedLevel.options.length > 0) {
+          <div class="space-y-3">
+            @for (option of selectedLevel.options; track option.id; let i = $index) {
+              <div class="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                <div class="flex items-start justify-between mb-4">
+                  <h4 class="font-semibold text-gray-900 dark:text-white">Option {{ i + 1 }}</h4>
+                  <div class="flex items-center gap-2">
+                    @if (!editingOptions[option.id]) {
+                      <button
+                        type="button"
+                        (click)="startEditOption(option)"
+                        class="px-3 py-1 text-sm font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                      >
+                        Edit
+                      </button>
+                    }
+                    <button
+                      type="button"
+                      (click)="removeOption(i)"
+                      class="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                    >
+                      <svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M19 6.41L17.59 5L12 10.59L6.41 5L5 6.41L10.59 12L5 17.59L6.41 19L12 13.41L17.59 19L19 17.59L13.41 12L19 6.41Z" fill="currentColor"></path>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+
+                @if (!editingOptions[option.id]) {
+                  <div class="space-y-2">
+                    <p class="text-sm text-gray-900 dark:text-white font-medium">{{ option.name }}</p>
+                    @if (option.description) {
+                      <p class="text-sm text-gray-600 dark:text-gray-400">{{ option.description }}</p>
+                    }
+                    <p class="text-lg font-bold text-gray-900 dark:text-white">${{ option.monthlyPrice }}<span class="text-sm text-gray-500">{{ getPricingUnitLabel(option.pricingUnit) }}</span></p>
+                  </div>
+                } @else {
+                  <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Option Name</label>
+                      <input
+                        [(ngModel)]="optionDrafts[option.id].name"
+                        [name]="'optionName-' + i"
+                        type="text"
+                        placeholder="Option name"
+                        class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Monthly Price</label>
+                      <div class="relative">
+                        <span class="absolute left-4 top-2 text-gray-500 dark:text-gray-400">$</span>
+                        <input
+                          [(ngModel)]="optionDrafts[option.id].monthlyPrice"
+                          [name]="'optionPrice-' + i"
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          placeholder="0.00"
+                          class="w-full pl-8 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Unit of Measure</label>
+                      <select
+                        [(ngModel)]="optionDrafts[option.id].pricingUnit"
+                        [name]="'optionUnit-' + i"
+                        class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      >
+                        @for (unit of pricingUnits; track unit.value) {
+                          <option [value]="unit.value">{{ unit.label }}</option>
+                        }
+                      </select>
+                    </div>
+                    <div class="lg:col-span-2">
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Description</label>
+                      <input
+                        [(ngModel)]="optionDrafts[option.id].description"
+                        [name]="'optionDescription-' + i"
+                        type="text"
+                        placeholder="Brief description"
+                        class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                  </div>
+                  <div class="mt-4 flex items-center gap-2">
+                    <button
+                      type="button"
+                      (click)="saveEditOption(option)"
+                      class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors"
+                    >
+                      Save
+                    </button>
+                    <button
+                      type="button"
+                      (click)="cancelEditOption(option)"
+                      class="px-4 py-2 bg-gray-300 hover:bg-gray-400 dark:bg-gray-600 dark:hover:bg-gray-500 text-gray-900 dark:text-white text-sm font-semibold rounded-lg transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        }
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="flex gap-3 pt-6 border-t border-gray-200 dark:border-gray-600">
+        <button
+          type="submit"
+          class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors"
+        >
+          {{ isEditMode ? 'Update Offering' : 'Create Offering' }}
+        </button>
+        <button
+          type="button"
+          (click)="cancel()"
+          class="flex-1 bg-gray-300 hover:bg-gray-400 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-900 dark:text-white font-semibold py-3 px-4 rounded-lg transition-colors"
+        >
+          Cancel
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

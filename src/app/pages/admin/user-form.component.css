@@ -1,0 +1,148 @@
+/* User Form Component Styles */
+
+:host {
+  display: block;
+  padding: 2rem;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  min-height: 100vh;
+}
+
+/* Dark mode background */
+:host-context(.dark) {
+  background: linear-gradient(135deg, #1f2937 0%, #0f172a 100%);
+}
+
+.mx-auto {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.max-w-2xl {
+  max-width: 42rem;
+}
+
+/* Back Link */
+a[routerLink] {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.875rem;
+  font-weight: 500;
+  margin-bottom: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+a[routerLink]:hover {
+  transform: translateX(-4px);
+}
+
+/* Form Container */
+form {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Form Fields */
+input[type="text"],
+input[type="email"],
+select {
+  transition: all 0.3s ease;
+  font-size: 1rem;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+input[type="text"]:focus,
+input[type="email"]:focus,
+select:focus {
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  transform: translateY(-2px);
+}
+
+input::placeholder {
+  color: #9ca3af;
+}
+
+:host-context(.dark) input::placeholder {
+  color: #6b7280;
+}
+
+/* Labels */
+label {
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+  display: block;
+}
+
+/* Error Messages */
+p.text-sm.text-red-600 {
+  animation: slideIn 0.2s ease-out;
+  font-weight: 500;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Help Text */
+p.text-xs {
+  line-height: 1.6;
+}
+
+/* Buttons */
+button[type="submit"],
+button[type="button"] {
+  font-weight: 600;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  border: none;
+  border-radius: 0.5rem;
+}
+
+button[type="submit"]:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
+button[type="button"]:hover {
+  transform: translateY(-2px);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  :host {
+    padding: 1rem;
+  }
+
+  .max-w-2xl {
+    max-width: 100%;
+  }
+
+  form .flex {
+    flex-direction: column;
+  }
+
+  form .flex gap-3 button {
+    width: 100%;
+  }
+}
+
+/* Help Section */
+.bg-blue-50 {
+  border-left: 4px solid #3b82f6;
+}
+
+:host-context(.dark) .bg-blue-900 {
+  border-left: 4px solid #60a5fa;
+}
+
+ul li {
+  margin-left: 0.25rem;
+}

@@ -1,0 +1,258 @@
+<div class="mx-auto max-w-7xl">
+  <!-- Header -->
+  <div class="mb-9">
+    <a routerLink="/msp-services" class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 text-sm font-medium mb-4 inline-block">
+      &larr; Back to Services
+    </a>
+    <h1 class="text-3xl font-bold text-gray-900 dark:text-white">MSP Services Pricing Quote</h1>
+    <p class="mt-2 text-gray-600 dark:text-gray-400">Calculate your custom quote based on your needs</p>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <!-- Quote Calculator -->
+    <div class="lg:col-span-2 space-y-8">
+      <!-- Customer Information -->
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+        <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4">Customer Information</h2>
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Customer Name *</label>
+            <input 
+              type="text" 
+              [(ngModel)]="customerName"
+              placeholder="Enter customer name"
+              class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">This will be used to identify the quote</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Service Selection -->
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+        <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4">Service Selection</h2>
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Selected Service</label>
+            <div class="w-full px-4 py-2 border border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white">
+              @if (currentOffering) {
+                {{ currentOffering.name }}
+              } @else {
+                -- None selected --
+              }
+            </div>
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Selected from Services Overview</p>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Select Service Level</label>
+            <select
+              [(ngModel)]="selectedServiceLevelId"
+              (ngModelChange)="onServiceLevelChange()"
+              [disabled]="!currentOffering"
+              class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="">-- Choose a level --</option>
+              @for (level of currentOffering?.serviceLevels || []; track level.id) {
+                <option [value]="level.id">{{ level.name }}</option>
+              }
+            </select>
+          </div>
+          @if (currentOffering) {
+            <div class="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mt-4">
+              <p class="text-sm text-blue-700 dark:text-blue-300">
+                <strong>{{ currentOffering.name }}</strong><br>
+                @if (currentServiceLevel) {
+                  Level: <strong>{{ currentServiceLevel.name }}</strong><br>
+                  Base Price: <strong>${{ currentServiceLevel.basePrice }} per {{ getPricingUnitName() }}/month</strong>
+                }
+              </p>
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Calculator Section -->
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+        <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-6">Quote Calculator</h2>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          <!-- Quantity (dynamic based on pricing unit) -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              {{ getPricingUnitDisplayName() }}
+            </label>
+            <input 
+              type="number" 
+              min="1" 
+              [(ngModel)]="quantity" 
+              (change)="calculateQuote()"
+              class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              [placeholder]="'Enter ' + getPricingUnitName()"
+            />
+          </div>
+
+          <!-- Duration -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Contract Duration (Months)
+            </label>
+            <input 
+              type="number" 
+              min="1" 
+              [(ngModel)]="durationMonths" 
+              (change)="calculateQuote()"
+              class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+              @if (durationMonths >= 12) {
+                <span class="text-green-600 dark:text-green-400">✓ Annual discount applied</span>
+              }
+            </p>
+          </div>
+        </div>
+
+        <!-- Setup Fee Toggle -->
+        <div class="border-t border-gray-200 dark:border-gray-600 pt-6">
+          @if (currentOffering && currentOffering.setupFee > 0) {
+            <div class="flex items-center justify-between">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Include Setup Fee (${{ currentOffering.setupFee }})
+                </label>
+                <p class="text-sm text-gray-600 dark:text-gray-400">One-time configuration and deployment</p>
+              </div>
+              <input 
+                type="checkbox" 
+                [(ngModel)]="showSetupFee" 
+                (change)="calculateQuote()"
+                class="w-5 h-5 text-blue-600 rounded"
+              />
+            </div>
+          }
+        </div>
+      </div>
+
+
+    </div>
+
+    <!-- Quote Summary & Pricing Management -->
+    <div class="space-y-6">
+      <!-- Quote Summary -->
+      <div class="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-700 rounded-lg shadow-md p-6">
+        <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-6">Quote Summary</h2>
+        
+        <div class="space-y-4">
+          <div class="flex justify-between items-center pb-4 border-b border-gray-200 dark:border-gray-600">
+            <span class="text-gray-600 dark:text-gray-400">Service:</span>
+            <span class="font-medium text-gray-900 dark:text-white">@if (currentOffering) { {{ currentOffering.name }} } @else { -- None selected -- }</span>
+          </div>
+
+          <div class="flex justify-between items-center pb-4 border-b border-gray-200 dark:border-gray-600">
+            <span class="text-gray-600 dark:text-gray-400">Service Level:</span>
+            <span class="font-medium text-gray-900 dark:text-white">@if (currentServiceLevel) { {{ currentServiceLevel.name }} } @else { -- None selected -- }</span>
+          </div>
+          
+          <div class="flex justify-between items-center pb-4 border-b border-gray-200 dark:border-gray-600">
+            <span class="text-gray-600 dark:text-gray-400">{{ getPricingUnitDisplayName() }}:</span>
+            <span class="font-medium text-gray-900 dark:text-white">{{ quantity }}</span>
+          </div>
+
+          <div class="flex justify-between items-center pb-4 border-b border-gray-200 dark:border-gray-600">
+            <span class="text-gray-600 dark:text-gray-400">Duration:</span>
+            <span class="font-medium text-gray-900 dark:text-white">{{ durationMonths }} months</span>
+          </div>
+
+          <div class="flex justify-between items-center pb-4 border-b border-gray-200 dark:border-gray-600">
+            <span class="text-gray-600 dark:text-gray-400">Monthly Cost:</span>
+            <span class="font-medium text-gray-900 dark:text-white">${{ monthlyPrice.toFixed(2) }}</span>
+          </div>
+
+          @if (discountAmount > 0) {
+            <div class="flex justify-between items-center pb-4 border-b border-gray-200 dark:border-gray-600">
+              <span class="text-green-600 dark:text-green-400 font-medium">Annual Discount (10%):</span>
+              <span class="font-medium text-green-600 dark:text-green-400">-${{ discountAmount.toFixed(2) }}</span>
+            </div>
+          }
+
+          @if (showSetupFee && currentOffering && currentOffering.setupFee > 0) {
+            <div class="flex justify-between items-center pb-4 border-b border-gray-200 dark:border-gray-600">
+              <span class="text-gray-600 dark:text-gray-400">Setup Fee:</span>
+              <span class="font-medium text-gray-900 dark:text-white">${{ currentOffering.setupFee.toFixed(2) }}</span>
+            </div>
+          }
+
+          <div class="flex justify-between items-center pt-4 text-lg">
+            <span class="font-bold text-gray-900 dark:text-white">Total Price:</span>
+            <span class="text-2xl font-bold text-blue-600 dark:text-blue-400">${{ totalPrice.toFixed(2) }}</span>
+          </div>
+        </div>
+
+        <button 
+          (click)="generateQuote()"
+          [disabled]="!currentOffering || quantity < 1"
+          [class.opacity-50]="!currentOffering || quantity < 1"
+          [class.cursor-not-allowed]="!currentOffering || quantity < 1"
+          class="w-full mt-6 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors duration-200 disabled:hover:bg-blue-600"
+        >
+          Generate Quote
+        </button>
+      </div>
+
+      <!-- Offering Details -->
+          @if (currentOffering && currentServiceLevel) {
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+          <h2 class="text-lg font-bold text-gray-900 dark:text-white mb-4">Service Details</h2>
+          
+          <div class="space-y-3">
+            <div class="flex justify-between items-start">
+              <span class="text-sm text-gray-600 dark:text-gray-400">Service Name:</span>
+              <span class="text-sm font-medium text-gray-900 dark:text-white">{{ currentOffering.name }}</span>
+            </div>
+            
+            @if (currentOffering.description) {
+              <div class="flex justify-between items-start">
+                <span class="text-sm text-gray-600 dark:text-gray-400">Description:</span>
+                <span class="text-sm text-gray-700 dark:text-gray-300 text-right max-w-xs">{{ currentOffering.description }}</span>
+              </div>
+            }
+            
+            <div class="flex justify-between items-start">
+              <span class="text-sm text-gray-600 dark:text-gray-400">Base Price:</span>
+              <span class="text-sm font-medium text-gray-900 dark:text-white">${{ currentServiceLevel.basePrice }} per {{ getPricingUnitName() }}/month</span>
+            </div>
+
+            <div class="flex justify-between items-start">
+              <span class="text-sm text-gray-600 dark:text-gray-400">Service Level:</span>
+              <span class="text-sm font-medium text-gray-900 dark:text-white">{{ currentServiceLevel.name }}</span>
+            </div>
+
+            <div class="flex justify-between items-start">
+              <span class="text-sm text-gray-600 dark:text-gray-400">Pricing Unit:</span>
+              <span class="text-sm font-medium text-gray-900 dark:text-white">{{ getPricingUnitDisplayName() }}</span>
+            </div>
+
+            @if (currentOffering.setupFee > 0) {
+              <div class="flex justify-between items-start">
+                <span class="text-sm text-gray-600 dark:text-gray-400">One-time Setup Fee:</span>
+                <span class="text-sm font-medium text-gray-900 dark:text-white">${{ currentOffering.setupFee }}</span>
+              </div>
+            }
+
+            @if (currentServiceLevel.options && currentServiceLevel.options.length > 0) {
+              <div class="border-t border-gray-200 dark:border-gray-600 pt-3 mt-3">
+                <span class="text-sm text-gray-600 dark:text-gray-400 block mb-2">Available Add-ons:</span>
+                <ul class="space-y-1">
+                  @for (option of currentServiceLevel.options; track option.id) {
+                    <li class="text-sm text-gray-700 dark:text-gray-300">
+                      • {{ option.name }} (+${{ option.monthlyPrice }}{{ getPricingUnitLabel(option.pricingUnit) }})
+                    </li>
+                  }
+                </ul>
+              </div>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+</div>

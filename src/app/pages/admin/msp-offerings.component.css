@@ -1,0 +1,43 @@
+/* MSP Offerings Component Styles */
+
+:host {
+  display: block;
+  padding: 2rem;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  min-height: 100vh;
+}
+
+/* Dark mode background */
+:host-context(.dark) {
+  background: linear-gradient(135deg, #1f2937 0%, #0f172a 100%);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  :host {
+    padding: 1rem;
+  }
+}
+
+/* Button hover effects */
+button {
+  transition: all 0.3s ease;
+}
+
+button:hover:not(:disabled) {
+  transform: translateY(-2px);
+}
+
+/* Card hover effects */
+.group {
+  transition: all 0.3s ease;
+}
+
+.group:hover {
+  border-color: rgb(59, 130, 246);
+}
+
+/* Animation for filter buttons */
+button[type="button"] {
+  transition: all 0.2s ease;
+}

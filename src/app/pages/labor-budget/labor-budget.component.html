@@ -1,0 +1,180 @@
+<div class="space-y-8">
+  <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+    <div>
+      <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Labor Budget</h1>
+      <p class="mt-2 text-gray-600 dark:text-gray-400">Calculate labor costs using your admin-defined work items.</p>
+    </div>
+    <a
+      routerLink="/admin/labor-budget"
+      class="inline-flex items-center gap-2 rounded-lg border border-gray-300 dark:border-gray-700 px-4 py-2 text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800"
+    >
+      Manage Labor Items
+    </a>
+  </div>
+
+  <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+    <div class="lg:col-span-2 space-y-6">
+      <div class="rounded-lg bg-white dark:bg-gray-800 p-6 shadow">
+        <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Quote Details</h2>
+        <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Customer Name *</label>
+            <input
+              type="text"
+              [(ngModel)]="customerName"
+              class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2 text-gray-900 dark:text-white"
+              placeholder="Enter customer name"
+            />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Notes</label>
+            <input
+              type="text"
+              [(ngModel)]="notes"
+              class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2 text-gray-900 dark:text-white"
+              placeholder="Optional notes"
+            />
+          </div>
+        </div>
+        @if (errorMessage) {
+          <p class="mt-3 text-sm text-red-600 dark:text-red-400">{{ errorMessage }}</p>
+        }
+      </div>
+      <div class="rounded-lg bg-white dark:bg-gray-800 p-6 shadow">
+        <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Labor Budget Calculator</h2>
+        @if (workItems.length > 0) {
+          <div class="space-y-4">
+            @for (entry of workItems; track $index; let i = $index) {
+              <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                <div class="flex flex-col gap-4 md:flex-row md:items-end">
+                  <div class="w-full md:w-56">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Reference Architecture</label>
+                    <select
+                      [(ngModel)]="entry.referenceArchitectureFilter"
+                      (ngModelChange)="onReferenceArchitectureChange(entry)"
+                      class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2 text-gray-900 dark:text-white"
+                    >
+                      <option value="All">All</option>
+                      @for (tag of referenceArchitectureTags; track tag) {
+                        <option [value]="tag">{{ tag }}</option>
+                      }
+                    </select>
+                  </div>
+
+                  <div class="flex-1">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Work Item</label>
+                    <select
+                      [(ngModel)]="entry.id"
+                      class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2 text-gray-900 dark:text-white"
+                    >
+                      @for (item of getFilteredItems(entry); track item.id) {
+                        <option [value]="item.id">{{ item.name }}</option>
+                      }
+                    </select>
+                  </div>
+
+                  <div class="w-full md:w-48">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Closets</label>
+                    <input
+                      type="number"
+                      min="1"
+                      [(ngModel)]="entry.closetCount"
+                      class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2 text-gray-900 dark:text-white"
+                    />
+                  </div>
+
+                  <div class="w-full md:w-48">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Switches</label>
+                    <input
+                      type="number"
+                      min="1"
+                      [(ngModel)]="entry.switchCount"
+                      class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2 text-gray-900 dark:text-white"
+                    />
+                  </div>
+
+                  <div class="flex items-center">
+                    <button
+                      type="button"
+                      (click)="removeWorkItem(i)"
+                      class="text-sm font-semibold text-red-600 hover:text-red-700 dark:text-red-400"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+
+                @if (getItem(entry.id)) {
+                  <div class="mt-4 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/30 p-3">
+                    <p class="text-sm text-blue-800 dark:text-blue-200">
+                      Formula: {{ entry.switchCount }} switches x {{ entry.closetCount }} closets x {{ getItem(entry.id)?.hoursPerSwitch }} hours x ${{ getItem(entry.id)?.ratePerHour }}/hr
+                    </p>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        } @else {
+          <p class="text-sm text-gray-500 dark:text-gray-400">Add a work item to begin calculating labor.</p>
+        }
+
+        <div class="mt-4">
+          <button
+            type="button"
+            (click)="addWorkItem()"
+            class="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+          >
+            Add Work Item
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="space-y-6">
+      <div class="rounded-lg bg-white dark:bg-gray-800 p-6 shadow">
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Labor Summary</h2>
+        <div class="space-y-4">
+          <div class="flex justify-between text-sm text-gray-600 dark:text-gray-400">
+            <span>Total Hours</span>
+            <span class="font-semibold text-gray-900 dark:text-white">{{ totalHours.toFixed(2) }}</span>
+          </div>
+          <div class="flex justify-between text-sm text-gray-600 dark:text-gray-400">
+            <span>Work Items</span>
+            <span class="font-semibold text-gray-900 dark:text-white">{{ workItems.length }}</span>
+          </div>
+          <div class="flex justify-between border-t border-gray-200 dark:border-gray-700 pt-4 text-lg">
+            <span class="font-semibold text-gray-900 dark:text-white">Total Labor</span>
+            <span class="font-bold text-blue-600 dark:text-blue-400">${{ totalCost.toFixed(2) }}</span>
+          </div>
+        </div>
+        <button
+          type="button"
+          (click)="createQuote()"
+          class="mt-6 w-full rounded-lg bg-green-600 px-4 py-3 text-sm font-semibold text-white hover:bg-green-700"
+        >
+          Create Quote
+        </button>
+      </div>
+
+      <div class="rounded-lg bg-white dark:bg-gray-800 p-6 shadow">
+        <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300">Work Item Details</h3>
+        @if (workItems.length > 0) {
+          <div class="mt-3 space-y-3 text-sm text-gray-600 dark:text-gray-400">
+            @for (entry of workItems; track $index) {
+              @if (getItem(entry.id); as item) {
+                <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-3">
+                  <p class="font-medium text-gray-900 dark:text-white">{{ item.name }}</p>
+                  <p>Closets: {{ entry.closetCount }} | Switches: {{ entry.switchCount }}</p>
+                  <p>Hours per switch: {{ item.hoursPerSwitch }} | Rate: ${{ item.ratePerHour }}/hr</p>
+                  <p class="font-semibold text-gray-900 dark:text-white">Line Total: ${{ getLineCost(entry).toFixed(2) }}</p>
+                </div>
+              }
+            }
+          </div>
+        } @else {
+          <p class="mt-3 text-sm text-gray-500 dark:text-gray-400">No work items added.</p>
+        }
+      </div>
+    </div>
+  </div>
+</div>
