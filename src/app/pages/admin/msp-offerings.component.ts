@@ -2,7 +2,8 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
-import { MSPOfferingsService, MSPOffering } from '../../shared/services/msp-offerings.service';
+import { MSPOfferingsService, MSPOffering, PricingUnit } from '../../shared/services/msp-offerings.service';
+import { PricingUnitOption, PricingUnitsService } from '../../shared/services/pricing-units.service';
 import { Subscription } from 'rxjs';
 
 @Component({
@@ -17,11 +18,16 @@ export class MSPOfferingsComponent implements OnInit, OnDestroy {
   filteredOfferings: MSPOffering[] = [];
   activeFilter: string = 'all';
   searchTerm: string = '';
+  pricingUnits: PricingUnitOption[] = [];
   private subscription: Subscription = new Subscription();
 
-  constructor(public offeringsService: MSPOfferingsService) {}
+  constructor(
+    public offeringsService: MSPOfferingsService,
+    private pricingUnitsService: PricingUnitsService
+  ) {}
 
   ngOnInit(): void {
+    this.pricingUnits = this.pricingUnitsService.getUnits();
     this.subscription.add(
       this.offeringsService.getOfferings().subscribe(offerings => {
         this.offerings = offerings;
@@ -113,14 +119,9 @@ export class MSPOfferingsComponent implements OnInit, OnDestroy {
     return colors[category] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200';
   }
 
-  getPricingUnitLabel(unit: string): string {
-    const labels: { [key: string]: string } = {
-      'per-user': '/user/mo',
-      'per-gb': '/GB/mo',
-      'per-device': '/device/mo',
-      'one-time': '/one-time'
-    };
-    return labels[unit] || unit;
+  getPricingUnitLabel(unit: PricingUnit): string {
+    const match = this.pricingUnits.find(option => option.value === unit);
+    return match?.suffix || unit;
   }
 
   getDefaultLevel(offering: MSPOffering) {

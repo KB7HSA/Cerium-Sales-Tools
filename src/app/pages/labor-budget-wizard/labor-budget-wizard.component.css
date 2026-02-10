@@ -1,12 +1,4 @@
-/* Column drag handle for the work item grid. */
-.column-resize-handle {
-	position: absolute;
-	right: -6px;
-	top: 0;
-	width: 12px;
-	height: 100%;
-	cursor: col-resize;
-}
+/* Additional styles can live here if the wizard needs custom overrides. */
 
 /* Custom tooltip icon and popover styling. */
 .info-tooltip {

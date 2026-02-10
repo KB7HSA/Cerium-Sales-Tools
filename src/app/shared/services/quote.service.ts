@@ -8,15 +8,37 @@ export interface Quote {
   notes?: string;
   service: string;
   serviceLevelName?: string;
+  pricingUnitLabel?: string;
+  basePricePerUnit?: number;
+  professionalServicesPrice?: number;
+  professionalServicesTotal?: number;
+  perUnitTotal?: number;
+  selectedOptions?: Array<{
+    id: string;
+    name: string;
+    monthlyPrice: number;
+    pricingUnit: string;
+  }>;
+  addOnMonthlyTotal?: number;
+  addOnOneTimeTotal?: number;
+  addOnPerUnitTotal?: number;
   workItems?: Array<{
     name: string;
     referenceArchitecture?: string;
+    section?: string;
+    unitOfMeasure?: string;
+    solutionName?: string;
     closetCount: number;
     switchCount: number;
     hoursPerSwitch: number;
     ratePerHour: number;
     lineHours: number;
     lineTotal: number;
+  }>;
+  laborGroups?: Array<{
+    section: string;
+    total: number;
+    items: number;
   }>;
   totalHours?: number;
   numberOfUsers: number;

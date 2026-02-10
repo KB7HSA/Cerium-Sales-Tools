@@ -51,19 +51,33 @@ export class SigninFormComponent {
   }
 
   /**
-   * Sign in with Microsoft 365 using popup
+   * Sign in with Microsoft 365 using redirect
+   * Note: isLoggingIn state will be lost after redirect, but that's expected behavior
    */
   signInWithMicrosoft(): void {
     this.loginError = null;
     this.isLoggingIn = true;
+    // Store state in sessionStorage so we can restore it after redirect
+    sessionStorage.setItem('msalLoginInProgress', 'true');
     this.microsoftAuthService.loginRedirect();
   }
 
   /**
-   * Alternative: Sign in with Microsoft 365 using redirect
+   * Alternative: Sign in with Microsoft 365 using popup (better UX, no page reload)
    */
-  signInWithMicrosoftRedirect(): void {
-    this.microsoftAuthService.loginRedirect();
+  signInWithMicrosoftPopup(): void {
+    this.loginError = null;
+    this.isLoggingIn = true;
+    this.microsoftAuthService.loginPopup().subscribe({
+      next: (result) => {
+        console.log('Microsoft sign-in successful:', result.account?.username);
+        this.isLoggingIn = false;
+        this.router.navigate(['/']);
+      },
+      error: (error) => {
+        this.handleMicrosoftLoginError(error);
+      }
+    });
   }
 
   private handleMicrosoftLoginError(error: unknown): void {

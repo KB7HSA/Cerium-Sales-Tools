@@ -57,6 +57,48 @@
           }
         </div>
 
+        <!-- Offering Image -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Offering Image</label>
+          <div class="flex flex-col gap-4 md:flex-row md:items-center">
+            <div class="flex-1">
+              <input
+                type="file"
+                accept="image/*"
+                (change)="onImageSelected($event)"
+                class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2 text-gray-900 dark:text-white"
+              />
+              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Recommended: square or wide image, up to 1 MB.</p>
+              @if (imageErrorMessage) {
+                <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ imageErrorMessage }}</p>
+              }
+              @if (imageWarningMessage) {
+                <p class="mt-1 text-xs text-amber-600 dark:text-amber-400">{{ imageWarningMessage }}</p>
+              }
+            </div>
+            @if (imageUrl) {
+              <div class="flex items-center gap-3">
+                <img
+                  [src]="imageUrl"
+                  alt="Offering preview"
+                  class="h-20 w-20 rounded-lg border border-gray-200 dark:border-gray-700 object-cover"
+                />
+                <button
+                  type="button"
+                  (click)="clearImage()"
+                  class="text-sm font-semibold text-red-600 hover:text-red-700 dark:text-red-400"
+                >
+                  Remove
+                </button>
+              </div>
+            } @else {
+              <div class="flex items-center justify-center rounded-lg border border-dashed border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/40 px-4 py-6 text-xs text-gray-500 dark:text-gray-400">
+                No image selected
+              </div>
+            }
+          </div>
+        </div>
+
         <!-- Category -->
         <div>
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Category *</label>
@@ -93,20 +135,47 @@
         <!-- Setup Fee -->
         <div>
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Setup Fee (one-time)</label>
-          <div class="relative">
-            <span class="absolute left-4 top-2 text-gray-500 dark:text-gray-400">$</span>
-            <input
-              [(ngModel)]="setupFee"
-              name="setupFee"
-              type="number"
-              min="0"
-              step="0.01"
-              placeholder="0.00"
-              class="w-full pl-8 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
+          <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <div class="relative">
+              <span class="absolute left-4 top-2 text-gray-500 dark:text-gray-400">$</span>
+              <input
+                [(ngModel)]="setupFeeCost"
+                (ngModelChange)="updateSetupFeeFromCost()"
+                name="setupFeeCost"
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="Cost"
+                class="w-full pl-8 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            <div class="relative">
+              <span class="absolute left-4 top-2 text-gray-500 dark:text-gray-400">%</span>
+              <input
+                [(ngModel)]="setupFeeMargin"
+                (ngModelChange)="updateSetupFeeFromCost()"
+                name="setupFeeMargin"
+                type="number"
+                min="0"
+                step="0.1"
+                placeholder="Margin"
+                class="w-full pl-8 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            <div class="relative">
+              <span class="absolute left-4 top-2 text-gray-500 dark:text-gray-400">$</span>
+              <input
+                [value]="setupFee.toFixed(2)"
+                name="setupFee"
+                type="text"
+                readonly
+                class="w-full pl-8 pr-4 py-2 border border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-200"
+              />
+            </div>
           </div>
-          @if (submitted && setupFee < 0) {
-            <p class="mt-1 text-sm text-red-600 dark:text-red-400">Fee cannot be negative</p>
+          <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Cost, margin %, and calculated price.</p>
+          @if (submitted && setupFeeCost < 0) {
+            <p class="mt-1 text-sm text-red-600 dark:text-red-400">Cost cannot be negative</p>
           }
         </div>
       </div>
@@ -142,19 +211,49 @@
               />
             </div>
 
-            <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Base Price</label>
-              <div class="relative">
-                <span class="absolute left-4 top-2 text-gray-500 dark:text-gray-400">$</span>
-                <input
-                  [(ngModel)]="newLevelPrice"
-                  name="newLevelPrice"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  placeholder="0.00"
-                  class="w-full pl-8 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">License Cost</label>
+                <div class="relative">
+                  <span class="absolute left-4 top-2 text-gray-500 dark:text-gray-400">$</span>
+                  <input
+                    [(ngModel)]="newLevelLicenseCost"
+                    name="newLevelLicenseCost"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="0.00"
+                    class="w-full pl-8 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">License Margin %</label>
+                <div class="relative">
+                  <span class="absolute left-4 top-2 text-gray-500 dark:text-gray-400">%</span>
+                  <input
+                    [(ngModel)]="newLevelLicenseMargin"
+                    name="newLevelLicenseMargin"
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    placeholder="0"
+                    class="w-full pl-8 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Base Price</label>
+                <div class="relative">
+                  <span class="absolute left-4 top-2 text-gray-500 dark:text-gray-400">$</span>
+                  <input
+                    [value]="calculatePrice(newLevelLicenseCost, newLevelLicenseMargin).toFixed(2)"
+                    name="newLevelPrice"
+                    type="text"
+                    readonly
+                    class="w-full pl-8 pr-4 py-2 border border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-200"
+                  />
+                </div>
               </div>
             </div>
 
@@ -166,9 +265,50 @@
                 class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 @for (unit of pricingUnits; track unit.value) {
-                  <option [value]="unit.value">{{ unit.label }}</option>
+                  <option [value]="unit.value" [disabled]="!unit.enabled">{{ unit.label }}</option>
                 }
               </select>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Professional Services</label>
+              <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+                <div class="relative">
+                  <span class="absolute left-4 top-2 text-gray-500 dark:text-gray-400">$</span>
+                  <input
+                    [(ngModel)]="newLevelProfessionalServicesCost"
+                    name="newLevelProfessionalServicesCost"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="Cost"
+                    class="w-full pl-8 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div class="relative">
+                  <span class="absolute left-4 top-2 text-gray-500 dark:text-gray-400">%</span>
+                  <input
+                    [(ngModel)]="newLevelProfessionalServicesMargin"
+                    name="newLevelProfessionalServicesMargin"
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    placeholder="Margin"
+                    class="w-full pl-8 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div class="relative">
+                  <span class="absolute left-4 top-2 text-gray-500 dark:text-gray-400">$</span>
+                  <input
+                    [value]="calculatePrice(newLevelProfessionalServicesCost, newLevelProfessionalServicesMargin).toFixed(2)"
+                    name="newLevelProfessionalServicesPrice"
+                    type="text"
+                    readonly
+                    class="w-full pl-8 pr-4 py-2 border border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-200"
+                  />
+                </div>
+              </div>
+              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Per-unit professional services fee.</p>
             </div>
 
             <div class="flex gap-2">
@@ -230,7 +370,9 @@
                 @if (!editingLevels[level.id]) {
                   <div class="space-y-2">
                     <p class="text-sm text-gray-900 dark:text-white font-medium">{{ level.name }}</p>
-                    <p class="text-sm text-gray-600 dark:text-gray-400">${{ level.basePrice }}{{ getPricingUnitLabel(level.pricingUnit) }}</p>
+                    <p class="text-sm text-gray-600 dark:text-gray-400">License: ${{ level.basePrice }}{{ getPricingUnitLabel(level.pricingUnit) }}</p>
+                    <p class="text-sm text-gray-600 dark:text-gray-400">Professional Services: ${{ (level.professionalServicesPrice || 0).toFixed(2) }}{{ getPricingUnitLabel(level.pricingUnit) }}</p>
+                    <p class="text-sm text-gray-600 dark:text-gray-400">Total per unit: ${{ (level.basePrice + (level.professionalServicesPrice || 0)).toFixed(2) }}{{ getPricingUnitLabel(level.pricingUnit) }}</p>
                     <p class="text-xs text-gray-500 dark:text-gray-400">Options: {{ level.options.length }}</p>
                   </div>
                 } @else {
@@ -244,18 +386,47 @@
                         class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
-                    <div>
-                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Base Price</label>
-                      <div class="relative">
-                        <span class="absolute left-4 top-2 text-gray-500 dark:text-gray-400">$</span>
-                        <input
-                          [(ngModel)]="levelDrafts[level.id].basePrice"
-                          [name]="'levelPrice-' + i"
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          class="w-full pl-8 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        />
+                    <div class="grid grid-cols-1 gap-4 md:grid-cols-3 lg:col-span-2">
+                      <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">License Cost</label>
+                        <div class="relative">
+                          <span class="absolute left-4 top-2 text-gray-500 dark:text-gray-400">$</span>
+                          <input
+                            [(ngModel)]="levelDrafts[level.id].licenseCost"
+                            [name]="'levelLicenseCost-' + i"
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            class="w-full pl-8 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">License Margin %</label>
+                        <div class="relative">
+                          <span class="absolute left-4 top-2 text-gray-500 dark:text-gray-400">%</span>
+                          <input
+                            [(ngModel)]="levelDrafts[level.id].licenseMargin"
+                            [name]="'levelLicenseMargin-' + i"
+                            type="number"
+                            min="0"
+                            step="0.1"
+                            class="w-full pl-8 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Base Price</label>
+                        <div class="relative">
+                          <span class="absolute left-4 top-2 text-gray-500 dark:text-gray-400">$</span>
+                          <input
+                            [value]="calculatePrice(levelDrafts[level.id].licenseCost || 0, levelDrafts[level.id].licenseMargin || 0).toFixed(2)"
+                            [name]="'levelPrice-' + i"
+                            type="text"
+                            readonly
+                            class="w-full pl-8 pr-4 py-2 border border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-200"
+                          />
+                        </div>
                       </div>
                     </div>
                     <div>
@@ -266,9 +437,47 @@
                         class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       >
                         @for (unit of pricingUnits; track unit.value) {
-                          <option [value]="unit.value">{{ unit.label }}</option>
+                          <option [value]="unit.value" [disabled]="!unit.enabled">{{ unit.label }}</option>
                         }
                       </select>
+                    </div>
+                    <div class="lg:col-span-3">
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Professional Services</label>
+                      <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+                        <div class="relative">
+                          <span class="absolute left-4 top-2 text-gray-500 dark:text-gray-400">$</span>
+                          <input
+                            [(ngModel)]="levelDrafts[level.id].professionalServicesCost"
+                            [name]="'levelPsCost-' + i"
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            class="w-full pl-8 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          />
+                        </div>
+                        <div class="relative">
+                          <span class="absolute left-4 top-2 text-gray-500 dark:text-gray-400">%</span>
+                          <input
+                            [(ngModel)]="levelDrafts[level.id].professionalServicesMargin"
+                            [name]="'levelPsMargin-' + i"
+                            type="number"
+                            min="0"
+                            step="0.1"
+                            class="w-full pl-8 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          />
+                        </div>
+                        <div class="relative">
+                          <span class="absolute left-4 top-2 text-gray-500 dark:text-gray-400">$</span>
+                          <input
+                            [value]="calculatePrice(levelDrafts[level.id].professionalServicesCost || 0, levelDrafts[level.id].professionalServicesMargin || 0).toFixed(2)"
+                            [name]="'levelPsPrice-' + i"
+                            type="text"
+                            readonly
+                            class="w-full pl-8 pr-4 py-2 border border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-200"
+                          />
+                        </div>
+                      </div>
+                      <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Per-unit professional services fee.</p>
                     </div>
                   </div>
                   <div class="mt-4 flex items-center gap-2">
@@ -393,19 +602,49 @@
               />
             </div>
 
-            <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Monthly Price</label>
-              <div class="relative">
-                <span class="absolute left-4 top-2 text-gray-500 dark:text-gray-400">$</span>
-                <input
-                  [(ngModel)]="newOptionPrice"
-                  name="newOptionPrice"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  placeholder="0.00"
-                  class="w-full pl-8 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Monthly Cost</label>
+                <div class="relative">
+                  <span class="absolute left-4 top-2 text-gray-500 dark:text-gray-400">$</span>
+                  <input
+                    [(ngModel)]="newOptionCost"
+                    name="newOptionCost"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="0.00"
+                    class="w-full pl-8 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Margin %</label>
+                <div class="relative">
+                  <span class="absolute left-4 top-2 text-gray-500 dark:text-gray-400">%</span>
+                  <input
+                    [(ngModel)]="newOptionMargin"
+                    name="newOptionMargin"
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    placeholder="0"
+                    class="w-full pl-8 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Monthly Price</label>
+                <div class="relative">
+                  <span class="absolute left-4 top-2 text-gray-500 dark:text-gray-400">$</span>
+                  <input
+                    [value]="calculatePrice(newOptionCost, newOptionMargin).toFixed(2)"
+                    name="newOptionPrice"
+                    type="text"
+                    readonly
+                    class="w-full pl-8 pr-4 py-2 border border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-200"
+                  />
+                </div>
               </div>
             </div>
 
@@ -417,7 +656,7 @@
                 class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 @for (unit of pricingUnits; track unit.value) {
-                  <option [value]="unit.value">{{ unit.label }}</option>
+                  <option [value]="unit.value" [disabled]="!unit.enabled">{{ unit.label }}</option>
                 }
               </select>
             </div>
@@ -490,19 +729,51 @@
                         class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
-                    <div>
-                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Monthly Price</label>
-                      <div class="relative">
-                        <span class="absolute left-4 top-2 text-gray-500 dark:text-gray-400">$</span>
-                        <input
-                          [(ngModel)]="optionDrafts[option.id].monthlyPrice"
-                          [name]="'optionPrice-' + i"
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          placeholder="0.00"
-                          class="w-full pl-8 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        />
+                    <div class="lg:col-span-2">
+                      <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+                        <div>
+                          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Monthly Cost</label>
+                          <div class="relative">
+                            <span class="absolute left-4 top-2 text-gray-500 dark:text-gray-400">$</span>
+                            <input
+                              [(ngModel)]="optionDrafts[option.id].monthlyCost"
+                              [name]="'optionCost-' + i"
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              placeholder="0.00"
+                              class="w-full pl-8 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Margin %</label>
+                          <div class="relative">
+                            <span class="absolute left-4 top-2 text-gray-500 dark:text-gray-400">%</span>
+                            <input
+                              [(ngModel)]="optionDrafts[option.id].marginPercent"
+                              [name]="'optionMargin-' + i"
+                              type="number"
+                              min="0"
+                              step="0.1"
+                              placeholder="0"
+                              class="w-full pl-8 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Monthly Price</label>
+                          <div class="relative">
+                            <span class="absolute left-4 top-2 text-gray-500 dark:text-gray-400">$</span>
+                            <input
+                              [value]="calculatePrice(optionDrafts[option.id].monthlyCost || 0, optionDrafts[option.id].marginPercent || 0).toFixed(2)"
+                              [name]="'optionPrice-' + i"
+                              type="text"
+                              readonly
+                              class="w-full pl-8 pr-4 py-2 border border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-200"
+                            />
+                          </div>
+                        </div>
                       </div>
                     </div>
                     <div>
@@ -513,7 +784,7 @@
                         class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       >
                         @for (unit of pricingUnits; track unit.value) {
-                          <option [value]="unit.value">{{ unit.label }}</option>
+                          <option [value]="unit.value" [disabled]="!unit.enabled">{{ unit.label }}</option>
                         }
                       </select>
                     </div>

@@ -3,7 +3,9 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, ActivatedRoute, Router } from '@angular/router';
 import { QuoteService, Quote } from '../../shared/services/quote.service';
-import { MSPOfferingsService, MSPOffering, MSPServiceLevel, PricingUnit } from '../../shared/services/msp-offerings.service';
+import { MSPOfferingsService, MSPOffering, MSPOption, MSPServiceLevel, PricingUnit } from '../../shared/services/msp-offerings.service';
+import { CustomerManagementService, Customer } from '../../shared/services/customer-management.service';
+import { PricingUnitOption, PricingUnitsService } from '../../shared/services/pricing-units.service';
 import { Subscription } from 'rxjs';
 
 @Component({
@@ -15,7 +17,7 @@ import { Subscription } from 'rxjs';
 })
 export class MspQuoteComponent implements OnInit, OnDestroy {
   // Form inputs
-  customerName: string = '';
+  selectedCustomerId: string = '';
   quantity: number = 10;
   durationMonths: number = 12;
   selectedService: string = '';
@@ -26,6 +28,9 @@ export class MspQuoteComponent implements OnInit, OnDestroy {
   currentOffering: MSPOffering | null = null;
   currentServiceLevel: MSPServiceLevel | null = null;
   services: string[] = [];
+  customers: Customer[] = [];
+  pricingUnits: PricingUnitOption[] = [];
+  selectedOptionIds: string[] = [];
 
   // Configuration
   showSetupFee: boolean = true;
@@ -42,10 +47,13 @@ export class MspQuoteComponent implements OnInit, OnDestroy {
     private activatedRoute: ActivatedRoute,
     private quoteService: QuoteService,
     private offeringsService: MSPOfferingsService,
+    private customerService: CustomerManagementService,
+    private pricingUnitsService: PricingUnitsService,
     private router: Router
   ) {}
 
   ngOnInit(): void {
+    this.pricingUnits = this.pricingUnitsService.getUnits();
     // Load offerings
     this.subscription.add(
       this.offeringsService.getOfferings().subscribe(offerings => {
@@ -66,6 +74,15 @@ export class MspQuoteComponent implements OnInit, OnDestroy {
         });
       })
     );
+
+    this.subscription.add(
+      this.customerService.customers$.subscribe(customers => {
+        this.customers = customers.filter(customer => customer.status === 'active');
+        if (!this.selectedCustomerId && this.customers.length > 0) {
+          this.selectedCustomerId = this.customers[0].id;
+        }
+      })
+    );
   }
 
   ngOnDestroy(): void {
@@ -76,6 +93,7 @@ export class MspQuoteComponent implements OnInit, OnDestroy {
     this.currentOffering = this.offerings.find(o => o.name === this.selectedService) || null;
     this.currentServiceLevel = this.currentOffering?.serviceLevels[0] || null;
     this.selectedServiceLevelId = this.currentServiceLevel?.id || '';
+    this.selectedOptionIds = [];
     this.calculateQuote();
   }
 
@@ -91,6 +109,7 @@ export class MspQuoteComponent implements OnInit, OnDestroy {
       this.currentOffering.serviceLevels.find(level => level.id === this.selectedServiceLevelId) ||
       this.currentOffering.serviceLevels[0] ||
       null;
+    this.selectedOptionIds = [];
     this.calculateQuote();
   }
 
@@ -110,7 +129,11 @@ export class MspQuoteComponent implements OnInit, OnDestroy {
     }
 
     // Calculate monthly cost based on pricing unit
-    let monthlyPrice = this.currentServiceLevel.basePrice * this.quantity;
+    const baseMonthly = this.currentServiceLevel.basePrice * this.quantity;
+    const professionalServices = (this.currentServiceLevel.professionalServicesPrice || 0) * this.quantity;
+    const optionsMonthlyTotal = this.getOptionsMonthlyTotal();
+    const optionsOneTimeTotal = this.getOptionsOneTimeTotal();
+    let monthlyPrice = baseMonthly + professionalServices + optionsMonthlyTotal;
 
     // Calculate total for duration
     let totalWithDuration = monthlyPrice * this.durationMonths;
@@ -124,7 +147,7 @@ export class MspQuoteComponent implements OnInit, OnDestroy {
     }
 
     // Add setup fee
-    const total = totalWithDuration + (this.showSetupFee ? this.currentOffering.setupFee : 0);
+    const total = totalWithDuration + optionsOneTimeTotal + (this.showSetupFee ? this.currentOffering.setupFee : 0);
     
     this.monthlyPrice = monthlyPrice;
     this.totalPrice = total;
@@ -135,53 +158,95 @@ export class MspQuoteComponent implements OnInit, OnDestroy {
     this.calculateQuote();
   }
 
-  getPricingUnitLabel(unit?: PricingUnit): string {
-    const labels: { [key in PricingUnit]: string } = {
-      'per-user': '/user/mo',
-      'per-gb': '/GB/mo',
-      'per-device': '/device/mo',
-      'one-time': '/one-time'
-    };
+  isOptionSelected(optionId: string): boolean {
+    return this.selectedOptionIds.includes(optionId);
+  }
 
-    if (unit) {
-      return labels[unit];
+  toggleOption(optionId: string, checked: boolean): void {
+    if (checked && !this.selectedOptionIds.includes(optionId)) {
+      this.selectedOptionIds = [...this.selectedOptionIds, optionId];
+    } else if (!checked) {
+      this.selectedOptionIds = this.selectedOptionIds.filter(id => id !== optionId);
     }
+    this.calculateQuote();
+  }
 
-    if (!this.currentServiceLevel) return '/unit/mo';
-    return labels[this.currentServiceLevel.pricingUnit];
+  getSelectedOptions(): MSPOption[] {
+    if (!this.currentServiceLevel) return [];
+    return this.currentServiceLevel.options.filter(option => this.selectedOptionIds.includes(option.id));
+  }
+
+  getOptionsMonthlyTotal(): number {
+    const selected = this.getSelectedOptions();
+    return selected.reduce((total, option) => {
+      if (option.pricingUnit === 'one-time') {
+        return total;
+      }
+      return total + option.monthlyPrice * this.quantity;
+    }, 0);
+  }
+
+  getOptionsOneTimeTotal(): number {
+    const selected = this.getSelectedOptions();
+    return selected.reduce((total, option) => {
+      if (option.pricingUnit !== 'one-time') {
+        return total;
+      }
+      return total + option.monthlyPrice;
+    }, 0);
+  }
+
+  getPricingUnitLabel(unit?: PricingUnit): string {
+    const match = this.getPricingUnitOption(unit);
+    return match?.suffix || '/unit/mo';
   }
 
   getPricingUnitName(unit?: PricingUnit): string {
-    const labels: { [key in PricingUnit]: string } = {
-      'per-user': 'user',
-      'per-gb': 'GB',
-      'per-device': 'device',
-      'one-time': 'one-time'
-    };
-
-    if (unit) {
-      return labels[unit];
-    }
-
-    if (!this.currentServiceLevel) return 'unit';
-    return labels[this.currentServiceLevel.pricingUnit];
+    const match = this.getPricingUnitOption(unit);
+    if (!match) return 'unit';
+    return match.label;
   }
 
   getPricingUnitDisplayName(): string {
-    if (!this.currentServiceLevel) return 'Units';
-    
-    const labels: { [key in PricingUnit]: string } = {
-      'per-user': 'Users',
-      'per-gb': 'GB Storage',
-      'per-device': 'Devices',
-      'one-time': 'Units'
-    };
-    return labels[this.currentServiceLevel.pricingUnit];
+    const match = this.getPricingUnitOption();
+    return match?.label || 'Units';
+  }
+
+  getPerUnitTotal(): number {
+    if (!this.currentServiceLevel) return 0;
+    const basePerUnit = this.currentServiceLevel.basePrice || 0;
+    const professionalServicesPerUnit = this.currentServiceLevel.professionalServicesPrice || 0;
+    const selectedOptions = this.getSelectedOptions();
+    const optionsPerUnit = selectedOptions.reduce((total, option) => {
+      if (option.pricingUnit === 'one-time') {
+        return total;
+      }
+      return total + option.monthlyPrice;
+    }, 0);
+    return basePerUnit + professionalServicesPerUnit + optionsPerUnit;
+  }
+
+  getAddOnPerUnitTotal(): number {
+    const selectedOptions = this.getSelectedOptions();
+    return selectedOptions.reduce((total, option) => {
+      if (option.pricingUnit === 'one-time') {
+        return total;
+      }
+      return total + option.monthlyPrice;
+    }, 0);
+  }
+
+  private getPricingUnitOption(unit?: PricingUnit): PricingUnitOption | null {
+    const target = unit || this.currentServiceLevel?.pricingUnit;
+    if (!target) return null;
+    return this.pricingUnits.find(option => option.value === target) || null;
   }
 
   generateQuote(): void {
-    if (!this.customerName.trim()) {
-      alert('Please enter a customer name');
+    const selectedCustomer = this.customers.find(customer => customer.id === this.selectedCustomerId);
+
+    if (!selectedCustomer) {
+      alert('Please select a customer');
       return;
     }
 
@@ -193,13 +258,40 @@ export class MspQuoteComponent implements OnInit, OnDestroy {
     const now = new Date();
     const createdDate = now.toLocaleDateString();
     const createdTime = now.toLocaleTimeString();
+    const basePricePerUnit = this.currentServiceLevel.basePrice || 0;
+    const professionalServicesPerUnit = this.currentServiceLevel.professionalServicesPrice || 0;
+    const professionalServicesTotal = professionalServicesPerUnit * this.quantity;
+    const selectedOptions = this.getSelectedOptions();
+    const addOnMonthlyTotal = this.getOptionsMonthlyTotal();
+    const addOnOneTimeTotal = this.getOptionsOneTimeTotal();
+    const addOnPerUnitTotal = selectedOptions.reduce((total, option) => {
+      if (option.pricingUnit === 'one-time') {
+        return total;
+      }
+      return total + option.monthlyPrice;
+    }, 0);
+    const perUnitTotal = basePricePerUnit + professionalServicesPerUnit + addOnPerUnitTotal;
 
     const quoteData: Omit<Quote, 'id'> = {
       type: 'msp',
-      customerName: this.customerName,
+      customerName: selectedCustomer.name,
       notes: '',
       service: this.selectedService,
       serviceLevelName: this.currentServiceLevel.name,
+      pricingUnitLabel: this.getPricingUnitLabel(),
+      basePricePerUnit,
+      professionalServicesPrice: professionalServicesPerUnit,
+      professionalServicesTotal,
+      perUnitTotal,
+      selectedOptions: selectedOptions.map(option => ({
+        id: option.id,
+        name: option.name,
+        monthlyPrice: option.monthlyPrice,
+        pricingUnit: option.pricingUnit
+      })),
+      addOnMonthlyTotal,
+      addOnOneTimeTotal,
+      addOnPerUnitTotal,
       numberOfUsers: this.quantity,
       durationMonths: this.durationMonths,
       monthlyPrice: this.monthlyPrice,

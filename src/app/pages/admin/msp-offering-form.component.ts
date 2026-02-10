@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, ActivatedRoute, Router } from '@angular/router';
 import { MSPOfferingsService, MSPOffering, MSPOption, MSPServiceLevel, PricingUnit } from '../../shared/services/msp-offerings.service';
+import { PricingUnitOption, PricingUnitsService } from '../../shared/services/pricing-units.service';
 
 @Component({
   selector: 'app-msp-offering-form',
@@ -17,13 +18,21 @@ export class MSPOfferingFormComponent implements OnInit {
   submitted = false;
   errorMessage: string = '';
   successMessage: string = '';
+  imageErrorMessage: string = '';
+  imageWarningMessage: string = '';
   showOptionForm = false;
+  readonly maxImageSizeBytes = 1024 * 1024;
+  readonly minImageWidth = 600;
+  readonly minImageHeight = 400;
 
   // Form fields
   name: string = '';
   description: string = '';
+  imageUrl: string = '';
   category: 'backup' | 'support' | 'database' | 'consulting' = 'backup';
   setupFee: number = 0;
+  setupFeeCost: number = 0;
+  setupFeeMargin: number = 0;
   isActive: boolean = true;
   features: string[] = [];
   newFeature: string = '';
@@ -39,11 +48,18 @@ export class MSPOfferingFormComponent implements OnInit {
   showLevelForm = false;
   newLevelName: string = '';
   newLevelPrice: number = 0;
+  newLevelLicenseCost: number = 0;
+  newLevelLicenseMargin: number = 0;
+  newLevelProfessionalServicesCost: number = 0;
+  newLevelProfessionalServicesMargin: number = 0;
+  newLevelProfessionalServicesPrice: number = 0;
   newLevelPricingUnit: PricingUnit = 'per-user';
 
   newOptionName: string = '';
   newOptionDescription: string = '';
   newOptionPrice: number = 0;
+  newOptionCost: number = 0;
+  newOptionMargin: number = 0;
   newOptionPricingUnit: PricingUnit = 'per-user';
 
   categories = [
@@ -53,20 +69,18 @@ export class MSPOfferingFormComponent implements OnInit {
     { value: 'consulting', label: 'Consulting' }
   ];
 
-  pricingUnits = [
-    { value: 'per-user', label: 'Per User Per Month' },
-    { value: 'per-gb', label: 'Per GB Per Month' },
-    { value: 'per-device', label: 'Per Device Per Month' },
-    { value: 'one-time', label: 'One Time Only' }
-  ];
+  pricingUnits: PricingUnitOption[] = [];
 
   constructor(
     private offeringsService: MSPOfferingsService,
+    private pricingUnitsService: PricingUnitsService,
     private route: ActivatedRoute,
     private router: Router
   ) {}
 
   ngOnInit(): void {
+    this.pricingUnits = this.pricingUnitsService.getUnits();
+    this.syncPricingUnitSelections();
     this.route.paramMap.subscribe(params => {
       const id = params.get('id');
       if (id) {
@@ -82,13 +96,28 @@ export class MSPOfferingFormComponent implements OnInit {
     if (offering) {
       this.name = offering.name;
       this.description = offering.description;
+      this.imageUrl = offering.imageUrl || '';
       this.category = offering.category;
-      this.setupFee = offering.setupFee;
+      this.setupFeeCost = offering.setupFeeCost ?? offering.setupFee ?? 0;
+      this.setupFeeMargin = offering.setupFeeMargin ?? 0;
+      this.setupFee = this.calculatePrice(this.setupFeeCost, this.setupFeeMargin);
       this.isActive = offering.isActive;
       this.features = [...offering.features];
       this.serviceLevels = offering.serviceLevels.map(level => ({
         ...level,
-        options: [...level.options]
+        licenseCost: level.licenseCost ?? level.baseCost ?? level.basePrice ?? 0,
+        licenseMargin: level.licenseMargin ?? level.marginPercent ?? 0,
+        professionalServicesCost: level.professionalServicesCost ?? 0,
+        professionalServicesMargin: level.professionalServicesMargin ?? 0,
+        professionalServicesPrice: level.professionalServicesPrice ?? this.calculatePrice(
+          level.professionalServicesCost ?? 0,
+          level.professionalServicesMargin ?? 0
+        ),
+        options: level.options.map(option => ({
+          ...option,
+          monthlyCost: option.monthlyCost ?? option.monthlyPrice ?? 0,
+          marginPercent: option.marginPercent ?? 0
+        }))
       }));
       this.selectLevel(this.serviceLevels[0] || null);
     }
@@ -97,7 +126,7 @@ export class MSPOfferingFormComponent implements OnInit {
   selectLevel(level: MSPServiceLevel | null): void {
     this.selectedLevel = level;
     this.selectedLevelId = level ? level.id : null;
-    this.newOptionPricingUnit = level ? level.pricingUnit : 'per-user';
+    this.newOptionPricingUnit = level ? level.pricingUnit : this.getDefaultPricingUnit();
     this.showOptionForm = false;
     this.errorMessage = '';
   }
@@ -107,15 +136,28 @@ export class MSPOfferingFormComponent implements OnInit {
       this.errorMessage = 'Service level name is required';
       return;
     }
-    if (this.newLevelPrice < 0) {
-      this.errorMessage = 'Service level price cannot be negative';
+    if (this.newLevelLicenseCost < 0) {
+      this.errorMessage = 'License cost cannot be negative';
       return;
     }
+
+    const basePrice = this.calculatePrice(this.newLevelLicenseCost, this.newLevelLicenseMargin);
+    const professionalServicesPrice = this.calculatePrice(
+      this.newLevelProfessionalServicesCost,
+      this.newLevelProfessionalServicesMargin
+    );
 
     const level: MSPServiceLevel = {
       id: `level-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       name: this.newLevelName.trim(),
-      basePrice: this.newLevelPrice,
+      basePrice,
+      baseCost: this.newLevelLicenseCost,
+      marginPercent: this.newLevelLicenseMargin,
+      licenseCost: this.newLevelLicenseCost,
+      licenseMargin: this.newLevelLicenseMargin,
+      professionalServicesCost: this.newLevelProfessionalServicesCost,
+      professionalServicesMargin: this.newLevelProfessionalServicesMargin,
+      professionalServicesPrice,
       pricingUnit: this.newLevelPricingUnit,
       options: []
     };
@@ -124,14 +166,30 @@ export class MSPOfferingFormComponent implements OnInit {
     this.selectLevel(level);
     this.newLevelName = '';
     this.newLevelPrice = 0;
-    this.newLevelPricingUnit = 'per-user';
+    this.newLevelLicenseCost = 0;
+    this.newLevelLicenseMargin = 0;
+    this.newLevelProfessionalServicesCost = 0;
+    this.newLevelProfessionalServicesMargin = 0;
+    this.newLevelProfessionalServicesPrice = 0;
+    this.newLevelPricingUnit = this.getDefaultPricingUnit();
     this.showLevelForm = false;
     this.errorMessage = '';
   }
 
   startEditLevel(level: MSPServiceLevel): void {
     this.editingLevels[level.id] = true;
-    this.levelDrafts[level.id] = { ...level, options: [...level.options] };
+    this.levelDrafts[level.id] = {
+      ...level,
+      licenseCost: level.licenseCost ?? level.baseCost ?? level.basePrice ?? 0,
+      licenseMargin: level.licenseMargin ?? level.marginPercent ?? 0,
+      professionalServicesCost: level.professionalServicesCost ?? 0,
+      professionalServicesMargin: level.professionalServicesMargin ?? 0,
+      professionalServicesPrice: level.professionalServicesPrice ?? this.calculatePrice(
+        level.professionalServicesCost ?? 0,
+        level.professionalServicesMargin ?? 0
+      ),
+      options: [...level.options]
+    };
     this.errorMessage = '';
   }
 
@@ -147,13 +205,23 @@ export class MSPOfferingFormComponent implements OnInit {
       this.errorMessage = 'Service level name is required';
       return;
     }
-    if (draft.basePrice < 0) {
-      this.errorMessage = 'Service level price cannot be negative';
+    if ((draft.licenseCost ?? 0) < 0) {
+      this.errorMessage = 'License cost cannot be negative';
       return;
     }
 
     level.name = draft.name.trim();
-    level.basePrice = draft.basePrice;
+    level.licenseCost = draft.licenseCost ?? 0;
+    level.licenseMargin = draft.licenseMargin ?? 0;
+    level.baseCost = draft.licenseCost ?? 0;
+    level.marginPercent = draft.licenseMargin ?? 0;
+    level.basePrice = this.calculatePrice(level.licenseCost, level.licenseMargin);
+    level.professionalServicesCost = draft.professionalServicesCost ?? 0;
+    level.professionalServicesMargin = draft.professionalServicesMargin ?? 0;
+    level.professionalServicesPrice = this.calculatePrice(
+      level.professionalServicesCost,
+      level.professionalServicesMargin
+    );
     level.pricingUnit = draft.pricingUnit;
 
     this.editingLevels[level.id] = false;
@@ -179,6 +247,55 @@ export class MSPOfferingFormComponent implements OnInit {
     this.features.splice(index, 1);
   }
 
+  onImageSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files && input.files[0];
+    if (!file) {
+      return;
+    }
+    this.imageErrorMessage = '';
+    this.imageWarningMessage = '';
+    if (!file.type.startsWith('image/')) {
+      this.imageErrorMessage = 'Please select a valid image file.';
+      input.value = '';
+      return;
+    }
+    if (file.size > this.maxImageSizeBytes) {
+      this.imageErrorMessage = 'Image must be 1 MB or smaller.';
+      input.value = '';
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      this.imageUrl = typeof reader.result === 'string' ? reader.result : '';
+      if (this.imageUrl) {
+        const img = new Image();
+        img.onload = () => {
+          if (img.width < this.minImageWidth || img.height < this.minImageHeight) {
+            this.imageWarningMessage = `Image is ${img.width}x${img.height}. Recommended at least ${this.minImageWidth}x${this.minImageHeight}.`;
+          } else {
+            this.imageWarningMessage = '';
+          }
+        };
+        img.onerror = () => {
+          this.imageWarningMessage = 'Unable to read image dimensions.';
+        };
+        img.src = this.imageUrl;
+      }
+    };
+    reader.onerror = () => {
+      this.imageErrorMessage = 'Unable to read image file.';
+    };
+    reader.readAsDataURL(file);
+  }
+
+  clearImage(): void {
+    this.imageUrl = '';
+    this.imageErrorMessage = '';
+    this.imageWarningMessage = '';
+  }
+
   addOption(): void {
     if (!this.selectedLevel) {
       this.errorMessage = 'Select a service level before adding options';
@@ -188,16 +305,19 @@ export class MSPOfferingFormComponent implements OnInit {
       this.errorMessage = 'Option name is required';
       return;
     }
-    if (this.newOptionPrice < 0) {
-      this.errorMessage = 'Option price cannot be negative';
+    if (this.newOptionCost < 0) {
+      this.errorMessage = 'Option cost cannot be negative';
       return;
     }
 
+    const monthlyPrice = this.calculatePrice(this.newOptionCost, this.newOptionMargin);
     const option: MSPOption = {
       id: `opt-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       name: this.newOptionName.trim(),
       description: this.newOptionDescription.trim(),
-      monthlyPrice: this.newOptionPrice,
+      monthlyPrice,
+      monthlyCost: this.newOptionCost,
+      marginPercent: this.newOptionMargin,
       pricingUnit: this.newOptionPricingUnit
     };
 
@@ -205,6 +325,8 @@ export class MSPOfferingFormComponent implements OnInit {
     this.newOptionName = '';
     this.newOptionDescription = '';
     this.newOptionPrice = 0;
+    this.newOptionCost = 0;
+    this.newOptionMargin = 0;
     this.newOptionPricingUnit = this.selectedLevel.pricingUnit;
     this.showOptionForm = false;
     this.errorMessage = '';
@@ -212,7 +334,11 @@ export class MSPOfferingFormComponent implements OnInit {
 
   startEditOption(option: MSPOption): void {
     this.editingOptions[option.id] = true;
-    this.optionDrafts[option.id] = { ...option };
+    this.optionDrafts[option.id] = {
+      ...option,
+      monthlyCost: option.monthlyCost ?? option.monthlyPrice ?? 0,
+      marginPercent: option.marginPercent ?? 0
+    };
     this.errorMessage = '';
   }
 
@@ -228,14 +354,16 @@ export class MSPOfferingFormComponent implements OnInit {
       this.errorMessage = 'Option name is required';
       return;
     }
-    if (draft.monthlyPrice < 0) {
-      this.errorMessage = 'Option price cannot be negative';
+    if ((draft.monthlyCost ?? 0) < 0) {
+      this.errorMessage = 'Option cost cannot be negative';
       return;
     }
 
     option.name = draft.name.trim();
     option.description = draft.description.trim();
-    option.monthlyPrice = draft.monthlyPrice;
+    option.monthlyCost = draft.monthlyCost ?? 0;
+    option.marginPercent = draft.marginPercent ?? 0;
+    option.monthlyPrice = this.calculatePrice(option.monthlyCost, option.marginPercent);
     option.pricingUnit = draft.pricingUnit;
 
     this.editingOptions[option.id] = false;
@@ -263,8 +391,8 @@ export class MSPOfferingFormComponent implements OnInit {
       return;
     }
 
-    if (this.setupFee < 0) {
-      this.errorMessage = 'Setup fee cannot be negative';
+    if (this.setupFeeCost < 0) {
+      this.errorMessage = 'Setup fee cost cannot be negative';
       return;
     }
 
@@ -279,12 +407,16 @@ export class MSPOfferingFormComponent implements OnInit {
     }
 
     try {
+      this.setupFee = this.calculatePrice(this.setupFeeCost, this.setupFeeMargin);
       if (this.isEditMode && this.offeringId) {
         this.offeringsService.updateOffering(this.offeringId, {
           name: this.name.trim(),
           description: this.description.trim(),
+          imageUrl: this.imageUrl,
           category: this.category,
           setupFee: this.setupFee,
+          setupFeeCost: this.setupFeeCost,
+          setupFeeMargin: this.setupFeeMargin,
           isActive: this.isActive,
           features: this.features,
           serviceLevels: this.serviceLevels
@@ -294,8 +426,11 @@ export class MSPOfferingFormComponent implements OnInit {
         this.offeringsService.createOffering({
           name: this.name.trim(),
           description: this.description.trim(),
+          imageUrl: this.imageUrl,
           category: this.category,
           setupFee: this.setupFee,
+          setupFeeCost: this.setupFeeCost,
+          setupFeeMargin: this.setupFeeMargin,
           isActive: this.isActive,
           features: this.features,
           serviceLevels: this.serviceLevels
@@ -317,12 +452,46 @@ export class MSPOfferingFormComponent implements OnInit {
   }
 
   getPricingUnitLabel(unit: PricingUnit): string {
-    const labels: { [key in PricingUnit]: string } = {
-      'per-user': '/user/mo',
-      'per-gb': '/GB/mo',
-      'per-device': '/device/mo',
-      'one-time': '/one-time'
-    };
-    return labels[unit];
+    const match = this.pricingUnits.find(option => option.value === unit);
+    return match?.suffix || '/unit/mo';
+  }
+
+  private syncPricingUnitSelections(): void {
+    if (!this.pricingUnits.some(option => option.enabled)) {
+      const fallback = this.pricingUnits.find(option => option.value === 'per-user') || this.pricingUnits[0];
+      if (fallback) {
+        fallback.enabled = true;
+        this.savePricingUnits();
+      }
+    }
+
+    const defaultUnit = this.getDefaultPricingUnit();
+    if (!this.isUnitEnabled(this.newLevelPricingUnit)) {
+      this.newLevelPricingUnit = defaultUnit;
+    }
+    if (!this.isUnitEnabled(this.newOptionPricingUnit)) {
+      this.newOptionPricingUnit = this.selectedLevel?.pricingUnit || defaultUnit;
+    }
+  }
+
+  private getDefaultPricingUnit(): PricingUnit {
+    const enabled = this.pricingUnits.find(option => option.enabled);
+    return enabled?.value || 'per-user';
+  }
+
+  private isUnitEnabled(unit: PricingUnit): boolean {
+    return this.pricingUnits.some(option => option.value === unit && option.enabled);
+  }
+
+  private savePricingUnits(): void {
+    this.pricingUnitsService.saveUnits(this.pricingUnits);
+  }
+
+  calculatePrice(cost: number, marginPercent: number): number {
+    return Number((cost * (1 + marginPercent / 100)).toFixed(2));
+  }
+
+  updateSetupFeeFromCost(): void {
+    this.setupFee = this.calculatePrice(this.setupFeeCost, this.setupFeeMargin);
   }
 }

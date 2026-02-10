@@ -1,6 +1,8 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
+import { MSPOfferingsService, MSPOffering, MSPServiceLevel, PricingUnit } from '../../shared/services/msp-offerings.service';
+import { PricingUnitOption, PricingUnitsService } from '../../shared/services/pricing-units.service';
 
 @Component({
   selector: 'app-services-overview',
@@ -10,48 +12,43 @@ import { RouterModule } from '@angular/router';
   styleUrl: './services-overview.component.css',
 })
 export class ServicesOverviewComponent {
-  services = [
-    {
-      id: 1,
-      name: 'Druva M365 Backup',
-      description: 'Complete Druvainfrastructure management and support',
-      icon: '💻',
-      features: ['M365 Users', 'Sharepoint', 'Exchange Online', 'Teams'],
-    },
-    {
-      id: 2,
-      name: 'Druva Phoenix Backup',
-      description: 'Manage backups for your physical and virtual servers',
-      icon: '☁️',
-      features: ['Azure VMs', 'AWS EC2', 'On-Prem Servers', 'Disaster Recovery'],
-    },
-    {
-      id: 3,
-      name: 'Veeam Backup & Recovery',
-      description: 'Protect your business from cyber threats',
-      icon: '🔒',
-      features: ['Threat Detection', 'Compliance', 'Penetration Testing', 'Training'],
-    },
-    {
-      id: 4,
-      name: 'Helpdesk Support',
-      description: 'Professional technical support for your team',
-      icon: '📞',
-      features: ['Ticket System', 'Remote Assistance', 'Priority Support', 'SLA Guarantee'],
-    },
-    {
-      id: 5,
-      name: 'Database Management',
-      description: 'Optimize and secure your databases',
-      icon: '🗄️',
-      features: ['Performance Tuning', 'Backup Solutions', 'Replication', 'Disaster Recovery'],
-    },
-    {
-      id: 6,
-      name: 'Consulting Services',
-      description: 'Strategic IT guidance for your business',
-      icon: '🎯',
-      features: ['Technology Planning', 'ROI Analysis', 'Best Practices', 'Digital Transformation'],
-    },
-  ];
+  offerings: MSPOffering[] = [];
+  pricingUnits: PricingUnitOption[] = [];
+
+  constructor(
+    private offeringsService: MSPOfferingsService,
+    private pricingUnitsService: PricingUnitsService
+  ) {}
+
+  ngOnInit(): void {
+    this.pricingUnits = this.pricingUnitsService.getUnits();
+    this.offeringsService.getOfferings().subscribe(offerings => {
+      this.offerings = offerings.filter(offering => offering.isActive);
+    });
+  }
+
+  getCategoryIcon(category: MSPOffering['category']): string {
+    const icons: Record<MSPOffering['category'], string> = {
+      backup: '💾',
+      support: '📞',
+      database: '🗄️',
+      consulting: '🎯'
+    };
+    return icons[category] || '🧩';
+  }
+
+  getDefaultLevel(offering: MSPOffering): MSPServiceLevel | null {
+    return offering.serviceLevels[0] || null;
+  }
+
+  getPricingUnitLabel(unit: PricingUnit): string {
+    const match = this.pricingUnits.find(option => option.value === unit);
+    return match?.suffix || '/unit/mo';
+  }
+
+  getPerUnitTotal(level: MSPServiceLevel): number {
+    const license = level.basePrice || 0;
+    const professionalServices = level.professionalServicesPrice || 0;
+    return license + professionalServices;
+  }
 }

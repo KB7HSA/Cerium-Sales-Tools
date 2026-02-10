@@ -6,6 +6,8 @@ export interface MSPOption {
   name: string;
   description: string;
   monthlyPrice: number;
+  monthlyCost?: number;
+  marginPercent?: number;
   pricingUnit: PricingUnit;
 }
 
@@ -13,6 +15,13 @@ export interface MSPServiceLevel {
   id: string;
   name: string;
   basePrice: number;
+  baseCost?: number;
+  marginPercent?: number;
+  licenseCost?: number;
+  licenseMargin?: number;
+  professionalServicesPrice?: number;
+  professionalServicesCost?: number;
+  professionalServicesMargin?: number;
   pricingUnit: PricingUnit;
   options: MSPOption[];
 }
@@ -23,10 +32,13 @@ export interface MSPOffering {
   id: string;
   name: string;
   description: string;
+  imageUrl?: string;
   category: 'backup' | 'support' | 'database' | 'consulting';
   basePrice?: number; // Legacy: Price based on selected unit
   pricingUnit?: PricingUnit; // Legacy: Per user, per GB, or per device per month
   setupFee: number;
+  setupFeeCost?: number;
+  setupFeeMargin?: number;
   features: string[];
   options?: MSPOption[]; // Legacy
   serviceLevels: MSPServiceLevel[];
@@ -208,6 +220,10 @@ export class MSPOfferingsService {
   private normalizeOfferings(offerings: MSPOffering[]): MSPOffering[] {
     return offerings.map(offering => ({
       ...offering,
+      imageUrl: offering.imageUrl || '',
+      setupFeeCost: offering.setupFeeCost ?? offering.setupFee ?? 0,
+      setupFeeMargin: offering.setupFeeMargin ?? 0,
+      setupFee: offering.setupFee ?? this.calculatePrice(offering.setupFeeCost ?? offering.setupFee ?? 0, offering.setupFeeMargin ?? 0),
       serviceLevels: this.normalizeServiceLevels(offering)
     }));
   }
@@ -225,13 +241,47 @@ export class MSPOfferingsService {
           }
         ];
 
-    return levels.map(level => ({
-      ...level,
-      options: (level.options || []).map(option => ({
-        ...option,
-        pricingUnit: option.pricingUnit || level.pricingUnit || offering.pricingUnit || 'per-user'
-      }))
-    }));
+    return levels.map(level => {
+      const licenseCost = level.licenseCost ?? level.baseCost ?? level.basePrice ?? 0;
+      const licenseMargin = level.licenseMargin ?? level.marginPercent ?? 0;
+      const basePrice = level.basePrice ?? this.calculatePrice(licenseCost, licenseMargin);
+
+      const professionalServicesCost = level.professionalServicesCost ?? 0;
+      const professionalServicesMargin = level.professionalServicesMargin ?? 0;
+      const professionalServicesPrice = level.professionalServicesPrice ?? this.calculatePrice(
+        professionalServicesCost,
+        professionalServicesMargin
+      );
+
+      return {
+        ...level,
+        baseCost: level.baseCost ?? licenseCost,
+        marginPercent: level.marginPercent ?? licenseMargin,
+        licenseCost,
+        licenseMargin,
+        basePrice,
+        professionalServicesCost,
+        professionalServicesMargin,
+        professionalServicesPrice,
+        options: (level.options || []).map(option => {
+          const monthlyCost = option.monthlyCost ?? option.monthlyPrice ?? 0;
+          const optionMargin = option.marginPercent ?? 0;
+          const monthlyPrice = option.monthlyPrice ?? this.calculatePrice(monthlyCost, optionMargin);
+
+          return {
+            ...option,
+            monthlyCost,
+            marginPercent: optionMargin,
+            monthlyPrice,
+            pricingUnit: option.pricingUnit || level.pricingUnit || offering.pricingUnit || 'per-user'
+          };
+        })
+      };
+    });
+  }
+
+  private calculatePrice(cost: number, marginPercent: number): number {
+    return Number((cost * (1 + marginPercent / 100)).toFixed(2));
   }
 
   private saveOfferings(offerings: MSPOffering[]): void {

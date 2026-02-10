@@ -1,0 +1,261 @@
+<div class="mx-auto max-w-7xl">
+  <div class="mb-9">
+    <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Customer Management</h1>
+    <p class="mt-2 text-gray-600 dark:text-gray-400">Manage customers used for MSP Service quotes</p>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-9">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+      <p class="text-gray-600 dark:text-gray-400 text-sm">Total Customers</p>
+      <p class="text-3xl font-bold text-gray-900 dark:text-white">{{ getTotalCustomers() }}</p>
+    </div>
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+      <p class="text-gray-600 dark:text-gray-400 text-sm">Active Customers</p>
+      <p class="text-3xl font-bold text-green-600">{{ getActiveCustomers() }}</p>
+    </div>
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+      <button
+        type="button"
+        (click)="createCustomer()"
+        class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors w-full"
+      >
+        + Add Customer
+      </button>
+    </div>
+  </div>
+
+  <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6">
+    <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">New Customer</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Customer Name *</label>
+        <input
+          [(ngModel)]="newCustomer.name"
+          type="text"
+          class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+          placeholder="Customer name"
+        />
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Company</label>
+        <input
+          [(ngModel)]="newCustomer.company"
+          type="text"
+          class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+          placeholder="Company"
+        />
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Email</label>
+        <input
+          [(ngModel)]="newCustomer.email"
+          type="email"
+          class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+          placeholder="contact@company.com"
+        />
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Phone</label>
+        <input
+          [(ngModel)]="newCustomer.phone"
+          type="tel"
+          class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+          placeholder="(555) 000-0000"
+        />
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Status</label>
+        <select
+          [(ngModel)]="newCustomer.status"
+          class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+        >
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+        </select>
+      </div>
+    </div>
+    <div class="mt-4 flex justify-end">
+      <button
+        type="button"
+        (click)="createCustomer()"
+        class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
+      >
+        Save Customer
+      </button>
+    </div>
+  </div>
+
+  @if (editingCustomerId) {
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6">
+      <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Edit Customer</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Customer Name *</label>
+          <input
+            [(ngModel)]="editCustomer.name"
+            type="text"
+            class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            placeholder="Customer name"
+          />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Company</label>
+          <input
+            [(ngModel)]="editCustomer.company"
+            type="text"
+            class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            placeholder="Company"
+          />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Email</label>
+          <input
+            [(ngModel)]="editCustomer.email"
+            type="email"
+            class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            placeholder="contact@company.com"
+          />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Phone</label>
+          <input
+            [(ngModel)]="editCustomer.phone"
+            type="tel"
+            class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            placeholder="(555) 000-0000"
+          />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Status</label>
+          <select
+            [(ngModel)]="editCustomer.status"
+            class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+          >
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
+        </div>
+      </div>
+      <div class="mt-4 flex justify-end gap-2">
+        <button
+          type="button"
+          (click)="cancelEditCustomer()"
+          class="bg-gray-400 hover:bg-gray-500 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          (click)="saveEditCustomer()"
+          class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
+        >
+          Save Changes
+        </button>
+      </div>
+    </div>
+  }
+
+  <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Search</label>
+        <input
+          [(ngModel)]="searchTerm"
+          type="text"
+          class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+          placeholder="Search by name, company, email, or ID"
+        />
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Status</label>
+        <div class="flex gap-2">
+          <button
+            type="button"
+            (click)="setStatusFilter('all')"
+            [ngClass]="{'bg-gray-900 dark:bg-gray-600 text-white': statusFilter === 'all', 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white': statusFilter !== 'all'}"
+            class="px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+          >
+            All
+          </button>
+          <button
+            type="button"
+            (click)="setStatusFilter('active')"
+            [ngClass]="{'bg-green-600 text-white': statusFilter === 'active', 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white': statusFilter !== 'active'}"
+            class="px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+          >
+            Active
+          </button>
+          <button
+            type="button"
+            (click)="setStatusFilter('inactive')"
+            [ngClass]="{'bg-red-600 text-white': statusFilter === 'inactive', 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white': statusFilter !== 'inactive'}"
+            class="px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+          >
+            Inactive
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
+    @if (getFilteredCustomers().length === 0) {
+      <div class="p-8 text-center">
+        <p class="text-gray-500 dark:text-gray-400">No customers found matching your filters</p>
+      </div>
+    } @else {
+      <div class="overflow-x-auto">
+        <table class="w-full">
+          <thead class="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
+            <tr>
+              <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Customer</th>
+              <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Company</th>
+              <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Email</th>
+              <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Phone</th>
+              <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Status</th>
+              <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Created</th>
+              <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-200 dark:divide-gray-600">
+            @for (customer of getFilteredCustomers(); track customer.id) {
+              <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                <td class="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">{{ customer.name }}</td>
+                <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{{ customer.company || 'N/A' }}</td>
+                <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{{ customer.email || 'N/A' }}</td>
+                <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{{ customer.phone || 'N/A' }}</td>
+                <td class="px-6 py-4 text-sm">
+                  <button
+                    type="button"
+                    (click)="toggleCustomerStatus(customer)"
+                    [ngClass]="customer.status === 'active' ? 'text-green-700 bg-green-100 dark:bg-green-900 dark:text-green-200' : 'text-red-700 bg-red-100 dark:bg-red-900 dark:text-red-200'"
+                    class="px-3 py-1 rounded-full text-xs font-semibold capitalize cursor-pointer hover:opacity-80 transition-opacity"
+                  >
+                    {{ customer.status }}
+                  </button>
+                </td>
+                <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{{ customer.createdDate }}</td>
+                <td class="px-6 py-4 text-sm">
+                  <button
+                    type="button"
+                    (click)="startEditCustomer(customer)"
+                    class="mr-3 text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    (click)="deleteCustomer(customer.id)"
+                    class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 font-medium"
+                  >
+                    Delete
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+</div>

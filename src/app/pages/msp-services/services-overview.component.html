@@ -6,11 +6,22 @@
   </div>
 
   <!-- Services Grid -->
+  @if (offerings.length > 0) {
   <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-    @for (service of services; track service.id) {
+    @for (service of offerings; track service.id) {
       <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md dark:shadow-lg p-6 hover:shadow-lg dark:hover:shadow-xl transition-shadow duration-300">
-        <!-- Icon -->
-        <div class="text-4xl mb-4">{{ service.icon }}</div>
+        <!-- Icon / Image -->
+        @if (service.imageUrl) {
+          <img
+            [src]="service.imageUrl"
+            [alt]="service.name"
+            class="mb-4 h-20 w-full rounded-lg object-cover"
+          />
+        } @else {
+          <div class="mb-4 flex h-20 w-full items-center justify-center rounded-lg border border-dashed border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/40">
+            <span class="text-xs text-gray-500 dark:text-gray-400">No image</span>
+          </div>
+        }
         
         <!-- Title -->
         <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">{{ service.name }}</h3>
@@ -29,6 +40,26 @@
             </div>
           }
         </div>
+
+        @if (getDefaultLevel(service); as level) {
+          <div class="mb-4 rounded-lg border border-gray-200 dark:border-gray-700 p-3 text-sm text-gray-600 dark:text-gray-400">
+            <p class="font-medium text-gray-900 dark:text-white">Per-unit pricing</p>
+            <div class="mt-2 space-y-1">
+              <div class="flex items-center justify-between">
+                <span>License</span>
+                <span class="font-semibold text-gray-900 dark:text-white">${{ level.basePrice.toFixed(2) }}{{ getPricingUnitLabel(level.pricingUnit) }}</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span>Professional Services</span>
+                <span class="font-semibold text-gray-900 dark:text-white">${{ (level.professionalServicesPrice || 0).toFixed(2) }}{{ getPricingUnitLabel(level.pricingUnit) }}</span>
+              </div>
+              <div class="flex items-center justify-between border-t border-gray-200 dark:border-gray-600 pt-1">
+                <span>Total per unit</span>
+                <span class="font-semibold text-gray-900 dark:text-white">${{ getPerUnitTotal(level).toFixed(2) }}{{ getPricingUnitLabel(level.pricingUnit) }}</span>
+              </div>
+            </div>
+          </div>
+        }
         
         <!-- Action Button -->
         <button routerLink="/msp-quote" [queryParams]="{ service: service.name }" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200">
@@ -37,6 +68,11 @@
       </div>
     }
   </div>
+  } @else {
+    <div class="rounded-lg bg-white dark:bg-gray-800 p-8 text-center shadow">
+      <p class="text-gray-600 dark:text-gray-400">No active offerings found. Add one in Admin &gt; MSP Offerings.</p>
+    </div>
+  }
 
   <!-- Additional Info Section -->
   <div class="mt-12 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-700 rounded-lg p-8">

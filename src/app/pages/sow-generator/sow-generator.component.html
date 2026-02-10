@@ -1,0 +1,120 @@
+<div>
+  <app-page-breadcrumb pageTitle="SOW Generator" />
+  <div class="min-h-screen rounded-2xl border border-gray-200 bg-white px-5 py-7 dark:border-gray-800 dark:bg-white/[0.03] xl:px-10 xl:py-12">
+    <div class="mx-auto w-full max-w-[900px]">
+      <div class="mb-8 text-center">
+        <h3 class="mb-2 font-semibold text-gray-800 text-theme-xl dark:text-white/90 sm:text-2xl">
+          SOW Generator
+        </h3>
+        <p class="text-sm text-gray-500 dark:text-gray-400 sm:text-base">
+          Capture client details, define scope, and estimate pricing.
+        </p>
+      </div>
+
+      <form class="space-y-6">
+        <section class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6 shadow">
+          <h4 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">Client Info</h4>
+          <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div>
+              <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Client Name</label>
+              <input
+                type="text"
+                class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2 text-gray-900 dark:text-white"
+                placeholder="Enter client name"
+              />
+            </div>
+            <div>
+              <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Company</label>
+              <input
+                type="text"
+                class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2 text-gray-900 dark:text-white"
+                placeholder="Company name"
+              />
+            </div>
+            <div>
+              <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Email</label>
+              <input
+                type="email"
+                class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2 text-gray-900 dark:text-white"
+                placeholder="client@company.com"
+              />
+            </div>
+            <div>
+              <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Phone</label>
+              <input
+                type="tel"
+                class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2 text-gray-900 dark:text-white"
+                placeholder="(555) 000-0000"
+              />
+            </div>
+          </div>
+        </section>
+
+        <section class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6 shadow">
+          <h4 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">Scope</h4>
+          <div class="space-y-4">
+            <div>
+              <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Project Summary</label>
+              <textarea
+                rows="4"
+                class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2 text-gray-900 dark:text-white"
+                placeholder="Describe the goals, deliverables, and outcomes."
+              ></textarea>
+            </div>
+            <div>
+              <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Out of Scope</label>
+              <textarea
+                rows="3"
+                class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2 text-gray-900 dark:text-white"
+                placeholder="List exclusions or assumptions."
+              ></textarea>
+            </div>
+          </div>
+        </section>
+
+        <section class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6 shadow">
+          <h4 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">Pricing</h4>
+          <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <div>
+              <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Hourly Rate</label>
+              <input
+                type="number"
+                min="0"
+                class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2 text-gray-900 dark:text-white"
+                placeholder="150"
+              />
+            </div>
+            <div>
+              <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Estimated Hours</label>
+              <input
+                type="number"
+                min="0"
+                class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2 text-gray-900 dark:text-white"
+                placeholder="40"
+              />
+            </div>
+            <div>
+              <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Estimated Total</label>
+              <input
+                type="text"
+                class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2 text-gray-900 dark:text-white"
+                placeholder="$6,000"
+              />
+            </div>
+          </div>
+          <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p class="text-xs text-gray-500 dark:text-gray-400">
+              Add milestones, taxes, and discounts later.
+            </p>
+            <button
+              type="button"
+              class="inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+            >
+              Save Draft
+            </button>
+          </div>
+        </section>
+      </form>
+    </div>
+  </div>
+</div>

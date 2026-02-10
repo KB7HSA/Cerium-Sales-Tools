@@ -144,6 +144,45 @@
                       <p class="text-xl font-bold text-gray-900 dark:text-white">${{ quote.monthlyPrice.toFixed(2) }}</p>
                     </div>
                     <div>
+                      <p class="text-sm text-gray-600 dark:text-gray-400">License (per unit)</p>
+                      <p class="text-xl font-bold text-gray-900 dark:text-white">
+                        ${{ (quote.basePricePerUnit || 0).toFixed(2) }}{{ quote.pricingUnitLabel || '' }}
+                      </p>
+                    </div>
+                    @if (quote.professionalServicesPrice && quote.professionalServicesPrice > 0) {
+                      <div>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">Professional Services</p>
+                        <p class="text-xl font-bold text-gray-900 dark:text-white">
+                          ${{ quote.professionalServicesPrice.toFixed(2) }}{{ quote.pricingUnitLabel || '' }}
+                        </p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">
+                          Monthly total: ${{ (quote.professionalServicesTotal || 0).toFixed(2) }}
+                        </p>
+                      </div>
+                    }
+                    @if ((quote.addOnPerUnitTotal || 0) > 0) {
+                      <div>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">Add-ons (per unit)</p>
+                        <p class="text-xl font-bold text-gray-900 dark:text-white">
+                          ${{ (quote.addOnPerUnitTotal || 0).toFixed(2) }}{{ quote.pricingUnitLabel || '' }}
+                        </p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">
+                          Monthly total: ${{ (quote.addOnMonthlyTotal || 0).toFixed(2) }}
+                        </p>
+                        @if ((quote.addOnOneTimeTotal || 0) > 0) {
+                          <p class="text-xs text-gray-500 dark:text-gray-400">
+                            One-time total: ${{ (quote.addOnOneTimeTotal || 0).toFixed(2) }}
+                          </p>
+                        }
+                      </div>
+                    }
+                    <div>
+                      <p class="text-sm text-gray-600 dark:text-gray-400">Total (per unit)</p>
+                      <p class="text-xl font-bold text-gray-900 dark:text-white">
+                        ${{ (quote.perUnitTotal || 0).toFixed(2) }}{{ quote.pricingUnitLabel || '' }}
+                      </p>
+                    </div>
+                    <div>
                       <p class="text-sm text-gray-600 dark:text-gray-400">Setup Fee</p>
                       <p class="text-xl font-bold text-gray-900 dark:text-white">${{ quote.setupFee.toFixed(2) }}</p>
                     </div>
@@ -152,6 +191,18 @@
                       <p class="text-xl font-bold text-green-600">${{ quote.discountAmount.toFixed(2) }}</p>
                     </div>
                   </div>
+                  @if (quote.selectedOptions && quote.selectedOptions.length > 0) {
+                    <div class="mb-6 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                      <p class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Selected Add-ons</p>
+                      <ul class="space-y-1 text-sm text-gray-600 dark:text-gray-400">
+                        @for (option of quote.selectedOptions; track option.id) {
+                          <li>
+                            • {{ option.name }} (+${{ option.monthlyPrice }}{{ quote.pricingUnitLabel || '' }})
+                          </li>
+                        }
+                      </ul>
+                    </div>
+                  }
                 } @else {
                   <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                     <div>
@@ -167,14 +218,46 @@
                       <p class="text-xl font-bold text-gray-900 dark:text-white">${{ quote.totalPrice.toFixed(2) }}</p>
                     </div>
                   </div>
+                  <div class="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div>
+                      <label class="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">Section Filter</label>
+                      <select
+                        [ngModel]="laborSectionFilters[quote.id] || 'All'"
+                        (ngModelChange)="setLaborSectionFilter(quote.id, $event)"
+                        class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-white"
+                      >
+                        @for (section of getLaborSections(quote); track section) {
+                          <option [value]="section">{{ section }}</option>
+                        }
+                      </select>
+                    </div>
+                  </div>
+                  @if (getLaborGroups(quote).length > 0) {
+                    <div class="mb-6 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                      <p class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Grouped Totals</p>
+                      <div class="space-y-2 text-sm text-gray-600 dark:text-gray-400">
+                        @for (group of getLaborGroups(quote); track group.section) {
+                          <div class="flex items-center justify-between">
+                            <span>{{ group.section }} ({{ group.items }})</span>
+                            <span class="font-semibold text-gray-900 dark:text-white">${{ group.total.toFixed(2) }}</span>
+                          </div>
+                        }
+                      </div>
+                    </div>
+                  }
                   @if (quote.workItems && quote.workItems.length > 0) {
                     <div class="mb-6 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
                       <p class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Work Item Breakdown</p>
                       <div class="space-y-2 text-sm text-gray-600 dark:text-gray-400">
-                        @for (item of quote.workItems; track $index) {
+                        @for (item of getLaborWorkItems(quote); track $index) {
                           <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                             <div class="flex flex-wrap items-center gap-2">
                               <span class="font-medium text-gray-900 dark:text-white">{{ item.name }}</span>
+                              @if (item.section) {
+                                <span class="rounded-full bg-gray-100 px-2 py-1 text-xs font-semibold text-gray-700 dark:bg-gray-700 dark:text-gray-200">
+                                  {{ item.section }}
+                                </span>
+                              }
                               @if (item.referenceArchitecture) {
                                 <span class="rounded-full bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-700 dark:bg-blue-900/40 dark:text-blue-200">
                                   {{ item.referenceArchitecture }}
@@ -182,6 +265,7 @@
                               }
                             </div>
                             <span>{{ item.closetCount }} closets, {{ item.switchCount }} switches</span>
+                            <span>Unit: {{ item.unitOfMeasure || 'Unit' }}</span>
                             <span>${{ item.lineTotal.toFixed(2) }}</span>
                           </div>
                         }

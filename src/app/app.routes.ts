@@ -80,12 +80,17 @@ import { ManagedServersComponent } from './pages/msp-services/managed-servers.co
 import { SupportComponent } from './pages/msp-services/support.component';
 import { MspQuoteComponent } from './pages/msp-services/msp-quote.component';
 import { QuoteManagementComponent } from './pages/msp-services/quote-management.component';
+import { MspDashboardComponent } from './pages/msp-services/msp-dashboard.component';
 import { UserManagementComponent } from './pages/admin/user-management.component';
 import { UserFormComponent } from './pages/admin/user-form.component';
 import { MSPOfferingsComponent } from './pages/admin/msp-offerings.component';
 import { MSPOfferingFormComponent } from './pages/admin/msp-offering-form.component';
 import { LaborBudgetComponent } from './pages/labor-budget/labor-budget.component';
+import { LaborBudgetWizardComponent } from './pages/labor-budget-wizard/labor-budget-wizard.component';
 import { LaborBudgetAdminComponent } from './pages/admin/labor-budget-admin.component';
+import { AdminSettingsComponent } from './pages/admin/admin-settings.component';
+import { SowGeneratorComponent } from './pages/sow-generator/sow-generator.component';
+import { CustomerManagementComponent } from './pages/admin/customer-management.component';
 
 export const routes: Routes = [
   {
@@ -237,6 +242,11 @@ export const routes: Routes = [
       },
       // MSP Services
       {
+        path:'msp-dashboard',
+        component:MspDashboardComponent,
+        title:'MSP Services Dashboard | Cerium Sales Tools'
+      },
+      {
         path:'msp-services',
         component:ServicesOverviewComponent,
         title:'MSP Services Overview | Cerium Sales Tools'
@@ -262,15 +272,30 @@ export const routes: Routes = [
         title:'Labor Budget | Cerium Sales Tools'
       },
       {
+        path:'labor-budget-wizard',
+        component:LaborBudgetWizardComponent,
+        title:'Labor Budget Wizard | Cerium Sales Tools'
+      },
+      {
         path:'quote-management',
         component:QuoteManagementComponent,
         title:'Quote Management | Cerium Sales Tools'
+      },
+      {
+        path:'sow-generator',
+        component:SowGeneratorComponent,
+        title:'SOW Generator | Cerium Sales Tools'
       },
       // Admin
       {
         path:'admin/users',
         component:UserManagementComponent,
         title:'User Management | Cerium Sales Tools'
+      },
+      {
+        path:'admin/customers',
+        component:CustomerManagementComponent,
+        title:'Customer Management | Cerium Sales Tools'
       },
       {
         path:'admin/create-user',
@@ -301,6 +326,11 @@ export const routes: Routes = [
         path:'admin/labor-budget',
         component:LaborBudgetAdminComponent,
         title:'Labor Budget Admin | Cerium Sales Tools'
+      },
+      {
+        path:'admin/settings',
+        component:AdminSettingsComponent,
+        title:'Admin Settings | Cerium Sales Tools'
       },
       {
         path:'blank',

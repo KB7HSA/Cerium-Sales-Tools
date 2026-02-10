@@ -47,6 +47,7 @@ export class AppSidebarComponent {
       name: "MSP Services",
       icon: `<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2ZM12 3.5C7.30558 3.5 3.5 7.30558 3.5 12C3.5 16.6944 7.30558 20.5 12 20.5C16.6944 20.5 20.5 16.6944 20.5 12C20.5 7.30558 16.6944 3.5 12 3.5Z" fill="currentColor"></path><path d="M12 6.5C11.5858 6.5 11.25 6.83579 11.25 7.25V12.75H7.25C6.83579 12.75 6.5 13.0858 6.5 13.5C6.5 13.9142 6.83579 14.25 7.25 14.25H11.25V18.25C11.25 18.6642 11.5858 19 12 19C12.4142 19 12.75 18.6642 12.75 18.25V14.25H16.75C17.1642 14.25 17.5 13.9142 17.5 13.5C17.5 13.0858 17.1642 12.75 16.75 12.75H12.75V7.25C12.75 6.83579 12.4142 6.5 12 6.5Z" fill="currentColor"></path></svg>`,
       subItems: [
+        { name: "Dashboard", path: "/msp-dashboard", pro: false },
         { name: "Services Overview", path: "/msp-services", pro: false },
         { name: "Support", path: "/msp-support", pro: false },
       ],
@@ -54,7 +55,10 @@ export class AppSidebarComponent {
     {
       name: "Labor Budget",
       icon: `<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 4.75C4 3.7835 4.7835 3 5.75 3H12.5C13.4665 3 14.25 3.7835 14.25 4.75V7.5H17.25C18.2165 7.5 19 8.2835 19 9.25V19.25C19 20.2165 18.2165 21 17.25 21H8.75C7.7835 21 7 20.2165 7 19.25V16.5H5.75C4.7835 16.5 4 15.7165 4 14.75V4.75ZM12.5 4.5H5.75C5.61193 4.5 5.5 4.61193 5.5 4.75V14.75C5.5 14.8881 5.61193 15 5.75 15H7V9.25C7 8.2835 7.7835 7.5 8.75 7.5H12.75V4.75C12.75 4.61193 12.6381 4.5 12.5 4.5ZM8.75 9C8.61193 9 8.5 9.11193 8.5 9.25V19.25C8.5 19.3881 8.61193 19.5 8.75 19.5H17.25C17.3881 19.5 17.5 19.3881 17.5 19.25V9.25C17.5 9.11193 17.3881 9 17.25 9H8.75Z" fill="currentColor"></path><path d="M10.5 12.25C10.5 11.8358 10.8358 11.5 11.25 11.5H14.75C15.1642 11.5 15.5 11.8358 15.5 12.25C15.5 12.6642 15.1642 13 14.75 13H11.25C10.8358 13 10.5 12.6642 10.5 12.25ZM10.5 15.25C10.5 14.8358 10.8358 14.5 11.25 14.5H14.75C15.1642 14.5 15.5 14.8358 15.5 15.25C15.5 15.6642 15.1642 16 14.75 16H11.25C10.8358 16 10.5 15.6642 10.5 15.25Z" fill="currentColor"></path></svg>`,
-      path: "/labor-budget",
+      subItems: [
+        { name: "Calculator", path: "/labor-budget", pro: false },
+        { name: "Wizard", path: "/labor-budget-wizard", pro: false }
+      ],
     },
     {
       name: "Quote Management",
@@ -62,13 +66,20 @@ export class AppSidebarComponent {
       path: "/quote-management",
     },
     {
+      name: "SOW Generator",
+      icon: `<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M5 3.75C5 2.7835 5.7835 2 6.75 2H14.3787C14.9755 2 15.5478 2.23705 15.9697 2.65901L18.341 5.03033C18.763 5.4523 19 6.02459 19 6.62132V20.25C19 21.2165 18.2165 22 17.25 22H6.75C5.7835 22 5 21.2165 5 20.25V3.75Z" fill="currentColor"></path><path d="M8 10.25C8 9.83579 8.33579 9.5 8.75 9.5H15.25C15.6642 9.5 16 9.83579 16 10.25C16 10.6642 15.6642 11 15.25 11H8.75C8.33579 11 8 10.6642 8 10.25ZM8 14.25C8 13.8358 8.33579 13.5 8.75 13.5H15.25C15.6642 13.5 16 13.8358 16 14.25C16 14.6642 15.6642 15 15.25 15H8.75C8.33579 15 8 14.6642 8 14.25Z" fill="currentColor"></path></svg>`,
+      path: "/sow-generator",
+    },
+    {
       name: "Admin",
       icon: `<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M12 2.75C8.27208 2.75 5.25 5.77208 5.25 9.5C5.25 13.2279 8.27208 16.25 12 16.25C15.7279 16.25 18.75 13.2279 18.75 9.5C18.75 5.77208 15.7279 2.75 12 2.75ZM6.75 9.5C6.75 6.6005 9.1005 4.25 12 4.25C14.8995 4.25 17.25 6.6005 17.25 9.5C17.25 12.3995 14.8995 14.75 12 14.75C9.1005 14.75 6.75 12.3995 6.75 9.5Z" fill="currentColor"></path><path d="M4 20.5C4 18.2909 5.79086 16.5 8 16.5H16C18.2091 16.5 20 18.2909 20 20.5C20 20.9142 19.6642 21.25 19.25 21.25C18.8358 21.25 18.5 20.9142 18.5 20.5C18.5 19.1193 17.3807 18 16 18H8C6.61929 18 5.5 19.1193 5.5 20.5C5.5 20.9142 5.16421 21.25 4.75 21.25C4.33579 21.25 4 20.9142 4 20.5Z" fill="currentColor"></path></svg>`,
       subItems: [
         { name: "Users", path: "/admin/users", pro: false },
+        { name: "Customers", path: "/admin/customers", pro: false },
         { name: "Create User", path: "/admin/create-user", pro: false },
         { name: "MSP Offerings", path: "/admin/offerings", pro: false },
         { name: "Labor Budget Admin", path: "/admin/labor-budget", pro: false },
+        { name: "Settings", path: "/admin/settings", pro: false },
       ],
     },
     

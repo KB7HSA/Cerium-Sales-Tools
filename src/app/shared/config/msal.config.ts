@@ -1,6 +1,7 @@
 import { 
   BrowserCacheLocation, 
   IPublicClientApplication, 
+  InteractionType,
   LogLevel, 
   PublicClientApplication 
 } from '@azure/msal-browser';
@@ -64,7 +65,7 @@ export const graphScopes = {
  */
 export function MSALGuardConfigFactory(): MsalGuardConfiguration {
   return {
-    interactionType: 'redirect' as any, // Use 'redirect' or 'popup'
+    interactionType: InteractionType.Redirect,
     authRequest: loginRequest,
     loginFailedRoute: '/sign-in'
   };
@@ -81,7 +82,7 @@ export function MSALInterceptorConfigFactory(): MsalInterceptorConfiguration {
   protectedResourceMap.set('https://graph.microsoft.com/v1.0/*', ['User.Read']);
 
   return {
-    interactionType: 'redirect' as any,
+    interactionType: InteractionType.Redirect,
     protectedResourceMap
   };
 }

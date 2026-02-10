@@ -1,12 +1,13 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { QuoteService, Quote } from '../../shared/services/quote.service';
 
 @Component({
   selector: 'app-quote-management',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, FormsModule, RouterModule],
   templateUrl: './quote-management.component.html',
   styleUrl: './quote-management.component.css',
 })
@@ -14,6 +15,7 @@ export class QuoteManagementComponent implements OnInit {
   quotes: Quote[] = [];
   activeTab: 'all' | 'pending' | 'approved' | 'denied' = 'all';
   expandedQuoteId: string | null = null;
+  laborSectionFilters: Record<string, string> = {};
 
   constructor(public quoteService: QuoteService) {}
 
@@ -43,6 +45,52 @@ export class QuoteManagementComponent implements OnInit {
 
   toggleExpanded(quoteId: string): void {
     this.expandedQuoteId = this.expandedQuoteId === quoteId ? null : quoteId;
+  }
+
+  setLaborSectionFilter(quoteId: string, section: string): void {
+    this.laborSectionFilters[quoteId] = section;
+  }
+
+  getLaborSections(quote: Quote): string[] {
+    const sections = new Set<string>();
+    (quote.laborGroups || []).forEach(group => sections.add(group.section));
+    (quote.workItems || []).forEach(item => {
+      if (item.section) sections.add(item.section);
+    });
+    return ['All', ...Array.from(sections).sort()];
+  }
+
+  getLaborGroups(quote: Quote): Array<{ section: string; total: number; items: number }>{
+    if (quote.laborGroups && quote.laborGroups.length > 0) {
+      return quote.laborGroups;
+    }
+
+    const totals: Record<string, { total: number; items: number }> = {};
+    (quote.workItems || []).forEach(item => {
+      const section = item.section || 'General';
+      if (!totals[section]) {
+        totals[section] = { total: 0, items: 0 };
+      }
+      totals[section].total += item.lineTotal || 0;
+      totals[section].items += 1;
+    });
+
+    return Object.keys(totals)
+      .sort()
+      .map(section => ({
+        section,
+        total: totals[section].total,
+        items: totals[section].items
+      }));
+  }
+
+  getLaborWorkItems(quote: Quote): Quote['workItems'] {
+    const items = quote.workItems || [];
+    const filter = this.laborSectionFilters[quote.id] || 'All';
+    if (filter === 'All') {
+      return items;
+    }
+    return items.filter(item => item.section === filter);
   }
 
   approveQuote(quoteId: string): void {
