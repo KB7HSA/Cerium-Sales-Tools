@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { EcommerceComponent } from './pages/dashboard/ecommerce/ecommerce.component';
 import { AnalyticsComponent } from './pages/dashboard/analytics/analytics.component';
+import { DomainAnalyticsComponent } from './pages/dashboard/analytics/domain-analytics.component';
 import { MarketingComponent } from './pages/dashboard/marketing/marketing.component';
 import { CrmComponent } from './pages/dashboard/crm/crm.component';
 import { StocksComponent } from './pages/dashboard/stocks/stocks.component';
@@ -108,6 +109,11 @@ export const routes: Routes = [
         path:'analytics',
         component:AnalyticsComponent,
         title:'Angular Analytics Dashboard | Cerium Sales Tools'
+      },
+      {
+        path:'domain-analytics',
+        component:DomainAnalyticsComponent,
+        title:'Domain Analytics - SEMrush Style | Cerium Sales Tools'
       },
       {
         path:'marketing',

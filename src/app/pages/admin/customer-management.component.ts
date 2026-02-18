@@ -14,6 +14,8 @@ export class CustomerManagementComponent implements OnInit {
   customers: Customer[] = [];
   searchTerm: string = '';
   statusFilter: 'all' | 'active' | 'inactive' = 'all';
+  isLoading: boolean = false;
+  errorMessage: string = '';
 
   newCustomer = {
     name: '',
@@ -35,9 +37,23 @@ export class CustomerManagementComponent implements OnInit {
   constructor(public customerService: CustomerManagementService) {}
 
   ngOnInit(): void {
+    console.log('[CustomerComponent] ngOnInit: subscribing to customers$');
     this.customerService.customers$.subscribe(customers => {
+      console.log('[CustomerComponent] Received customers from service:', customers);
       this.customers = customers;
+      this.isLoading = false;
     });
+    
+    // Load customers from backend
+    console.log('[CustomerComponent] ngOnInit: calling refreshCustomers');
+    this.refreshCustomers();
+  }
+
+  refreshCustomers(): void {
+    console.log('[CustomerComponent] refreshCustomers called');
+    this.isLoading = true;
+    this.errorMessage = '';
+    this.customerService.refreshCustomers();
   }
 
   getFilteredCustomers(): Customer[] {
@@ -50,7 +66,7 @@ export class CustomerManagementComponent implements OnInit {
     if (this.searchTerm.trim()) {
       const term = this.searchTerm.toLowerCase();
       filtered = filtered.filter(customer =>
-        customer.name.toLowerCase().includes(term) ||
+        (customer.name || '').toLowerCase().includes(term) ||
         (customer.company || '').toLowerCase().includes(term) ||
         (customer.email || '').toLowerCase().includes(term) ||
         (customer.id || '').toLowerCase().includes(term)
@@ -66,10 +82,12 @@ export class CustomerManagementComponent implements OnInit {
 
   createCustomer(): void {
     if (!this.newCustomer.name.trim()) {
-      alert('Customer name is required.');
+      this.errorMessage = 'Customer name is required.';
       return;
     }
 
+    this.errorMessage = '';
+    console.log('[CustomerComponent] Creating customer:', this.newCustomer);
     this.customerService.createCustomer({
       name: this.newCustomer.name.trim(),
       company: this.newCustomer.company.trim(),
@@ -85,16 +103,22 @@ export class CustomerManagementComponent implements OnInit {
       phone: '',
       status: 'active'
     };
+    
+    // Refresh customers list after a slight delay to ensure database update
+    setTimeout(() => {
+      console.log('[CustomerComponent] Refreshing customers after create');
+      this.refreshCustomers();
+    }, 500);
   }
 
   startEditCustomer(customer: Customer): void {
-    this.editingCustomerId = customer.id;
+    this.editingCustomerId = customer.id || null;
     this.editCustomer = {
       name: customer.name || '',
       company: customer.company || '',
       email: customer.email || '',
       phone: customer.phone || '',
-      status: customer.status
+      status: (customer.status || 'active') as 'active' | 'inactive'
     };
   }
 

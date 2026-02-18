@@ -81,7 +81,7 @@
             />
             <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
               @if (durationMonths >= 12) {
-                <span class="text-green-600 dark:text-green-400">✓ Annual discount applied</span>
+                <span class="text-green-600 dark:text-green-400">✓ Eligible for annual discount</span>
               }
             </p>
           </div>
@@ -102,6 +102,24 @@
                 [(ngModel)]="showSetupFee" 
                 (change)="calculateQuote()"
                 class="w-5 h-5 text-blue-600 rounded"
+              />
+            </div>
+          }
+
+          <!-- Annual Discount Toggle -->
+          @if (durationMonths >= 12) {
+            <div class="flex items-center justify-between mt-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Include Annual Discount ({{ annualDiscount }}%)
+                </label>
+                <p class="text-sm text-gray-600 dark:text-gray-400">Applied to contracts of 12+ months</p>
+              </div>
+              <input 
+                type="checkbox" 
+                [(ngModel)]="showAnnualDiscount" 
+                (change)="calculateQuote()"
+                class="w-5 h-5 text-green-600 rounded"
               />
             </div>
           }
@@ -260,8 +278,13 @@
 
           @if (discountAmount > 0) {
             <div class="flex justify-between items-center pb-4 border-b border-gray-200 dark:border-gray-600">
-              <span class="text-green-600 dark:text-green-400 font-medium">Annual Discount (10%):</span>
+              <span class="text-green-600 dark:text-green-400 font-medium">Annual Discount ({{ annualDiscount }}%):</span>
               <span class="font-medium text-green-600 dark:text-green-400">-${{ discountAmount.toFixed(2) }}</span>
+            </div>
+          } @else if (durationMonths >= 12 && !showAnnualDiscount) {
+            <div class="flex justify-between items-center pb-4 border-b border-gray-200 dark:border-gray-600">
+              <span class="text-gray-400 dark:text-gray-500 font-medium">Annual Discount ({{ annualDiscount }}%):</span>
+              <span class="font-medium text-gray-400 dark:text-gray-500">Not applied</span>
             </div>
           }
 
@@ -340,6 +363,15 @@
                 <span class="text-sm font-medium text-gray-900 dark:text-white">
                   ${{ currentOffering.setupFee }}
                   <span class="text-xs text-gray-500 dark:text-gray-400">({{ showSetupFee ? 'Included' : 'Not included' }})</span>
+                </span>
+              </div>
+            }
+
+            @if (durationMonths >= 12) {
+              <div class="flex justify-between items-start">
+                <span class="text-sm text-gray-600 dark:text-gray-400">Annual Discount ({{ annualDiscount }}%):</span>
+                <span class="text-sm font-medium" [ngClass]="showAnnualDiscount ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'">
+                  {{ showAnnualDiscount ? 'Applied' : 'Not applied' }}
                 </span>
               </div>
             }

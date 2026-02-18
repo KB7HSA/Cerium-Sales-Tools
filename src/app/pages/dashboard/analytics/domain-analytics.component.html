@@ -1,0 +1,157 @@
+<div class="min-h-screen bg-gray-50 dark:bg-gray-900">
+  <!-- Domain Search Header -->
+  <app-domain-search-header 
+    (searchEvent)="handleSearch($event)">
+  </app-domain-search-header>
+
+  <!-- Main Content -->
+  <div class="px-6 py-6 space-y-6">
+    
+    <!-- Domain Title Section -->
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white mb-1">
+          Domain Overview "{{ currentDomain() }}"
+        </h1>
+        <div class="flex items-center gap-3 text-sm">
+          <span class="text-gray-500 dark:text-gray-400">Categories:</span>
+          <span class="px-3 py-1 bg-blue-light-50 text-blue-light-700 rounded-full text-xs font-medium dark:bg-blue-light-900/20 dark:text-blue-light-300">
+            Business & Industrial
+          </span>
+          <span class="px-3 py-1 bg-blue-light-50 text-blue-light-700 rounded-full text-xs font-medium dark:bg-blue-light-900/20 dark:text-blue-light-300">
+            Internet & Telecom
+          </span>
+          <span class="px-3 py-1 bg-blue-light-50 text-blue-light-700 rounded-full text-xs font-medium dark:bg-blue-light-900/20 dark:text-blue-light-300">
+            Computers & Electronics
+          </span>
+          <button class="text-brand-600 hover:text-brand-700 text-xs font-medium dark:text-brand-400">
+            Show details →
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Loading State -->
+    @if (isLoading()) {
+      <div class="flex items-center justify-center py-20">
+        <div class="text-center">
+          <div class="inline-block w-12 h-12 border-4 border-brand-500 border-t-transparent rounded-full animate-spin"></div>
+          <p class="mt-4 text-gray-600 dark:text-gray-400">Loading analytics data...</p>
+        </div>
+      </div>
+    }
+
+    <!-- Metrics Grid -->
+    @if (!isLoading()) {
+      <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+        @for (metric of metricsData(); track metric.id) {
+          <app-metric-card [metric]="metric"></app-metric-card>
+        }
+      </div>
+
+      <!-- Charts Section -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Organic Keywords Chart -->
+        <app-organic-keywords-chart 
+          [data]="keywordDistribution()">
+        </app-organic-keywords-chart>
+
+        <!-- Paid Search No Data Card -->
+        <div class="bg-white border border-gray-200 rounded-xl p-6 dark:bg-gray-dark dark:border-gray-700">
+          <h3 class="text-lg font-semibold text-gray-900 mb-6 dark:text-white">Paid Search</h3>
+          <div class="flex flex-col items-center justify-center py-12">
+            <div class="text-center bg-gray-50 dark:bg-gray-800 px-8 py-12 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 w-full">
+              <svg class="w-16 h-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+              </svg>
+              <p class="text-gray-900 dark:text-white font-semibold text-lg mb-2">NO DATA</p>
+              <p class="text-sm text-gray-500 dark:text-gray-400">Paid search data not found</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Traffic Trend Chart (Full Width) -->
+      <div class="w-full">
+        <app-traffic-trend-chart 
+          [data]="trafficTrendData()"
+          [showPaidData]="true">
+        </app-traffic-trend-chart>
+      </div>
+
+      <!-- Additional Insights Section -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Top Organic Keywords -->
+        <div class="bg-white border border-gray-200 rounded-xl p-6 dark:bg-gray-dark dark:border-gray-700">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Top Organic Keywords</h3>
+            <button class="text-sm text-brand-600 hover:text-brand-700 font-medium dark:text-brand-400">
+              View all →
+            </button>
+          </div>
+          <div class="space-y-3">
+            @for (keyword of ['managed services', 'it support services', 'msp provider', 'cloud services', 'cyber security']; track keyword; let i = $index) {
+              <div class="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800">
+                <div class="flex items-center gap-3">
+                  <span class="text-xs font-semibold text-gray-400 w-6">{{ i + 1 }}</span>
+                  <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ keyword }}</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="text-xs px-2 py-1 bg-success-50 text-success-700 rounded dark:bg-success-900/20 dark:text-success-300">
+                    ↑ {{ 12 - i }}
+                  </span>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+
+        <!-- Top Pages -->
+        <div class="bg-white border border-gray-200 rounded-xl p-6 dark:bg-gray-dark dark:border-gray-700">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Top Pages</h3>
+            <button class="text-sm text-brand-600 hover:text-brand-700 font-medium dark:text-brand-400">
+              View all →
+            </button>
+          </div>
+          <div class="space-y-3">
+            @for (page of ['/services', '/about', '/contact', '/pricing', '/blog']; track page; let i = $index) {
+              <div class="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800">
+                <div class="flex items-center gap-3 flex-1 min-w-0">
+                  <span class="text-xs font-semibold text-gray-400 w-6">{{ i + 1 }}</span>
+                  <span class="text-sm font-medium text-gray-700 dark:text-gray-300 truncate">{{ page }}</span>
+                </div>
+                <span class="text-xs font-medium text-gray-500 dark:text-gray-400">
+                  {{ (250 - i * 30) }}
+                </span>
+              </div>
+            }
+          </div>
+        </div>
+
+        <!-- Competitors -->
+        <div class="bg-white border border-gray-200 rounded-xl p-6 dark:bg-gray-dark dark:border-gray-700">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Main Organic Competitors</h3>
+            <button class="text-sm text-brand-600 hover:text-brand-700 font-medium dark:text-brand-400">
+              View all →
+            </button>
+          </div>
+          <div class="space-y-3">
+            @for (competitor of ['competitor1.com', 'competitor2.com', 'competitor3.com', 'competitor4.com', 'competitor5.com']; track competitor; let i = $index) {
+              <div class="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800">
+                <div class="flex items-center gap-3">
+                  <span class="text-xs font-semibold text-gray-400 w-6">{{ i + 1 }}</span>
+                  <span class="text-sm font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400">{{ competitor }}</span>
+                </div>
+                <span class="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded dark:bg-gray-800 dark:text-gray-400">
+                  {{ (85 - i * 5) }}%
+                </span>
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+    }
+  </div>
+</div>

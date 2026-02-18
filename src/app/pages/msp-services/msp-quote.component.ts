@@ -34,6 +34,7 @@ export class MspQuoteComponent implements OnInit, OnDestroy {
 
   // Configuration
   showSetupFee: boolean = true;
+  showAnnualDiscount: boolean = true;
   annualDiscount: number = 10;
 
   // Calculated values
@@ -58,7 +59,7 @@ export class MspQuoteComponent implements OnInit, OnDestroy {
     this.subscription.add(
       this.offeringsService.getOfferings().subscribe(offerings => {
         this.offerings = offerings.filter(o => o.isActive);
-        this.services = this.offerings.map(o => o.name);
+        this.services = this.offerings.map(o => (o.name || o.Name || 'Unnamed Service')).filter((name): name is string => !!name);
         
         // Set default service if not provided
         if (!this.selectedService && this.services.length > 0) {
@@ -79,7 +80,7 @@ export class MspQuoteComponent implements OnInit, OnDestroy {
       this.customerService.customers$.subscribe(customers => {
         this.customers = customers.filter(customer => customer.status === 'active');
         if (!this.selectedCustomerId && this.customers.length > 0) {
-          this.selectedCustomerId = this.customers[0].id;
+          this.selectedCustomerId = this.customers[0].id || '';
         }
       })
     );
@@ -138,8 +139,8 @@ export class MspQuoteComponent implements OnInit, OnDestroy {
     // Calculate total for duration
     let totalWithDuration = monthlyPrice * this.durationMonths;
 
-    // Apply annual discount if duration is 12 months or more
-    if (this.durationMonths >= 12) {
+    // Apply annual discount if opted in and duration is 12 months or more
+    if (this.showAnnualDiscount && this.durationMonths >= 12) {
       this.discountAmount = totalWithDuration * (this.annualDiscount / 100);
       totalWithDuration -= this.discountAmount;
     } else {
@@ -272,9 +273,9 @@ export class MspQuoteComponent implements OnInit, OnDestroy {
     }, 0);
     const perUnitTotal = basePricePerUnit + professionalServicesPerUnit + addOnPerUnitTotal;
 
-    const quoteData: Omit<Quote, 'id'> = {
+    const quoteData: Omit<Quote, 'id' | 'Id'> = {
       type: 'msp',
-      customerName: selectedCustomer.name,
+      customerName: selectedCustomer.name || '',
       notes: '',
       service: this.selectedService,
       serviceLevelName: this.currentServiceLevel.name,
@@ -298,13 +299,29 @@ export class MspQuoteComponent implements OnInit, OnDestroy {
       totalPrice: this.totalPrice,
       setupFee: this.showSetupFee ? this.currentOffering.setupFee : 0,
       discountAmount: this.discountAmount,
+      annualDiscountApplied: this.showAnnualDiscount && this.durationMonths >= 12,
       status: 'pending',
       createdDate,
       createdTime,
     };
 
-    const savedQuote = this.quoteService.createQuote(quoteData);
+    console.log('[MspQuoteComponent] Generating and saving quote:', quoteData);
     
-    alert(`Quote generated successfully! Quote ID: ${savedQuote.id}\nTotal: $${this.totalPrice.toFixed(2)}`);
+    this.quoteService.createQuote(quoteData)
+      .subscribe({
+        next: (response) => {
+          console.log('[MspQuoteComponent] Quote saved successfully:', response);
+          const quoteId = response.data?.id || response.data?.Id;
+          alert(`Quote generated and saved successfully!\nQuote ID: ${quoteId}\nTotal: $${this.totalPrice.toFixed(2)}`);
+          // Optionally navigate to quote view or refresh list
+          setTimeout(() => {
+            this.quoteService.refreshQuotes();
+          }, 500);
+        },
+        error: (error) => {
+          console.error('[MspQuoteComponent] Error saving quote:', error);
+          alert(`Failed to save quote: ${error?.error?.message || 'Unknown error'}`);
+        }
+      });
   }
 }

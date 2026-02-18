@@ -96,7 +96,7 @@ export class LaborBudgetComponent implements OnInit, OnDestroy {
           this.pendingWizardCustomerId = null;
         }
         if (!this.selectedCustomerId && this.customers.length > 0) {
-          this.selectedCustomerId = this.customers[0].id;
+          this.selectedCustomerId = this.customers[0].id || '';
         }
       })
     );
@@ -573,7 +573,7 @@ export class LaborBudgetComponent implements OnInit, OnDestroy {
 
     this.quoteService.createQuote({
       type: 'labor',
-      customerName: selectedCustomer.name,
+      customerName: selectedCustomer.name || '',
       notes: this.notes.trim(),
       service: 'Labor Budget',
       numberOfUsers: 0,

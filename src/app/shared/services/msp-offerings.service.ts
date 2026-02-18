@@ -1,5 +1,8 @@
 import { Injectable } from '@angular/core';
-import { BehaviorSubject, Observable } from 'rxjs';
+import { HttpClient } from '@angular/common/http';
+import { BehaviorSubject, Observable, tap, catchError } from 'rxjs';
+import { of } from 'rxjs';
+import { environment } from '../../../environments/environment';
 
 export interface MSPOption {
   id: string;
@@ -29,22 +32,42 @@ export interface MSPServiceLevel {
 export type PricingUnit = 'per-user' | 'per-gb' | 'per-device' | 'one-time';
 
 export interface MSPOffering {
-  id: string;
-  name: string;
-  description: string;
+  id?: string;
+  Id?: string;
+  name?: string;
+  Name?: string;
+  description?: string;
+  Description?: string;
   imageUrl?: string;
-  category: 'backup' | 'support' | 'database' | 'consulting';
-  basePrice?: number; // Legacy: Price based on selected unit
-  pricingUnit?: PricingUnit; // Legacy: Per user, per GB, or per device per month
+  ImageUrl?: string;
+  category?: 'backup' | 'support' | 'database' | 'consulting';
+  Category?: 'backup' | 'support' | 'database' | 'consulting';
+  basePrice?: number;
+  BasePrice?: number;
+  pricingUnit?: PricingUnit;
+  PricingUnit?: PricingUnit;
   setupFee: number;
+  SetupFee?: number;
   setupFeeCost?: number;
+  SetupFeeCost?: number;
   setupFeeMargin?: number;
+  SetupFeeMargin?: number;
   features: string[];
-  options?: MSPOption[]; // Legacy
+  options?: MSPOption[];
   serviceLevels: MSPServiceLevel[];
   isActive: boolean;
+  IsActive?: boolean;
   createdDate: string;
+  CreatedDate?: string;
   lastModified: string;
+  LastModified?: string;
+}
+
+interface ApiResponse<T> {
+  success: boolean;
+  data: T;
+  message: string;
+  statusCode: number;
 }
 
 @Injectable({
@@ -53,342 +76,322 @@ export interface MSPOffering {
 export class MSPOfferingsService {
   private offeringsSubject = new BehaviorSubject<MSPOffering[]>([]);
   public offerings$ = this.offeringsSubject.asObservable();
-  private readonly STORAGE_KEY = 'msp_offerings';
+  
+  private apiUrl = `${environment.apiUrl}/msp-offerings`;
 
-  constructor() {
-    this.loadOfferings();
+  constructor(private http: HttpClient) {
+    this.loadOfferingsFromApi();
   }
 
-  private loadOfferings(): void {
-    const stored = localStorage.getItem(this.STORAGE_KEY);
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored) as MSPOffering[];
-        this.offeringsSubject.next(this.normalizeOfferings(parsed));
-      } catch (e) {
-        console.error('Error loading MSP offerings:', e);
-        this.initializeDefaultOfferings();
-      }
-    } else {
-      this.initializeDefaultOfferings();
-    }
+  /**
+   * Load all offerings from backend API
+   */
+  private loadOfferingsFromApi(): void {
+    console.log('[MSPOfferingService] Loading offerings from API...');
+    this.http.get<ApiResponse<MSPOffering[]>>(this.apiUrl)
+      .pipe(
+        tap(response => {
+          console.log('[MSPOfferingService] API Response:', response);
+          if (response.success && Array.isArray(response.data)) {
+            const normalized = response.data.map(o => this.normalizeOffering(o));
+            console.log('[MSPOfferingService] Normalized offerings:', normalized);
+            this.offeringsSubject.next(normalized);
+          } else {
+            console.warn('[MSPOfferingService] Unexpected response format:', response);
+            this.offeringsSubject.next([]);
+          }
+        }),
+        catchError(error => {
+          console.error('[MSPOfferingService] Failed to load offerings from API:', error);
+          this.offeringsSubject.next([]);
+          return of(null);
+        })
+      )
+      .subscribe({
+        next: () => console.log('[MSPOfferingService] Load offerings: Complete'),
+        error: (err) => console.error('[MSPOfferingService] Subscribe error:', err)
+      });
   }
 
-  private initializeDefaultOfferings(): void {
-    const defaultOfferings: MSPOffering[] = [
-      {
-        id: 'offering-1',
-        name: 'Druva M365 Backup',
-        description: 'Comprehensive backup and recovery for Microsoft 365 cloud applications',
-        category: 'backup',
-        setupFee: 500,
-        features: ['Exchange Online Backup', 'SharePoint Online Backup', 'OneDrive Backup', 'Teams Data Protection', 'Instant Restore'],
-        serviceLevels: [
-          {
-            id: 'level-1',
-            name: 'Standard',
-            basePrice: 25,
-            pricingUnit: 'per-user',
-            options: [
-              { id: 'opt-1', name: 'Advanced Ransomware Protection', description: 'AI-powered threat detection', monthlyPrice: 10, pricingUnit: 'per-user' },
-              { id: 'opt-2', name: 'Compliance Reporting', description: 'Automated compliance reports', monthlyPrice: 5, pricingUnit: 'per-user' }
-            ]
-          }
-        ],
-        isActive: true,
-        createdDate: '2025-01-15',
-        lastModified: '2025-01-15'
-      },
-      {
-        id: 'offering-2',
-        name: 'Druva Phoenix Backup',
-        description: 'Enterprise backup solution for on-premise and hybrid environments',
-        category: 'backup',
-        setupFee: 750,
-        features: ['Full Server Backup', 'Incremental Backup', 'Deduplication', 'Encryption', 'Disaster Recovery'],
-        serviceLevels: [
-          {
-            id: 'level-2',
-            name: 'Standard',
-            basePrice: 30,
-            pricingUnit: 'per-user',
-            options: [
-              { id: 'opt-3', name: '24/7 Priority Support', description: 'Round-the-clock support', monthlyPrice: 200, pricingUnit: 'per-user' }
-            ]
-          }
-        ],
-        isActive: true,
-        createdDate: '2025-01-15',
-        lastModified: '2025-01-15'
-      },
-      {
-        id: 'offering-3',
-        name: 'Veeam Backup & Recovery',
-        description: 'Unified backup and disaster recovery for virtual and physical infrastructure',
-        category: 'backup',
-        setupFee: 1000,
-        features: ['VM Backup', 'Physical Server Backup', 'Application Backup', 'Granular Recovery', 'Backup Copy'],
-        serviceLevels: [
-          {
-            id: 'level-3',
-            name: 'Standard',
-            basePrice: 0.5,
-            pricingUnit: 'per-gb',
-            options: [
-              { id: 'opt-4', name: 'Advanced Networking', description: 'WAN optimization', monthlyPrice: 50, pricingUnit: 'per-gb' },
-              { id: 'opt-5', name: 'Immutable Backups', description: 'Ransomware protection', monthlyPrice: 75, pricingUnit: 'per-gb' }
-            ]
-          }
-        ],
-        isActive: true,
-        createdDate: '2025-01-15',
-        lastModified: '2025-01-15'
-      },
-      {
-        id: 'offering-4',
-        name: 'Helpdesk Support',
-        description: 'Multi-level IT support services for your infrastructure',
-        category: 'support',
-        setupFee: 0,
-        features: ['Tier 1 Support', 'Ticket Management', 'Email Support', 'Phone Support', 'Incident Tracking'],
-        serviceLevels: [
-          {
-            id: 'level-4',
-            name: 'Standard',
-            basePrice: 20,
-            pricingUnit: 'per-user',
-            options: [
-              { id: 'opt-6', name: 'Tier 2 Support', description: 'Advanced technical support', monthlyPrice: 30, pricingUnit: 'per-user' },
-              { id: 'opt-7', name: '24/7 Support', description: 'Round-the-clock availability', monthlyPrice: 100, pricingUnit: 'per-user' }
-            ]
-          }
-        ],
-        isActive: true,
-        createdDate: '2025-01-15',
-        lastModified: '2025-01-15'
-      },
-      {
-        id: 'offering-5',
-        name: 'Database Management',
-        description: 'Comprehensive database administration and optimization',
-        category: 'database',
-        setupFee: 1500,
-        features: ['Database Monitoring', 'Performance Tuning', 'Backup Management', 'Security Management', 'Patch Management'],
-        serviceLevels: [
-          {
-            id: 'level-5',
-            name: 'Standard',
-            basePrice: 35,
-            pricingUnit: 'per-device',
-            options: [
-              { id: 'opt-8', name: 'High Availability Setup', description: 'Redundancy and failover', monthlyPrice: 150, pricingUnit: 'per-device' },
-              { id: 'opt-9', name: 'Replication Services', description: 'Data replication across sites', monthlyPrice: 120, pricingUnit: 'per-device' }
-            ]
-          }
-        ],
-        isActive: true,
-        createdDate: '2025-01-15',
-        lastModified: '2025-01-15'
-      },
-      {
-        id: 'offering-6',
-        name: 'Consulting Services',
-        description: 'Strategic IT consulting and architecture services',
-        category: 'consulting',
-        setupFee: 0,
-        features: ['Strategic Planning', 'Technology Assessment', 'Architecture Design', 'Implementation Support', 'Documentation'],
-        serviceLevels: [
-          {
-            id: 'level-6',
-            name: 'Standard',
-            basePrice: 150,
-            pricingUnit: 'per-user',
-            options: [
-              { id: 'opt-10', name: 'On-site Consultation', description: 'In-person consulting hours', monthlyPrice: 250, pricingUnit: 'per-user' }
-            ]
-          }
-        ],
-        isActive: true,
-        createdDate: '2025-01-15',
-        lastModified: '2025-01-15'
-      }
-    ];
-    this.offeringsSubject.next(defaultOfferings);
-    this.saveOfferings(defaultOfferings);
-  }
-
-  private normalizeOfferings(offerings: MSPOffering[]): MSPOffering[] {
-    return offerings.map(offering => ({
-      ...offering,
-      imageUrl: offering.imageUrl || '',
-      setupFeeCost: offering.setupFeeCost ?? offering.setupFee ?? 0,
-      setupFeeMargin: offering.setupFeeMargin ?? 0,
-      setupFee: offering.setupFee ?? this.calculatePrice(offering.setupFeeCost ?? offering.setupFee ?? 0, offering.setupFeeMargin ?? 0),
-      serviceLevels: this.normalizeServiceLevels(offering)
-    }));
-  }
-
-  private normalizeServiceLevels(offering: MSPOffering): MSPServiceLevel[] {
-    const levels = (offering.serviceLevels && offering.serviceLevels.length > 0)
-      ? offering.serviceLevels
-      : [
-          {
-            id: `level-${offering.id || Date.now()}`,
-            name: 'Standard',
-            basePrice: offering.basePrice ?? 0,
-            pricingUnit: offering.pricingUnit ?? 'per-user',
-            options: offering.options || []
-          }
-        ];
-
-    return levels.map(level => {
-      const licenseCost = level.licenseCost ?? level.baseCost ?? level.basePrice ?? 0;
-      const licenseMargin = level.licenseMargin ?? level.marginPercent ?? 0;
-      const basePrice = level.basePrice ?? this.calculatePrice(licenseCost, licenseMargin);
-
-      const professionalServicesCost = level.professionalServicesCost ?? 0;
-      const professionalServicesMargin = level.professionalServicesMargin ?? 0;
-      const professionalServicesPrice = level.professionalServicesPrice ?? this.calculatePrice(
-        professionalServicesCost,
-        professionalServicesMargin
-      );
-
+  /**
+   * Normalize offering object to consistent field names
+   */
+  private normalizeOffering(offering: MSPOffering): MSPOffering {
+    const serviceLevels = ((offering.serviceLevels || (offering as any).ServiceLevels) ?? []).map(level => {
+      const lvl = level as any;
       return {
-        ...level,
-        baseCost: level.baseCost ?? licenseCost,
-        marginPercent: level.marginPercent ?? licenseMargin,
-        licenseCost,
-        licenseMargin,
-        basePrice,
-        professionalServicesCost,
-        professionalServicesMargin,
-        professionalServicesPrice,
-        options: (level.options || []).map(option => {
-          const monthlyCost = option.monthlyCost ?? option.monthlyPrice ?? 0;
-          const optionMargin = option.marginPercent ?? 0;
-          const monthlyPrice = option.monthlyPrice ?? this.calculatePrice(monthlyCost, optionMargin);
-
+        id: level.id || lvl.Id,
+        name: level.name || lvl.Name,
+        basePrice: (level.basePrice || lvl.BasePrice) ?? 0,
+        baseCost: level.baseCost || lvl.BaseCost,
+        marginPercent: level.marginPercent || lvl.MarginPercent,
+        licenseCost: (level.licenseCost || lvl.LicenseCost) ?? (level.baseCost ?? lvl.BaseCost ?? level.basePrice ?? lvl.BasePrice ?? 0),
+        licenseMargin: (level.licenseMargin || lvl.LicenseMargin) ?? (level.marginPercent ?? lvl.MarginPercent ?? 0),
+        professionalServicesPrice: (level.professionalServicesPrice || lvl.ProfessionalServicesPrice) ?? 0,
+        professionalServicesCost: (level.professionalServicesCost || lvl.ProfessionalServicesCost) ?? 0,
+        professionalServicesMargin: (level.professionalServicesMargin || lvl.ProfessionalServicesMargin) ?? 0,
+        pricingUnit: (level.pricingUnit || lvl.PricingUnit || 'per-user') as PricingUnit,
+        options: ((level.options || lvl.Options) ?? []).map(option => {
+          const opt = option as any;
           return {
-            ...option,
-            monthlyCost,
-            marginPercent: optionMargin,
-            monthlyPrice,
-            pricingUnit: option.pricingUnit || level.pricingUnit || offering.pricingUnit || 'per-user'
+            id: option.id || opt.Id,
+            name: option.name || opt.Name,
+            description: option.description || opt.Description,
+            monthlyPrice: (option.monthlyPrice || opt.MonthlyPrice) ?? 0,
+            monthlyCost: (option.monthlyCost || opt.MonthlyCost) ?? (option.monthlyPrice ?? opt.MonthlyPrice ?? 0),
+            marginPercent: (option.marginPercent || opt.MarginPercent) ?? 0,
+            pricingUnit: (option.pricingUnit || opt.PricingUnit || 'per-user') as PricingUnit
           };
         })
       };
     });
+
+    return {
+      id: offering.id || offering.Id,
+      name: offering.name || offering.Name,
+      description: offering.description || offering.Description,
+      imageUrl: offering.imageUrl || offering.ImageUrl,
+      category: (offering.category || offering.Category) as any,
+      basePrice: offering.basePrice || offering.BasePrice,
+      pricingUnit: (offering.pricingUnit || offering.PricingUnit) as any,
+      setupFee: offering.setupFee ?? offering.SetupFee ?? 0,
+      setupFeeCost: offering.setupFeeCost ?? offering.SetupFeeCost,
+      setupFeeMargin: offering.setupFeeMargin ?? offering.SetupFeeMargin,
+      features: (offering.features || (offering as any).Features) ?? [],
+      serviceLevels: serviceLevels,
+      isActive: (offering.isActive ?? offering.IsActive) !== false,
+      createdDate: offering.createdDate || offering.CreatedDate || new Date().toLocaleDateString(),
+      lastModified: offering.lastModified || offering.LastModified || new Date().toLocaleDateString(),
+    };
   }
 
-  private calculatePrice(cost: number, marginPercent: number): number {
-    return Number((cost * (1 + marginPercent / 100)).toFixed(2));
-  }
-
-  private saveOfferings(offerings: MSPOffering[]): void {
-    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(offerings));
-  }
-
+  /**
+   * Get current offerings from local state
+   */
   getOfferings(): Observable<MSPOffering[]> {
     return this.offerings$;
   }
 
+  /**
+   * Get offering by ID
+   */
   getOfferingById(id: string): MSPOffering | undefined {
-    return this.offeringsSubject.value.find(o => o.id === id);
+    return this.offeringsSubject.value.find(o => (o.id || o.Id) === id);
   }
 
-  createOffering(offering: Omit<MSPOffering, 'id' | 'createdDate' | 'lastModified'>): MSPOffering {
-    const now = new Date();
-    const newOffering: MSPOffering = {
-      ...offering,
-      id: `offering-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      createdDate: now.toLocaleDateString(),
-      lastModified: now.toLocaleDateString()
+  /**
+   * Get offering by ID from API (for edit form to get latest data with features/serviceLevels)
+   */
+  getOfferingByIdFromApi(id: string): Observable<ApiResponse<MSPOffering>> {
+    return this.http.get<ApiResponse<MSPOffering>>(`${this.apiUrl}/${id}`);
+  }
+
+  /**
+   * Create new offering on backend
+   */
+  createOffering(offering: Omit<MSPOffering, 'id' | 'createdDate' | 'lastModified'>): Observable<ApiResponse<MSPOffering>> {
+    const payload = {
+      Name: offering.name || offering.Name,
+      Description: offering.description || offering.Description,
+      ImageUrl: offering.imageUrl || offering.ImageUrl,
+      Category: offering.category || offering.Category,
+      BasePrice: offering.basePrice || offering.BasePrice,
+      PricingUnit: offering.pricingUnit || offering.PricingUnit || 'per-user',
+      SetupFee: offering.setupFee ?? offering.SetupFee ?? 0,
+      SetupFeeCost: offering.setupFeeCost ?? offering.SetupFeeCost,
+      SetupFeeMargin: offering.setupFeeMargin ?? offering.SetupFeeMargin,
+      IsActive: (offering.isActive ?? offering.IsActive) !== false,
+      Features: offering.features || (offering as any).Features || [],
+      ServiceLevels: offering.serviceLevels || (offering as any).ServiceLevels || []
     };
-    const offerings = [...this.offeringsSubject.value, newOffering];
-    this.offeringsSubject.next(offerings);
-    this.saveOfferings(offerings);
-    return newOffering;
-  }
 
-  updateOffering(id: string, updates: Partial<MSPOffering>): void {
-    const offerings = this.offeringsSubject.value.map(o => 
-      o.id === id 
-        ? { 
-            ...o, 
-            ...updates,
-            lastModified: new Date().toLocaleDateString()
+    console.log('[MSPOfferingService] Creating offering:', payload);
+    return this.http.post<ApiResponse<MSPOffering>>(this.apiUrl, payload)
+      .pipe(
+        tap(response => {
+          console.log('[MSPOfferingService] Create response:', response);
+          if (response.success && response.data) {
+            const normalized = this.normalizeOffering(response.data);
+            const current = this.offeringsSubject.value;
+            this.offeringsSubject.next([...current, normalized]);
+            console.log('[MSPOfferingService] Offering created successfully:', normalized);
           }
-        : o
-    );
-    this.offeringsSubject.next(offerings);
-    this.saveOfferings(offerings);
+        }),
+        catchError(error => {
+          console.error('[MSPOfferingService] Failed to create offering:', error);
+          throw error;
+        })
+      );
   }
 
+  /**
+   * Update offering on backend
+   */
+  updateOffering(id: string, updates: Partial<MSPOffering>): Observable<ApiResponse<MSPOffering>> {
+    const offeringId = id || updates.id || updates.Id;
+    const payload: any = {};
+
+    if (updates.name) payload.Name = updates.name;
+    if (updates.Name) payload.Name = updates.Name;
+    if (updates.description) payload.Description = updates.description;
+    if (updates.Description) payload.Description = updates.Description;
+    if (updates.imageUrl) payload.ImageUrl = updates.imageUrl;
+    if (updates.ImageUrl) payload.ImageUrl = updates.ImageUrl;
+    if (updates.category) payload.Category = updates.category;
+    if (updates.Category) payload.Category = updates.Category;
+    if (updates.basePrice !== undefined) payload.BasePrice = updates.basePrice;
+    if (updates.BasePrice !== undefined) payload.BasePrice = updates.BasePrice;
+    if (updates.pricingUnit) payload.PricingUnit = updates.pricingUnit;
+    if (updates.PricingUnit) payload.PricingUnit = updates.PricingUnit;
+    if (updates.setupFee !== undefined) payload.SetupFee = updates.setupFee;
+    if (updates.SetupFee !== undefined) payload.SetupFee = updates.SetupFee;
+    if (updates.setupFeeCost !== undefined) payload.SetupFeeCost = updates.setupFeeCost;
+    if (updates.SetupFeeCost !== undefined) payload.SetupFeeCost = updates.SetupFeeCost;
+    if (updates.setupFeeMargin !== undefined) payload.SetupFeeMargin = updates.setupFeeMargin;
+    if (updates.SetupFeeMargin !== undefined) payload.SetupFeeMargin = updates.SetupFeeMargin;
+    if (updates.isActive !== undefined) payload.IsActive = updates.isActive;
+    if (updates.IsActive !== undefined) payload.IsActive = updates.IsActive;
+    if (updates.features) payload.Features = updates.features;
+    if (updates.serviceLevels) {
+      // Sanitize service levels to only send camelCase properties.
+      // The loadOffering spread used to copy PascalCase props which then
+      // took priority in the backend's PascalCase-first extraction logic.
+      payload.ServiceLevels = updates.serviceLevels.map(sl => ({
+        id: sl.id,
+        name: sl.name,
+        basePrice: sl.basePrice ?? 0,
+        baseCost: sl.baseCost ?? 0,
+        marginPercent: sl.marginPercent ?? 0,
+        licenseCost: sl.licenseCost ?? 0,
+        licenseMargin: sl.licenseMargin ?? 0,
+        professionalServicesPrice: sl.professionalServicesPrice ?? 0,
+        professionalServicesCost: sl.professionalServicesCost ?? 0,
+        professionalServicesMargin: sl.professionalServicesMargin ?? 0,
+        pricingUnit: sl.pricingUnit || 'per-user',
+        options: (sl.options || []).map(opt => ({
+          id: opt.id,
+          name: opt.name,
+          description: opt.description || '',
+          monthlyPrice: opt.monthlyPrice ?? 0,
+          monthlyCost: opt.monthlyCost ?? 0,
+          marginPercent: opt.marginPercent ?? 0,
+          pricingUnit: opt.pricingUnit || 'per-user'
+        }))
+      }));
+    }
+
+    console.log('[MSPOfferingService] Updating offering:', offeringId);
+    console.log('[MSPOfferingService] Payload being sent:', JSON.stringify(payload, null, 2));
+    return this.http.put<ApiResponse<MSPOffering>>(`${this.apiUrl}/${offeringId}`, payload)
+      .pipe(
+        tap(response => {
+          console.log('[MSPOfferingService] Update response:', response);
+          if (response.success) {
+            const current = this.offeringsSubject.value;
+            const index = current.findIndex(o => (o.id || o.Id) === offeringId);
+            if (index !== -1) {
+              current[index] = { ...current[index], ...updates };
+              this.offeringsSubject.next([...current]);
+            }
+          }
+        }),
+        catchError(error => {
+          console.error('[MSPOfferingService] Failed to update offering:', error);
+          throw error;
+        })
+      );
+  }
+
+  /**
+   * Delete offering from backend
+   */
   deleteOffering(id: string): void {
-    const offerings = this.offeringsSubject.value.filter(o => o.id !== id);
-    this.offeringsSubject.next(offerings);
-    this.saveOfferings(offerings);
+    console.log('[MSPOfferingService] Deleting offering:', id);
+    this.http.delete<ApiResponse<any>>(`${this.apiUrl}/${id}`)
+      .pipe(
+        tap(response => {
+          console.log('[MSPOfferingService] Delete response:', response);
+          if (response.success) {
+            const current = this.offeringsSubject.value;
+            const filtered = current.filter(o => (o.id || o.Id) !== id);
+            this.offeringsSubject.next(filtered);
+            console.log('[MSPOfferingService] Offering deleted successfully');
+          }
+        }),
+        catchError(error => {
+          console.error('[MSPOfferingService] Failed to delete offering:', error);
+          return of(null);
+        })
+      )
+      .subscribe({
+        error: (err) => console.error('[MSPOfferingService] Delete subscribe error:', err)
+      });
   }
 
+  /**
+   * Toggle offering status between active and inactive
+   */
   toggleOfferingStatus(id: string): void {
     const offering = this.getOfferingById(id);
-    if (offering) {
-      this.updateOffering(id, { isActive: !offering.isActive });
-    }
+    if (!offering) return;
+
+    console.log('[MSPOfferingService] Toggling status for offering:', id);
+    this.http.post<ApiResponse<MSPOffering>>(`${this.apiUrl}/${id}/toggle-status`, {})
+      .pipe(
+        tap(response => {
+          console.log('[MSPOfferingService] Toggle response:', response);
+          if (response.success) {
+            const current = this.offeringsSubject.value;
+            const index = current.findIndex(o => (o.id || o.Id) === id);
+            if (index !== -1) {
+              current[index].isActive = !current[index].isActive;
+              this.offeringsSubject.next([...current]);
+            }
+          }
+        }),
+        catchError(error => {
+          console.error('[MSPOfferingService] Failed to toggle status:', error);
+          return of(null);
+        })
+      )
+      .subscribe({
+        error: (err) => console.error('[MSPOfferingService] Toggle subscribe error:', err)
+      });
   }
 
-  getOfferingsByCategory(category: MSPOffering['category']): MSPOffering[] {
-    return this.offeringsSubject.value.filter(o => o.category === category);
+  /**
+   * Get offerings by category
+   */
+  getOfferingsByCategory(category: string): MSPOffering[] {
+    return this.offeringsSubject.value.filter(o => (o.category || o.Category) === category);
   }
 
+  /**
+   * Refresh offerings from API
+   */
+  refreshOfferings(): void {
+    console.log('[MSPOfferingService] Refreshing offerings');
+    this.loadOfferingsFromApi();
+  }
+
+  /**
+   * Legacy method - add option (kept for backward compatibility)
+   */
   addOption(offeringId: string, option: Omit<MSPOption, 'id'>): void {
-    const offering = this.getOfferingById(offeringId);
-    if (offering && offering.serviceLevels.length > 0) {
-      const newOption: MSPOption = {
-        ...option,
-        id: `opt-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-      };
-      const [firstLevel, ...rest] = offering.serviceLevels;
-      this.updateOffering(offeringId, {
-        serviceLevels: [
-          { ...firstLevel, options: [...firstLevel.options, newOption] },
-          ...rest
-        ]
-      });
-    }
+    console.warn('[MSPOfferingService] addOption is not yet implemented for API backend');
   }
 
+  /**
+   * Legacy method - update option (kept for backward compatibility)
+   */
   updateOption(offeringId: string, optionId: string, updates: Partial<MSPOption>): void {
-    const offering = this.getOfferingById(offeringId);
-    if (offering && offering.serviceLevels.length > 0) {
-      const [firstLevel, ...rest] = offering.serviceLevels;
-      this.updateOffering(offeringId, {
-        serviceLevels: [
-          {
-            ...firstLevel,
-            options: firstLevel.options.map(opt =>
-              opt.id === optionId ? { ...opt, ...updates } : opt
-            )
-          },
-          ...rest
-        ]
-      });
-    }
+    console.warn('[MSPOfferingService] updateOption is not yet implemented for API backend');
   }
 
+  /**
+   * Legacy method - delete option (kept for backward compatibility)
+   */
   deleteOption(offeringId: string, optionId: string): void {
-    const offering = this.getOfferingById(offeringId);
-    if (offering && offering.serviceLevels.length > 0) {
-      const [firstLevel, ...rest] = offering.serviceLevels;
-      this.updateOffering(offeringId, {
-        serviceLevels: [
-          {
-            ...firstLevel,
-            options: firstLevel.options.filter(opt => opt.id !== optionId)
-          },
-          ...rest
-        ]
-      });
-    }
+    console.warn('[MSPOfferingService] deleteOption is not yet implemented for API backend');
   }
 }

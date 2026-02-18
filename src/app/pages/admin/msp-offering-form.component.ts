@@ -16,6 +16,7 @@ export class MSPOfferingFormComponent implements OnInit {
   isEditMode = false;
   offeringId: string | null = null;
   submitted = false;
+  isSaving = false;
   errorMessage: string = '';
   successMessage: string = '';
   imageErrorMessage: string = '';
@@ -92,35 +93,69 @@ export class MSPOfferingFormComponent implements OnInit {
   }
 
   loadOffering(id: string): void {
-    const offering = this.offeringsService.getOfferingById(id);
-    if (offering) {
-      this.name = offering.name;
-      this.description = offering.description;
-      this.imageUrl = offering.imageUrl || '';
-      this.category = offering.category;
-      this.setupFeeCost = offering.setupFeeCost ?? offering.setupFee ?? 0;
-      this.setupFeeMargin = offering.setupFeeMargin ?? 0;
-      this.setupFee = this.calculatePrice(this.setupFeeCost, this.setupFeeMargin);
-      this.isActive = offering.isActive;
-      this.features = [...offering.features];
-      this.serviceLevels = offering.serviceLevels.map(level => ({
-        ...level,
-        licenseCost: level.licenseCost ?? level.baseCost ?? level.basePrice ?? 0,
-        licenseMargin: level.licenseMargin ?? level.marginPercent ?? 0,
-        professionalServicesCost: level.professionalServicesCost ?? 0,
-        professionalServicesMargin: level.professionalServicesMargin ?? 0,
-        professionalServicesPrice: level.professionalServicesPrice ?? this.calculatePrice(
-          level.professionalServicesCost ?? 0,
-          level.professionalServicesMargin ?? 0
-        ),
-        options: level.options.map(option => ({
-          ...option,
-          monthlyCost: option.monthlyCost ?? option.monthlyPrice ?? 0,
-          marginPercent: option.marginPercent ?? 0
-        }))
-      }));
-      this.selectLevel(this.serviceLevels[0] || null);
-    }
+    // Fetch offering directly from API to ensure we get the latest data with features/serviceLevels
+    this.offeringsService.getOfferingByIdFromApi(id).subscribe({
+      next: (response) => {
+        if (response.success && response.data) {
+          const offering = response.data;
+          console.log('[MSPOfferingFormComponent] Loaded offering:', offering);
+          
+          this.name = (offering.name || offering.Name) ?? '';
+          this.description = (offering.description || offering.Description) ?? '';
+          this.imageUrl = (offering.imageUrl || offering.ImageUrl) || '';
+          this.category = (offering.category || offering.Category) as 'backup' | 'support' | 'database' | 'consulting' || 'backup';
+          this.setupFeeCost = offering.setupFeeCost ?? offering.SetupFeeCost ?? 0;
+          this.setupFeeMargin = offering.setupFeeMargin ?? offering.SetupFeeMargin ?? 0;
+          this.setupFee = this.calculatePrice(this.setupFeeCost, this.setupFeeMargin);
+          this.isActive = (offering.isActive ?? offering.IsActive) !== false;
+          
+          // Handle both camelCase and PascalCase from backend
+          this.features = [...((offering.features || (offering as any).Features) ?? [])];
+          console.log('[MSPOfferingFormComponent] Features loaded:', this.features);
+          
+          const serviceLevels = (offering.serviceLevels || (offering as any).ServiceLevels) ?? [];
+          console.log('[MSPOfferingFormComponent] Service levels loaded:', serviceLevels);
+          
+          // Map to camelCase ONLY — do NOT spread the original PascalCase object,
+          // otherwise stale PascalCase values override updated camelCase on save.
+          this.serviceLevels = serviceLevels.map(level => {
+            const lvl = level as any;
+            return {
+              id: level.id || lvl.Id,
+              name: level.name || lvl.Name || '',
+              basePrice: level.basePrice ?? lvl.BasePrice ?? 0,
+              baseCost: level.baseCost ?? lvl.BaseCost ?? 0,
+              marginPercent: level.marginPercent ?? lvl.MarginPercent ?? 0,
+              licenseCost: level.licenseCost ?? lvl.LicenseCost ?? level.baseCost ?? lvl.BaseCost ?? 0,
+              licenseMargin: level.licenseMargin ?? lvl.LicenseMargin ?? level.marginPercent ?? lvl.MarginPercent ?? 0,
+              professionalServicesPrice: level.professionalServicesPrice ?? lvl.ProfessionalServicesPrice ?? 0,
+              professionalServicesCost: level.professionalServicesCost ?? lvl.ProfessionalServicesCost ?? 0,
+              professionalServicesMargin: level.professionalServicesMargin ?? lvl.ProfessionalServicesMargin ?? 0,
+              pricingUnit: level.pricingUnit || lvl.PricingUnit || 'per-user',
+              options: ((level.options || lvl.Options) ?? []).map(option => {
+                const opt = option as any;
+                return {
+                  id: option.id || opt.Id,
+                  name: option.name || opt.Name || '',
+                  description: option.description || opt.Description || '',
+                  monthlyPrice: option.monthlyPrice ?? opt.MonthlyPrice ?? 0,
+                  monthlyCost: option.monthlyCost ?? opt.MonthlyCost ?? 0,
+                  marginPercent: option.marginPercent ?? opt.MarginPercent ?? 0,
+                  pricingUnit: option.pricingUnit || opt.PricingUnit || 'per-user'
+                };
+              })
+            };
+          });
+          
+          console.log('[MSPOfferingFormComponent] Normalized service levels:', this.serviceLevels);
+          this.selectLevel(this.serviceLevels[0] || null);
+        }
+      },
+      error: (error) => {
+        console.error('[MSPOfferingFormComponent] Failed to load offering:', error);
+        this.errorMessage = 'Failed to load offering details';
+      }
+    });
   }
 
   selectLevel(level: MSPServiceLevel | null): void {
@@ -408,42 +443,70 @@ export class MSPOfferingFormComponent implements OnInit {
 
     try {
       this.setupFee = this.calculatePrice(this.setupFeeCost, this.setupFeeMargin);
-      if (this.isEditMode && this.offeringId) {
-        this.offeringsService.updateOffering(this.offeringId, {
-          name: this.name.trim(),
-          description: this.description.trim(),
-          imageUrl: this.imageUrl,
-          category: this.category,
-          setupFee: this.setupFee,
-          setupFeeCost: this.setupFeeCost,
-          setupFeeMargin: this.setupFeeMargin,
-          isActive: this.isActive,
-          features: this.features,
-          serviceLevels: this.serviceLevels
-        });
-        this.successMessage = 'Offering updated successfully!';
-      } else {
-        this.offeringsService.createOffering({
-          name: this.name.trim(),
-          description: this.description.trim(),
-          imageUrl: this.imageUrl,
-          category: this.category,
-          setupFee: this.setupFee,
-          setupFeeCost: this.setupFeeCost,
-          setupFeeMargin: this.setupFeeMargin,
-          isActive: this.isActive,
-          features: this.features,
-          serviceLevels: this.serviceLevels
-        });
-        this.successMessage = 'Offering created successfully!';
-      }
+      this.isSaving = true;
+      this.errorMessage = '';
 
-      setTimeout(() => {
-        this.router.navigate(['/admin/offerings']);
-      }, 1500);
+      const offeringData = {
+        name: this.name.trim(),
+        description: this.description.trim(),
+        imageUrl: this.imageUrl,
+        category: this.category,
+        setupFee: this.setupFee,
+        setupFeeCost: this.setupFeeCost,
+        setupFeeMargin: this.setupFeeMargin,
+        isActive: this.isActive,
+        features: this.features,
+        serviceLevels: this.serviceLevels
+      };
+
+      console.log('[MSPOfferingFormComponent] Offering data being sent:', {
+        name: offeringData.name,
+        featuresCount: offeringData.features.length,
+        serviceLevelsCount: offeringData.serviceLevels.length,
+        firstServiceLevel: offeringData.serviceLevels[0] ? JSON.stringify(offeringData.serviceLevels[0], null, 2) : null
+      });
+
+      if (this.isEditMode && this.offeringId) {
+        console.log('[MSPOfferingFormComponent] Updating offering:', this.offeringId);
+        this.offeringsService.updateOffering(this.offeringId, offeringData)
+          .subscribe({
+            next: (response) => {
+              console.log('[MSPOfferingFormComponent] Update response:', response);
+              this.isSaving = false;
+              this.successMessage = 'Offering updated successfully!';
+              setTimeout(() => {
+                this.router.navigate(['/admin/offerings']);
+              }, 1500);
+            },
+            error: (error) => {
+              console.error('[MSPOfferingFormComponent] Update error:', error);
+              this.isSaving = false;
+              this.errorMessage = error?.error?.message || 'Failed to update offering. Please try again.';
+            }
+          });
+      } else {
+        console.log('[MSPOfferingFormComponent] Creating new offering');
+        this.offeringsService.createOffering(offeringData)
+          .subscribe({
+            next: (response) => {
+              console.log('[MSPOfferingFormComponent] Create response:', response);
+              this.isSaving = false;
+              this.successMessage = 'Offering created successfully!';
+              setTimeout(() => {
+                this.router.navigate(['/admin/offerings']);
+              }, 1500);
+            },
+            error: (error) => {
+              console.error('[MSPOfferingFormComponent] Create error:', error);
+              this.isSaving = false;
+              this.errorMessage = error?.error?.message || 'Failed to create offering. Please try again.';
+            }
+          });
+      }
     } catch (error) {
       this.errorMessage = 'An error occurred. Please try again.';
-      console.error('Error saving offering:', error);
+      this.isSaving = false;
+      console.error('[MSPOfferingFormComponent] Error saving offering:', error);
     }
   }
 

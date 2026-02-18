@@ -27,14 +27,14 @@ export class ServicesOverviewComponent {
     });
   }
 
-  getCategoryIcon(category: MSPOffering['category']): string {
-    const icons: Record<MSPOffering['category'], string> = {
+  getCategoryIcon(category: MSPOffering['category'] | undefined): string {
+    const icons: Record<string, string> = {
       backup: '💾',
       support: '📞',
       database: '🗄️',
       consulting: '🎯'
     };
-    return icons[category] || '🧩';
+    return icons[category as string] || '🧩';
   }
 
   getDefaultLevel(offering: MSPOffering): MSPServiceLevel | null {

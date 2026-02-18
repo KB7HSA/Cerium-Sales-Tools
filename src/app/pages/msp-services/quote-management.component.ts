@@ -21,6 +21,10 @@ export class QuoteManagementComponent implements OnInit {
 
   constructor(public quoteService: QuoteService) {}
 
+  getQuoteId(quote: Quote): string {
+    return (quote.id || quote.Id) || '';
+  }
+
   ngOnInit(): void {
     this.quoteService.quotes$.subscribe(quotes => {
       this.quotes = quotes;
@@ -51,8 +55,10 @@ export class QuoteManagementComponent implements OnInit {
 
   startEditQuote(quote: Quote): void {
     if (quote.status !== 'pending') return;
-    this.editingQuoteId = quote.id;
-    this.quoteDrafts[quote.id] = JSON.parse(JSON.stringify(quote)) as Quote;
+    const id = this.getQuoteId(quote);
+    if (!id) return;
+    this.editingQuoteId = id;
+    this.quoteDrafts[id] = JSON.parse(JSON.stringify(quote)) as Quote;
   }
 
   cancelEditQuote(quoteId: string): void {
@@ -63,17 +69,19 @@ export class QuoteManagementComponent implements OnInit {
   }
 
   saveEditQuote(quote: Quote): void {
-    const draft = this.quoteDrafts[quote.id];
+    const id = this.getQuoteId(quote);
+    const draft = this.quoteDrafts[id];
     if (!draft) return;
 
-    if (!draft.customerName.trim()) {
+    const customerName = draft.customerName || '';
+    if (!customerName.trim()) {
       alert('Customer name is required.');
       return;
     }
 
     const updates: Partial<Quote> = {
-      customerName: draft.customerName.trim(),
-      notes: draft.notes?.trim() || ''
+      customerName: customerName.trim(),
+      notes: (draft.notes || '').trim()
     };
 
     if (quote.type === 'msp') {
@@ -89,17 +97,17 @@ export class QuoteManagementComponent implements OnInit {
       updates.addOnMonthlyTotal = this.toNumber(draft.addOnMonthlyTotal ?? 0);
       updates.addOnOneTimeTotal = this.toNumber(draft.addOnOneTimeTotal ?? 0);
       updates.totalPrice = this.toNumber(draft.totalPrice);
-      updates.selectedOptions = (draft.selectedOptions || []).map(option => ({
+      updates.selectedOptions = (draft.selectedOptions || []).map((option: any) => ({
         ...option,
         monthlyPrice: this.toNumber(option.monthlyPrice),
-        name: option.name?.trim() || option.name
+        name: (option.name || '').trim()
       }));
     } else {
       updates.totalHours = this.toNumber(draft.totalHours ?? 0);
       updates.totalPrice = this.toNumber(draft.totalPrice);
-      updates.workItems = (draft.workItems || []).map(item => ({
+      updates.workItems = (draft.workItems || []).map((item: any) => ({
         ...item,
-        name: item.name?.trim() || item.name,
+        name: (item.name || '').trim(),
         switchCount: this.toNumber(item.switchCount),
         hoursPerSwitch: this.toNumber(item.hoursPerSwitch),
         ratePerHour: this.toNumber(item.ratePerHour),
@@ -108,8 +116,9 @@ export class QuoteManagementComponent implements OnInit {
       }));
     }
 
-    this.quoteService.updateQuote(quote.id, updates);
-    this.cancelEditQuote(quote.id);
+    const updateId = this.getQuoteId(quote);
+    this.quoteService.updateQuote(updateId, updates);
+    this.cancelEditQuote(updateId);
     alert('Quote updated successfully.');
   }
 
@@ -152,7 +161,8 @@ export class QuoteManagementComponent implements OnInit {
 
   getLaborWorkItems(quote: Quote): Quote['workItems'] {
     const items = quote.workItems || [];
-    const filter = this.laborSectionFilters[quote.id] || 'All';
+    const qId = this.getQuoteId(quote);
+    const filter = this.laborSectionFilters[qId] || 'All';
     if (filter === 'All') {
       return items;
     }
@@ -160,13 +170,19 @@ export class QuoteManagementComponent implements OnInit {
   }
 
   approveQuote(quoteId: string): void {
-    this.quoteService.updateQuoteStatus(quoteId, 'approved');
-    alert('Quote approved successfully!');
+    this.quoteService.updateQuoteStatus(quoteId, 'approved')
+      .subscribe({
+        next: () => alert('Quote approved successfully!'),
+        error: (error) => alert('Error approving quote: ' + (error?.error?.message || 'Unknown error'))
+      });
   }
 
   denyQuote(quoteId: string): void {
-    this.quoteService.updateQuoteStatus(quoteId, 'denied');
-    alert('Quote denied.');
+    this.quoteService.updateQuoteStatus(quoteId, 'denied')
+      .subscribe({
+        next: () => alert('Quote denied.'),
+        error: (error) => alert('Error denying quote: ' + (error?.error?.message || 'Unknown error'))
+      });
   }
 
   deleteQuote(quoteId: string): void {

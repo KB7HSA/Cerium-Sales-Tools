@@ -102,10 +102,10 @@
       </div>
     } @else {
       <div class="divide-y divide-gray-200 dark:divide-gray-700">
-        @for (quote of getFilteredQuotes(); track quote.id) {
+        @for (quote of getFilteredQuotes(); track getQuoteId(quote)) {
           <div class="p-6 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
             <!-- Quote Header -->
-            <div class="flex items-start justify-between cursor-pointer" (click)="toggleExpanded(quote.id)">
+            <div class="flex items-start justify-between cursor-pointer" (click)="toggleExpanded(getQuoteId(quote))">
               <div class="flex-1">
                 <div class="flex items-center gap-3 mb-2">
                   <h3 class="text-lg font-semibold text-gray-900 dark:text-white">{{ quote.customerName }}</h3>

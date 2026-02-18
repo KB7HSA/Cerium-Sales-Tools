@@ -1,0 +1,51 @@
+{
+  "name": "Test Backup Service",
+  "description": "Complete backup and recovery solution",
+  "imageUrl": "https://example.com/backup.jpg",
+  "category": "backup",
+  "setupFee": 1000,
+  "setupFeeCost": 500,
+  "setupFeeMargin": 20,
+  "features": [
+    "Daily backups",
+    "Versioning",
+    "Point-in-time recovery",
+    "Encryption"
+  ],
+  "serviceLevels": [
+    {
+      "name": "Basic",
+      "basePrice": 500,
+      "baseCost": 250,
+      "marginPercent": 50,
+      "pricingUnit": "per-server",
+      "displayOrder": 0,
+      "options": [
+        {
+          "name": "5GB Storage",
+          "description": "5GB monthly storage",
+          "monthlyPrice": 50,
+          "monthlyCost": 25,
+          "marginPercent": 50
+        }
+      ]
+    },
+    {
+      "name": "Enterprise",
+      "basePrice": 2000,
+      "baseCost": 900,
+      "marginPercent": 55,
+      "pricingUnit": "per-server",
+      "displayOrder": 1,
+      "options": [
+        {
+          "name": "Unlimited Storage",
+          "description": "Unlimited monthly storage",
+          "monthlyPrice": 300,
+          "monthlyCost": 120,
+          "marginPercent": 60
+        }
+      ]
+    }
+  ]
+}
