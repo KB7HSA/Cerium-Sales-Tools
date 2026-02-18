@@ -116,6 +116,14 @@ export class QuoteService {
     }
   }
 
+  updateQuote(id: string, updates: Partial<Quote>): void {
+    const quotes = this.quotesSubject.value;
+    const index = quotes.findIndex(q => q.id === id);
+    if (index === -1) return;
+    quotes[index] = { ...quotes[index], ...updates };
+    this.saveQuotes(quotes);
+  }
+
   deleteQuote(id: string): void {
     const quotes = this.quotesSubject.value.filter(q => q.id !== id);
     this.saveQuotes(quotes);

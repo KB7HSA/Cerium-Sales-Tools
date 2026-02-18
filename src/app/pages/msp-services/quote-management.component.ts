@@ -16,6 +16,8 @@ export class QuoteManagementComponent implements OnInit {
   activeTab: 'all' | 'pending' | 'approved' | 'denied' = 'all';
   expandedQuoteId: string | null = null;
   laborSectionFilters: Record<string, string> = {};
+  editingQuoteId: string | null = null;
+  quoteDrafts: Record<string, Quote> = {};
 
   constructor(public quoteService: QuoteService) {}
 
@@ -45,6 +47,70 @@ export class QuoteManagementComponent implements OnInit {
 
   toggleExpanded(quoteId: string): void {
     this.expandedQuoteId = this.expandedQuoteId === quoteId ? null : quoteId;
+  }
+
+  startEditQuote(quote: Quote): void {
+    if (quote.status !== 'pending') return;
+    this.editingQuoteId = quote.id;
+    this.quoteDrafts[quote.id] = JSON.parse(JSON.stringify(quote)) as Quote;
+  }
+
+  cancelEditQuote(quoteId: string): void {
+    if (this.editingQuoteId === quoteId) {
+      this.editingQuoteId = null;
+    }
+    delete this.quoteDrafts[quoteId];
+  }
+
+  saveEditQuote(quote: Quote): void {
+    const draft = this.quoteDrafts[quote.id];
+    if (!draft) return;
+
+    if (!draft.customerName.trim()) {
+      alert('Customer name is required.');
+      return;
+    }
+
+    const updates: Partial<Quote> = {
+      customerName: draft.customerName.trim(),
+      notes: draft.notes?.trim() || ''
+    };
+
+    if (quote.type === 'msp') {
+      updates.numberOfUsers = this.toNumber(draft.numberOfUsers);
+      updates.durationMonths = this.toNumber(draft.durationMonths);
+      updates.monthlyPrice = this.toNumber(draft.monthlyPrice);
+      updates.basePricePerUnit = this.toNumber(draft.basePricePerUnit ?? 0);
+      updates.professionalServicesPrice = this.toNumber(draft.professionalServicesPrice ?? 0);
+      updates.setupFee = this.toNumber(draft.setupFee);
+      updates.discountAmount = this.toNumber(draft.discountAmount);
+      updates.perUnitTotal = this.toNumber(draft.perUnitTotal ?? 0);
+      updates.addOnPerUnitTotal = this.toNumber(draft.addOnPerUnitTotal ?? 0);
+      updates.addOnMonthlyTotal = this.toNumber(draft.addOnMonthlyTotal ?? 0);
+      updates.addOnOneTimeTotal = this.toNumber(draft.addOnOneTimeTotal ?? 0);
+      updates.totalPrice = this.toNumber(draft.totalPrice);
+      updates.selectedOptions = (draft.selectedOptions || []).map(option => ({
+        ...option,
+        monthlyPrice: this.toNumber(option.monthlyPrice),
+        name: option.name?.trim() || option.name
+      }));
+    } else {
+      updates.totalHours = this.toNumber(draft.totalHours ?? 0);
+      updates.totalPrice = this.toNumber(draft.totalPrice);
+      updates.workItems = (draft.workItems || []).map(item => ({
+        ...item,
+        name: item.name?.trim() || item.name,
+        switchCount: this.toNumber(item.switchCount),
+        hoursPerSwitch: this.toNumber(item.hoursPerSwitch),
+        ratePerHour: this.toNumber(item.ratePerHour),
+        lineHours: this.toNumber(item.lineHours),
+        lineTotal: this.toNumber(item.lineTotal)
+      }));
+    }
+
+    this.quoteService.updateQuote(quote.id, updates);
+    this.cancelEditQuote(quote.id);
+    alert('Quote updated successfully.');
   }
 
   setLaborSectionFilter(quoteId: string, section: string): void {
@@ -133,5 +199,39 @@ export class QuoteManagementComponent implements OnInit {
 
   getPendingValue(): number {
     return this.quoteService.getPendingQuotes().reduce((sum, q) => sum + q.totalPrice, 0);
+  }
+
+  updateSelectedOptionField(quoteId: string, index: number, field: 'name' | 'monthlyPrice' | 'pricingUnit', value: string | number): void {
+    const draft = this.quoteDrafts[quoteId];
+    if (!draft || !draft.selectedOptions || !draft.selectedOptions[index]) return;
+    if (field === 'monthlyPrice') {
+      draft.selectedOptions[index].monthlyPrice = this.toNumber(value);
+    } else {
+      draft.selectedOptions[index][field] = String(value);
+    }
+  }
+
+  updateLaborItemField(
+    quoteId: string,
+    index: number,
+    field: 'name' | 'section' | 'unitOfMeasure' | 'switchCount' | 'hoursPerSwitch' | 'ratePerHour'
+    ,
+    value: string | number
+  ): void {
+    const draft = this.quoteDrafts[quoteId];
+    if (!draft || !draft.workItems || !draft.workItems[index]) return;
+    const item = draft.workItems[index];
+    if (field === 'switchCount' || field === 'hoursPerSwitch' || field === 'ratePerHour') {
+      (item as any)[field] = this.toNumber(value);
+      item.lineHours = this.toNumber(item.switchCount) * this.toNumber(item.hoursPerSwitch);
+      item.lineTotal = this.toNumber(item.lineHours) * this.toNumber(item.ratePerHour);
+      return;
+    }
+    (item as any)[field] = String(value);
+  }
+
+  private toNumber(value: number | string | undefined): number {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
   }
 }

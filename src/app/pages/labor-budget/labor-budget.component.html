@@ -24,52 +24,7 @@
 
   <!-- Split layout: solution list on the left, details on the right -->
   <div class="grid grid-cols-1 gap-6 xl:grid-cols-12">
-    <aside class="space-y-6 xl:col-span-3">
-      <!-- Solution selector -->
-      <div class="rounded-lg bg-white dark:bg-gray-800 p-6 shadow">
-        <div class="flex items-center justify-between">
-          <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Solutions</h2>
-          <button
-            type="button"
-            (click)="addSolution()"
-            class="rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700"
-          >
-            Add Solution
-          </button>
-        </div>
-        <div class="mt-4 space-y-2">
-          @for (solution of solutions; track solution.id) {
-            <button
-              type="button"
-              (click)="selectSolution(solution)"
-              class="flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-sm transition-colors"
-              [class.border-blue-500]="solution.id === selectedSolutionId"
-              [class.bg-blue-50]="solution.id === selectedSolutionId"
-              [class.dark:bg-blue-900/20]="solution.id === selectedSolutionId"
-              [class.border-gray-200]="solution.id !== selectedSolutionId"
-              [class.dark:border-gray-700]="solution.id !== selectedSolutionId"
-            >
-              <div>
-                <p class="font-semibold text-gray-900 dark:text-white">{{ solution.name }}</p>
-                <p class="text-xs text-gray-500 dark:text-gray-400">{{ solution.items.length }} item(s)</p>
-              </div>
-              <button
-                type="button"
-                (click)="$event.stopPropagation(); deleteSolution(solution)"
-                class="text-xs font-semibold text-red-600 hover:text-red-700 dark:text-red-400"
-              >
-                Remove
-              </button>
-            </button>
-          }
-          @if (solutions.length === 0) {
-            <p class="text-sm text-gray-500 dark:text-gray-400">Add a solution to start.</p>
-          }
-        </div>
-      </div>
-    </aside>
-
-    <main class="space-y-6 xl:col-span-6">
+    <main class="space-y-6 xl:col-span-8">
       <!-- Quote metadata -->
       <div class="rounded-lg bg-white dark:bg-gray-800 p-6 shadow">
         <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Quote Details</h2>
@@ -409,7 +364,50 @@
       </div>
     </main>
 
-    <aside class="space-y-6 xl:col-span-3">
+    <aside class="space-y-6 xl:col-span-4">
+      <!-- Solution selector -->
+      <div class="rounded-lg bg-white dark:bg-gray-800 p-6 shadow">
+        <div class="flex items-center justify-between">
+          <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Solutions</h2>
+          <button
+            type="button"
+            (click)="addSolution()"
+            class="rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700"
+          >
+            Add Solution
+          </button>
+        </div>
+        <div class="mt-4 space-y-2">
+          @for (solution of solutions; track solution.id) {
+            <button
+              type="button"
+              (click)="selectSolution(solution)"
+              class="flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-sm transition-colors"
+              [class.border-blue-500]="solution.id === selectedSolutionId"
+              [class.bg-blue-50]="solution.id === selectedSolutionId"
+              [class.dark:bg-blue-900/20]="solution.id === selectedSolutionId"
+              [class.border-gray-200]="solution.id !== selectedSolutionId"
+              [class.dark:border-gray-700]="solution.id !== selectedSolutionId"
+            >
+              <div>
+                <p class="font-semibold text-gray-900 dark:text-white">{{ solution.name }}</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400">{{ solution.items.length }} item(s)</p>
+              </div>
+              <button
+                type="button"
+                (click)="$event.stopPropagation(); deleteSolution(solution)"
+                class="text-xs font-semibold text-red-600 hover:text-red-700 dark:text-red-400"
+              >
+                Remove
+              </button>
+            </button>
+          }
+          @if (solutions.length === 0) {
+            <p class="text-sm text-gray-500 dark:text-gray-400">Add a solution to start.</p>
+          }
+        </div>
+      </div>
+
       <div class="rounded-lg bg-white dark:bg-gray-800 p-6 shadow">
         <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Rollup Summary</h2>
         @if (selectedSolution) {

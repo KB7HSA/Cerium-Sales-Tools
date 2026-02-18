@@ -137,6 +137,161 @@
             <!-- Expanded Details -->
             @if (expandedQuoteId === quote.id) {
               <div class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-600">
+                @if (quote.status === 'pending') {
+                  <div class="mb-6 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                    <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                      <p class="text-sm font-semibold text-gray-700 dark:text-gray-300">Pending Quote Edits</p>
+                      @if (editingQuoteId !== quote.id) {
+                        <button
+                          type="button"
+                          (click)="startEditQuote(quote)"
+                          class="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-100"
+                        >
+                          Edit Pending Quote
+                        </button>
+                      } @else {
+                        <div class="flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            (click)="saveEditQuote(quote)"
+                            class="rounded-lg bg-green-600 px-3 py-2 text-xs font-semibold text-white hover:bg-green-700"
+                          >
+                            Save Changes
+                          </button>
+                          <button
+                            type="button"
+                            (click)="cancelEditQuote(quote.id)"
+                            class="rounded-lg border border-gray-300 px-3 py-2 text-xs font-semibold text-gray-700 dark:border-gray-600 dark:text-gray-200"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      }
+                    </div>
+
+                    @if (editingQuoteId === quote.id) {
+                      <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+                        <div>
+                          <label class="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">Customer Name</label>
+                          <input
+                            [(ngModel)]="quoteDrafts[quote.id].customerName"
+                            type="text"
+                            class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-white"
+                          />
+                        </div>
+                        <div>
+                          <label class="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">Notes</label>
+                          <input
+                            [(ngModel)]="quoteDrafts[quote.id].notes"
+                            type="text"
+                            class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-white"
+                          />
+                        </div>
+                        @if (quote.type === 'msp') {
+                          <div>
+                            <label class="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">Users</label>
+                            <input
+                              [(ngModel)]="quoteDrafts[quote.id].numberOfUsers"
+                              type="number"
+                              min="0"
+                              class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-white"
+                            />
+                          </div>
+                          <div>
+                            <label class="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">Duration (months)</label>
+                            <input
+                              [(ngModel)]="quoteDrafts[quote.id].durationMonths"
+                              type="number"
+                              min="0"
+                              class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-white"
+                            />
+                          </div>
+                          <div>
+                            <label class="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">Monthly Price</label>
+                            <input
+                              [(ngModel)]="quoteDrafts[quote.id].monthlyPrice"
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-white"
+                            />
+                          </div>
+                          <div>
+                            <label class="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">Base Price (per unit)</label>
+                            <input
+                              [(ngModel)]="quoteDrafts[quote.id].basePricePerUnit"
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-white"
+                            />
+                          </div>
+                          <div>
+                            <label class="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">Professional Services (per unit)</label>
+                            <input
+                              [(ngModel)]="quoteDrafts[quote.id].professionalServicesPrice"
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-white"
+                            />
+                          </div>
+                          <div>
+                            <label class="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">Setup Fee</label>
+                            <input
+                              [(ngModel)]="quoteDrafts[quote.id].setupFee"
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-white"
+                            />
+                          </div>
+                          <div>
+                            <label class="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">Discount</label>
+                            <input
+                              [(ngModel)]="quoteDrafts[quote.id].discountAmount"
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-white"
+                            />
+                          </div>
+                          <div class="md:col-span-2">
+                            <label class="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">Total Price</label>
+                            <input
+                              [(ngModel)]="quoteDrafts[quote.id].totalPrice"
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-white"
+                            />
+                          </div>
+                        } @else {
+                          <div>
+                            <label class="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">Total Hours</label>
+                            <input
+                              [(ngModel)]="quoteDrafts[quote.id].totalHours"
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-white"
+                            />
+                          </div>
+                          <div>
+                            <label class="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">Total Price</label>
+                            <input
+                              [(ngModel)]="quoteDrafts[quote.id].totalPrice"
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-white"
+                            />
+                          </div>
+                        }
+                      </div>
+                    }
+                  </div>
+                }
                 @if (quote.type === 'msp') {
                   <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                     <div>
@@ -194,13 +349,42 @@
                   @if (quote.selectedOptions && quote.selectedOptions.length > 0) {
                     <div class="mb-6 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
                       <p class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Selected Add-ons</p>
-                      <ul class="space-y-1 text-sm text-gray-600 dark:text-gray-400">
-                        @for (option of quote.selectedOptions; track option.id) {
-                          <li>
-                            • {{ option.name }} (+${{ option.monthlyPrice }}{{ quote.pricingUnitLabel || '' }})
-                          </li>
-                        }
-                      </ul>
+                      @if (editingQuoteId === quote.id) {
+                        <div class="space-y-3">
+                          @for (option of quoteDrafts[quote.id].selectedOptions; track option.id; let optionIndex = $index) {
+                            <div class="grid grid-cols-1 gap-2 md:grid-cols-3">
+                              <input
+                                [ngModel]="option.name"
+                                (ngModelChange)="updateSelectedOptionField(quote.id, optionIndex, 'name', $event)"
+                                type="text"
+                                class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-white"
+                              />
+                              <input
+                                [ngModel]="option.monthlyPrice"
+                                (ngModelChange)="updateSelectedOptionField(quote.id, optionIndex, 'monthlyPrice', $event)"
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-white"
+                              />
+                              <input
+                                [ngModel]="option.pricingUnit"
+                                (ngModelChange)="updateSelectedOptionField(quote.id, optionIndex, 'pricingUnit', $event)"
+                                type="text"
+                                class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-white"
+                              />
+                            </div>
+                          }
+                        </div>
+                      } @else {
+                        <ul class="space-y-1 text-sm text-gray-600 dark:text-gray-400">
+                          @for (option of quote.selectedOptions; track option.id) {
+                            <li>
+                              • {{ option.name }} (+${{ option.monthlyPrice }}{{ quote.pricingUnitLabel || '' }})
+                            </li>
+                          }
+                        </ul>
+                      }
                     </div>
                   }
                 } @else {
@@ -248,28 +432,81 @@
                   @if (quote.workItems && quote.workItems.length > 0) {
                     <div class="mb-6 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
                       <p class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Work Item Breakdown</p>
-                      <div class="space-y-2 text-sm text-gray-600 dark:text-gray-400">
-                        @for (item of getLaborWorkItems(quote); track $index) {
-                          <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                            <div class="flex flex-wrap items-center gap-2">
-                              <span class="font-medium text-gray-900 dark:text-white">{{ item.name }}</span>
-                              @if (item.section) {
-                                <span class="rounded-full bg-gray-100 px-2 py-1 text-xs font-semibold text-gray-700 dark:bg-gray-700 dark:text-gray-200">
-                                  {{ item.section }}
-                                </span>
-                              }
-                              @if (item.referenceArchitecture) {
-                                <span class="rounded-full bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-700 dark:bg-blue-900/40 dark:text-blue-200">
-                                  {{ item.referenceArchitecture }}
-                                </span>
-                              }
+                      @if (editingQuoteId === quote.id) {
+                        <div class="space-y-3">
+                          @for (item of quoteDrafts[quote.id].workItems; track $index; let itemIndex = $index) {
+                            <div class="grid grid-cols-1 gap-2 md:grid-cols-6">
+                              <input
+                                [ngModel]="item.name"
+                                (ngModelChange)="updateLaborItemField(quote.id, itemIndex, 'name', $event)"
+                                type="text"
+                                class="md:col-span-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-white"
+                              />
+                              <input
+                                [ngModel]="item.section"
+                                (ngModelChange)="updateLaborItemField(quote.id, itemIndex, 'section', $event)"
+                                type="text"
+                                class="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-white"
+                              />
+                              <input
+                                [ngModel]="item.unitOfMeasure"
+                                (ngModelChange)="updateLaborItemField(quote.id, itemIndex, 'unitOfMeasure', $event)"
+                                type="text"
+                                class="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-white"
+                              />
+                              <input
+                                [ngModel]="item.switchCount"
+                                (ngModelChange)="updateLaborItemField(quote.id, itemIndex, 'switchCount', $event)"
+                                type="number"
+                                min="0"
+                                class="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-white"
+                              />
+                              <input
+                                [ngModel]="item.hoursPerSwitch"
+                                (ngModelChange)="updateLaborItemField(quote.id, itemIndex, 'hoursPerSwitch', $event)"
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                class="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-white"
+                              />
+                              <input
+                                [ngModel]="item.ratePerHour"
+                                (ngModelChange)="updateLaborItemField(quote.id, itemIndex, 'ratePerHour', $event)"
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                class="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-white"
+                              />
+                              <div class="md:col-span-6 text-xs text-gray-500 dark:text-gray-400">
+                                Line hours: {{ item.lineHours.toFixed(2) }} • Line total: ${{ item.lineTotal.toFixed(2) }}
+                              </div>
                             </div>
-                            <span>{{ item.closetCount }} closets, {{ item.switchCount }} switches</span>
-                            <span>Unit: {{ item.unitOfMeasure || 'Unit' }}</span>
-                            <span>${{ item.lineTotal.toFixed(2) }}</span>
-                          </div>
-                        }
-                      </div>
+                          }
+                        </div>
+                      } @else {
+                        <div class="space-y-2 text-sm text-gray-600 dark:text-gray-400">
+                          @for (item of getLaborWorkItems(quote); track $index) {
+                            <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                              <div class="flex flex-wrap items-center gap-2">
+                                <span class="font-medium text-gray-900 dark:text-white">{{ item.name }}</span>
+                                @if (item.section) {
+                                  <span class="rounded-full bg-gray-100 px-2 py-1 text-xs font-semibold text-gray-700 dark:bg-gray-700 dark:text-gray-200">
+                                    {{ item.section }}
+                                  </span>
+                                }
+                                @if (item.referenceArchitecture) {
+                                  <span class="rounded-full bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-700 dark:bg-blue-900/40 dark:text-blue-200">
+                                    {{ item.referenceArchitecture }}
+                                  </span>
+                                }
+                              </div>
+                              <span>{{ item.closetCount }} closets, {{ item.switchCount }} switches</span>
+                              <span>Unit: {{ item.unitOfMeasure || 'Unit' }}</span>
+                              <span>${{ item.lineTotal.toFixed(2) }}</span>
+                            </div>
+                          }
+                        </div>
+                      }
                     </div>
                   }
                 }
