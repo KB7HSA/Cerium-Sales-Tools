@@ -20,6 +20,26 @@ export interface MSPOffering {
   UpdatedAt?: Date;
   Features?: string[];
   ServiceLevels?: MSPServiceLevel[];
+  AddOns?: MSPAddOn[];
+}
+
+export interface MSPAddOn {
+  Id?: string;
+  OfferingId?: string;
+  Name: string;
+  Description?: string;
+  MonthlyPrice: number;
+  MonthlyCost?: number;
+  MarginPercent?: number;
+  OneTimePrice?: number;
+  OneTimeCost?: number;
+  OneTimeMargin?: number;
+  PricingUnit: string;
+  IsActive?: boolean;
+  IsDefaultSelected?: boolean;
+  DisplayOrder?: number;
+  CreatedAt?: Date;
+  UpdatedAt?: Date;
 }
 
 export interface MSPServiceLevel {
@@ -119,6 +139,19 @@ export class MSPOfferingService {
           }
           
           offering.ServiceLevels = levels || [];
+
+          // Get add-on services
+          const addOnsQuery = `
+            SELECT 
+              Id, OfferingId, Name, Description, MonthlyPrice, MonthlyCost,
+              MarginPercent, OneTimePrice, OneTimeCost, OneTimeMargin,
+              PricingUnit, IsActive, IsDefaultSelected, DisplayOrder
+            FROM dbo.MspOfferingAddOns 
+            WHERE OfferingId = @offeringId AND IsActive = 1
+            ORDER BY DisplayOrder ASC
+          `;
+          const addOns = await executeQuery<any>(addOnsQuery, { offeringId: offering.Id });
+          offering.AddOns = addOns || [];
         }
       }
       
@@ -186,6 +219,19 @@ export class MSPOfferingService {
         }
         
         offering.ServiceLevels = levels || [];
+
+        // Get add-on services
+        const addOnsQuery = `
+          SELECT 
+            Id, OfferingId, Name, Description, MonthlyPrice, MonthlyCost,
+            MarginPercent, OneTimePrice, OneTimeCost, OneTimeMargin,
+            PricingUnit, IsActive, IsDefaultSelected, DisplayOrder
+          FROM dbo.MspOfferingAddOns 
+          WHERE OfferingId = @offeringId AND IsActive = 1
+          ORDER BY DisplayOrder ASC
+        `;
+        const addOns = await executeQuery<any>(addOnsQuery, { offeringId: offering.Id });
+        offering.AddOns = addOns || [];
       }
       
       return offering;
@@ -401,6 +447,58 @@ export class MSPOfferingService {
       }
       
       newOffering.ServiceLevels = levels || [];
+
+      // Now save add-on services
+      const addOns = offering.addOns || offering.AddOns || [];
+      if (Array.isArray(addOns)) {
+        for (let addOnIndex = 0; addOnIndex < addOns.length; addOnIndex++) {
+          const addOn = addOns[addOnIndex];
+          const addOnId = addOn.id || addOn.Id || uuidv4();
+
+          const addOnQuery = `
+            INSERT INTO dbo.MspOfferingAddOns (
+              Id, OfferingId, Name, Description, MonthlyPrice, MonthlyCost,
+              MarginPercent, OneTimePrice, OneTimeCost, OneTimeMargin,
+              PricingUnit, IsActive, IsDefaultSelected, DisplayOrder
+            )
+            VALUES (
+              @id, @offeringId, @name, @description, @monthlyPrice, @monthlyCost,
+              @marginPercent, @oneTimePrice, @oneTimeCost, @oneTimeMargin,
+              @pricingUnit, @isActive, @isDefaultSelected, @displayOrder
+            )
+          `;
+
+          await executeQuery(addOnQuery, {
+            id: addOnId,
+            offeringId,
+            name: addOn.name || addOn.Name || '',
+            description: addOn.description || addOn.Description || null,
+            monthlyPrice: addOn.monthlyPrice || addOn.MonthlyPrice || 0,
+            monthlyCost: addOn.monthlyCost || addOn.MonthlyCost || null,
+            marginPercent: addOn.marginPercent || addOn.MarginPercent || null,
+            oneTimePrice: addOn.oneTimePrice || addOn.OneTimePrice || 0,
+            oneTimeCost: addOn.oneTimeCost || addOn.OneTimeCost || null,
+            oneTimeMargin: addOn.oneTimeMargin || addOn.OneTimeMargin || null,
+            pricingUnit: addOn.pricingUnit || addOn.PricingUnit || 'per-user',
+            isActive: (addOn.isActive !== undefined ? addOn.isActive : (addOn.IsActive !== undefined ? addOn.IsActive : true)) ? 1 : 0,
+            isDefaultSelected: (addOn.isDefaultSelected || addOn.IsDefaultSelected) ? 1 : 0,
+            displayOrder: addOn.displayOrder || addOn.DisplayOrder || addOnIndex
+          });
+        }
+      }
+
+      // Populate add-ons for response
+      const addOnsQuery = `
+        SELECT 
+          Id, OfferingId, Name, Description, MonthlyPrice, MonthlyCost,
+          MarginPercent, OneTimePrice, OneTimeCost, OneTimeMargin,
+          PricingUnit, IsActive, IsDefaultSelected, DisplayOrder
+        FROM dbo.MspOfferingAddOns 
+        WHERE OfferingId = @offeringId 
+        ORDER BY DisplayOrder ASC
+      `;
+      const addOnsForResponse = await executeQuery<any>(addOnsQuery, { offeringId: offeringId });
+      newOffering.AddOns = addOnsForResponse || [];
 
       return newOffering;
     } catch (error) {
@@ -686,6 +784,65 @@ export class MSPOfferingService {
           pricingUnit: updatedOffering.ServiceLevels[0].PricingUnit
         } : null
       });
+
+      // Handle add-ons updates (support both camelCase and PascalCase)
+      const inputAddOns = (updates as any).AddOns || (updates as any).addOns;
+      if (inputAddOns && Array.isArray(inputAddOns)) {
+        console.log('[updateOffering] Processing add-ons:', {
+          count: inputAddOns.length
+        });
+
+        // Delete existing add-ons
+        await executeQuery(`DELETE FROM dbo.MspOfferingAddOns WHERE OfferingId = @offeringId`, { offeringId: id });
+
+        // Insert new add-ons
+        for (let addOnIndex = 0; addOnIndex < inputAddOns.length; addOnIndex++) {
+          const addOn = inputAddOns[addOnIndex];
+          const addOnId = addOn.Id || addOn.id || uuidv4();
+
+          await executeQuery(
+            `INSERT INTO dbo.MspOfferingAddOns (
+              Id, OfferingId, Name, Description, MonthlyPrice, MonthlyCost,
+              MarginPercent, OneTimePrice, OneTimeCost, OneTimeMargin,
+              PricingUnit, IsActive, IsDefaultSelected, DisplayOrder
+            )
+            VALUES (
+              @id, @offeringId, @name, @description, @monthlyPrice, @monthlyCost,
+              @marginPercent, @oneTimePrice, @oneTimeCost, @oneTimeMargin,
+              @pricingUnit, @isActive, @isDefaultSelected, @displayOrder
+            )`,
+            {
+              id: addOnId,
+              offeringId: id,
+              name: addOn.Name || addOn.name || '',
+              description: addOn.Description || addOn.description || null,
+              monthlyPrice: addOn.MonthlyPrice ?? addOn.monthlyPrice ?? 0,
+              monthlyCost: addOn.MonthlyCost ?? addOn.monthlyCost ?? null,
+              marginPercent: addOn.MarginPercent ?? addOn.marginPercent ?? null,
+              oneTimePrice: addOn.OneTimePrice ?? addOn.oneTimePrice ?? 0,
+              oneTimeCost: addOn.OneTimeCost ?? addOn.oneTimeCost ?? null,
+              oneTimeMargin: addOn.OneTimeMargin ?? addOn.oneTimeMargin ?? null,
+              pricingUnit: addOn.PricingUnit || addOn.pricingUnit || 'per-user',
+              isActive: (addOn.IsActive !== undefined ? addOn.IsActive : (addOn.isActive !== undefined ? addOn.isActive : true)) ? 1 : 0,
+              isDefaultSelected: (addOn.IsDefaultSelected || addOn.isDefaultSelected) ? 1 : 0,
+              displayOrder: (addOn.DisplayOrder !== undefined ? addOn.DisplayOrder : addOn.displayOrder) || addOnIndex
+            }
+          );
+        }
+      }
+
+      // Populate add-ons for response
+      const addOnsQueryForResponse = `
+        SELECT 
+          Id, OfferingId, Name, Description, MonthlyPrice, MonthlyCost,
+          MarginPercent, OneTimePrice, OneTimeCost, OneTimeMargin,
+          PricingUnit, IsActive, IsDefaultSelected, DisplayOrder
+        FROM dbo.MspOfferingAddOns 
+        WHERE OfferingId = @offeringId 
+        ORDER BY DisplayOrder ASC
+      `;
+      const addOnsForResponse = await executeQuery<any>(addOnsQueryForResponse, { offeringId: id });
+      updatedOffering.AddOns = addOnsForResponse || [];
 
       return updatedOffering;
     } catch (error) {

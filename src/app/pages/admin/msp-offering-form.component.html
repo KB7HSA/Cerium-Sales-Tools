@@ -552,6 +552,261 @@
         }
       </div>
 
+      <!-- Add-on Services (Offering-level) -->
+      <div class="space-y-6">
+        <div class="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 pb-3">
+          <div>
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Add-on Services</h2>
+            <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Optional services that can be selected during quoting</p>
+          </div>
+          @if (!showAddOnForm) {
+            <button
+              type="button"
+              (click)="toggleAddOnForm()"
+              class="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition-colors"
+            >
+              <svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+              </svg>
+              Add Service
+            </button>
+          }
+        </div>
+
+        <!-- Add-on Form -->
+        @if (showAddOnForm) {
+          <div class="p-5 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg space-y-4">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Service Name *</label>
+                <input
+                  [(ngModel)]="newAddOnName"
+                  name="newAddOnName"
+                  type="text"
+                  placeholder="e.g., 24/7 Premium Support"
+                  class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Unit of Measure</label>
+                <select
+                  [(ngModel)]="newAddOnPricingUnit"
+                  name="newAddOnPricingUnit"
+                  class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                >
+                  @for (unit of pricingUnits; track unit.value) {
+                    <option [value]="unit.value" [disabled]="!unit.enabled">{{ unit.label }}</option>
+                  }
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Description</label>
+              <textarea
+                [(ngModel)]="newAddOnDescription"
+                name="newAddOnDescription"
+                rows="2"
+                placeholder="Brief description of this add-on service"
+                class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              ></textarea>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <!-- Monthly Pricing -->
+              <div class="p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600">
+                <h4 class="text-sm font-semibold text-gray-900 dark:text-white mb-3">Monthly Recurring</h4>
+                <div class="grid grid-cols-1 gap-3">
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Cost</label>
+                    <div class="relative">
+                      <span class="absolute left-4 top-2 text-gray-500 dark:text-gray-400">$</span>
+                      <input
+                        [(ngModel)]="newAddOnMonthlyCost"
+                        (ngModelChange)="updateAddOnMonthlyPrice()"
+                        name="newAddOnMonthlyCost"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="0.00"
+                        class="w-full pl-8 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Margin %</label>
+                    <div class="relative">
+                      <span class="absolute left-4 top-2 text-gray-500 dark:text-gray-400">%</span>
+                      <input
+                        [(ngModel)]="newAddOnMonthlyMargin"
+                        (ngModelChange)="updateAddOnMonthlyPrice()"
+                        name="newAddOnMonthlyMargin"
+                        type="number"
+                        min="0"
+                        step="0.1"
+                        placeholder="0"
+                        class="w-full pl-8 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Price</label>
+                    <div class="relative">
+                      <span class="absolute left-4 top-2 text-gray-500 dark:text-gray-400">$</span>
+                      <input
+                        [value]="newAddOnMonthlyPrice.toFixed(2)"
+                        name="newAddOnMonthlyPriceDisplay"
+                        type="text"
+                        readonly
+                        class="w-full pl-8 pr-4 py-2 border border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-200"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- One-time Pricing -->
+              <div class="p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600">
+                <h4 class="text-sm font-semibold text-gray-900 dark:text-white mb-3">One-time Setup</h4>
+                <div class="grid grid-cols-1 gap-3">
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Cost</label>
+                    <div class="relative">
+                      <span class="absolute left-4 top-2 text-gray-500 dark:text-gray-400">$</span>
+                      <input
+                        [(ngModel)]="newAddOnOneTimeCost"
+                        (ngModelChange)="updateAddOnOneTimePrice()"
+                        name="newAddOnOneTimeCost"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="0.00"
+                        class="w-full pl-8 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Margin %</label>
+                    <div class="relative">
+                      <span class="absolute left-4 top-2 text-gray-500 dark:text-gray-400">%</span>
+                      <input
+                        [(ngModel)]="newAddOnOneTimeMargin"
+                        (ngModelChange)="updateAddOnOneTimePrice()"
+                        name="newAddOnOneTimeMargin"
+                        type="number"
+                        min="0"
+                        step="0.1"
+                        placeholder="0"
+                        class="w-full pl-8 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Price</label>
+                    <div class="relative">
+                      <span class="absolute left-4 top-2 text-gray-500 dark:text-gray-400">$</span>
+                      <input
+                        [value]="newAddOnOneTimePrice.toFixed(2)"
+                        name="newAddOnOneTimePriceDisplay"
+                        type="text"
+                        readonly
+                        class="w-full pl-8 pr-4 py-2 border border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-200"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-3">
+              <input
+                [(ngModel)]="newAddOnIsDefaultSelected"
+                name="newAddOnIsDefaultSelected"
+                type="checkbox"
+                id="defaultSelected"
+                class="w-4 h-4 text-purple-600 bg-gray-100 border-gray-300 rounded focus:ring-purple-500 dark:focus:ring-purple-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+              />
+              <label for="defaultSelected" class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Selected by default in quotes
+              </label>
+            </div>
+
+            <div class="flex items-center gap-2 pt-3 border-t border-gray-200 dark:border-gray-700">
+              <button
+                type="button"
+                (click)="addAddOn()"
+                class="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition-colors"
+              >
+                Add Service
+              </button>
+              <button
+                type="button"
+                (click)="toggleAddOnForm()"
+                class="px-6 py-2 bg-gray-300 hover:bg-gray-400 dark:bg-gray-600 dark:hover:bg-gray-500 text-gray-900 dark:text-white font-semibold rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        }
+
+        <!-- Add-ons List -->
+        @if (addOns.length > 0) {
+          <div class="space-y-3">
+            @for (addOn of addOns; track addOn.id; let i = $index) {
+              <div class="p-4 bg-white dark:bg-gray-800 border border-purple-200 dark:border-purple-800 rounded-lg">
+                <div class="flex items-start justify-between">
+                  <div class="flex-1">
+                    <div class="flex items-center gap-2 mb-2">
+                      <h4 class="text-base font-semibold text-gray-900 dark:text-white">{{ addOn.name }}</h4>
+                      @if (addOn.isDefaultSelected) {
+                        <span class="px-2 py-1 text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300 rounded">
+                          Default
+                        </span>
+                      }
+                    </div>
+                    @if (addOn.description) {
+                      <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">{{ addOn.description }}</p>
+                    }
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                      <div>
+                        <span class="font-medium text-gray-700 dark:text-gray-300">Monthly:</span>
+                        <span class="text-gray-900 dark:text-white ml-2">
+                          ${{ (addOn.monthlyPrice || 0).toFixed(2) }}{{ getPricingUnitLabel(addOn.pricingUnit) }}
+                        </span>
+                      </div>
+                      @if ((addOn.oneTimePrice || 0) > 0) {
+                        <div>
+                          <span class="font-medium text-gray-700 dark:text-gray-300">One-time:</span>
+                          <span class="text-gray-900 dark:text-white ml-2">
+                            ${{ (addOn.oneTimePrice || 0).toFixed(2) }}
+                          </span>
+                        </div>
+                      }
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    (click)="removeAddOn(i)"
+                    class="ml-4 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                    title="Remove add-on"
+                  >
+                    <svg width="1.25em" height="1.25em" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M19 6.41L17.59 5L12 10.59L6.41 5L5 6.41L10.59 12L5 17.59L6.41 19L12 13.41L17.59 19L19 17.59L13.41 12L19 6.41Z" fill="currentColor"></path>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            }
+          </div>
+        } @else {
+          <div class="p-6 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-center">
+            <p class="text-sm text-gray-600 dark:text-gray-400">No add-on services yet. Click "Add Service" to create one.</p>
+          </div>
+        }
+      </div>
+
       <!-- Options/Add-ons -->
       <div class="space-y-6">
         <div class="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 pb-3">

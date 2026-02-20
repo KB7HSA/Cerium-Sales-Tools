@@ -613,6 +613,36 @@ BEGIN
 END
 GO
 
+-- MSP offering add-on services (independent add-ons for the entire offering)
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'MspOfferingAddOns')
+BEGIN
+    CREATE TABLE dbo.MspOfferingAddOns (
+        Id NVARCHAR(64) NOT NULL,
+        OfferingId NVARCHAR(64) NOT NULL,
+        Name NVARCHAR(255) NOT NULL,
+        Description NVARCHAR(MAX) NULL,
+        MonthlyPrice DECIMAL(12,2) NOT NULL DEFAULT 0,
+        MonthlyCost DECIMAL(12,2) NULL,
+        MarginPercent DECIMAL(6,2) NULL,
+        OneTimePrice DECIMAL(12,2) NOT NULL DEFAULT 0,
+        OneTimeCost DECIMAL(12,2) NULL,
+        OneTimeMargin DECIMAL(6,2) NULL,
+        PricingUnit NVARCHAR(50) NOT NULL DEFAULT 'per-user',
+        IsActive BIT NOT NULL DEFAULT 1,
+        IsDefaultSelected BIT NOT NULL DEFAULT 0,
+        DisplayOrder INT NOT NULL DEFAULT 0,
+        CreatedAt DATETIME2(7) NOT NULL DEFAULT GETUTCDATE(),
+        UpdatedAt DATETIME2(7) NOT NULL DEFAULT GETUTCDATE(),
+        CONSTRAINT PK_MspOfferingAddOns PRIMARY KEY CLUSTERED (Id),
+        CONSTRAINT FK_MspOfferingAddOns_Offerings FOREIGN KEY (OfferingId)
+            REFERENCES dbo.MspOfferings(Id) ON DELETE CASCADE
+    );
+
+    CREATE NONCLUSTERED INDEX IX_MspOfferingAddOns_OfferingId ON dbo.MspOfferingAddOns(OfferingId);
+    CREATE NONCLUSTERED INDEX IX_MspOfferingAddOns_IsActive ON dbo.MspOfferingAddOns(IsActive);
+END
+GO
+
 -- ================================================================
 -- QUOTES & PROPOSALS
 -- ================================================================

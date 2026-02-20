@@ -2,7 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, ActivatedRoute, Router } from '@angular/router';
-import { MSPOfferingsService, MSPOffering, MSPOption, MSPServiceLevel, PricingUnit } from '../../shared/services/msp-offerings.service';
+import { MSPOfferingsService, MSPOffering, MSPOption, MSPServiceLevel, MSPAddOn, PricingUnit } from '../../shared/services/msp-offerings.service';
 import { PricingUnitOption, PricingUnitsService } from '../../shared/services/pricing-units.service';
 
 @Component({
@@ -44,6 +44,20 @@ export class MSPOfferingFormComponent implements OnInit {
   levelDrafts: Record<string, MSPServiceLevel> = {};
   editingOptions: Record<string, boolean> = {};
   optionDrafts: Record<string, MSPOption> = {};
+
+  // Add-ons
+  addOns: MSPAddOn[] = [];
+  showAddOnForm = false;
+  newAddOnName: string = '';
+  newAddOnDescription: string = '';
+  newAddOnMonthlyPrice: number = 0;
+  newAddOnMonthlyCost: number = 0;
+  newAddOnMonthlyMargin: number = 0;
+  newAddOnOneTimePrice: number = 0;
+  newAddOnOneTimeCost: number = 0;
+  newAddOnOneTimeMargin: number = 0;
+  newAddOnPricingUnit: PricingUnit = 'per-user';
+  newAddOnIsDefaultSelected: boolean = false;
 
   // New option form
   showLevelForm = false;
@@ -148,6 +162,30 @@ export class MSPOfferingFormComponent implements OnInit {
           });
           
           console.log('[MSPOfferingFormComponent] Normalized service levels:', this.serviceLevels);
+          
+          // Load add-ons
+          const addOns = (offering.addOns || (offering as any).AddOns) ?? [];
+          console.log('[MSPOfferingFormComponent] Add-ons loaded:', addOns);
+          
+          this.addOns = addOns.map((addOn: any) => {
+            const ao = addOn as any;
+            return {
+              id: addOn.id || ao.Id,
+              name: addOn.name || ao.Name || '',
+              description: addOn.description || ao.Description || '',
+              monthlyPrice: addOn.monthlyPrice ?? ao.MonthlyPrice ?? 0,
+              monthlyCost: addOn.monthlyCost ?? ao.MonthlyCost ?? 0,
+              marginPercent: addOn.marginPercent ?? ao.MarginPercent ?? 0,
+              oneTimePrice: addOn.oneTimePrice ?? ao.OneTimePrice ?? 0,
+              oneTimeCost: addOn.oneTimeCost ?? ao.OneTimeCost ?? 0,
+              oneTimeMargin: addOn.oneTimeMargin ?? ao.OneTimeMargin ?? 0,
+              pricingUnit: addOn.pricingUnit || ao.PricingUnit || 'per-user',
+              isActive: addOn.isActive ?? ao.IsActive ?? true,
+              isDefaultSelected: addOn.isDefaultSelected ?? ao.IsDefaultSelected ?? false,
+              displayOrder: addOn.displayOrder ?? ao.DisplayOrder ?? 0
+            };
+          });
+          
           this.selectLevel(this.serviceLevels[0] || null);
         }
       },
@@ -456,7 +494,8 @@ export class MSPOfferingFormComponent implements OnInit {
         setupFeeMargin: this.setupFeeMargin,
         isActive: this.isActive,
         features: this.features,
-        serviceLevels: this.serviceLevels
+        serviceLevels: this.serviceLevels,
+        addOns: this.addOns
       };
 
       console.log('[MSPOfferingFormComponent] Offering data being sent:', {
@@ -556,5 +595,69 @@ export class MSPOfferingFormComponent implements OnInit {
 
   updateSetupFeeFromCost(): void {
     this.setupFee = this.calculatePrice(this.setupFeeCost, this.setupFeeMargin);
+  }
+
+  // Add-on management methods
+  addAddOn(): void {
+    if (!this.newAddOnName.trim()) {
+      this.errorMessage = 'Add-on name is required';
+      return;
+    }
+
+    const monthlyPrice = this.calculatePrice(this.newAddOnMonthlyCost, this.newAddOnMonthlyMargin);
+    const oneTimePrice = this.calculatePrice(this.newAddOnOneTimeCost, this.newAddOnOneTimeMargin);
+
+    const addOn: MSPAddOn = {
+      id: `addon-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      name: this.newAddOnName.trim(),
+      description: this.newAddOnDescription.trim(),
+      monthlyPrice,
+      monthlyCost: this.newAddOnMonthlyCost,
+      marginPercent: this.newAddOnMonthlyMargin,
+      oneTimePrice,
+      oneTimeCost: this.newAddOnOneTimeCost,
+      oneTimeMargin: this.newAddOnOneTimeMargin,
+      pricingUnit: this.newAddOnPricingUnit,
+      isActive: true,
+      isDefaultSelected: this.newAddOnIsDefaultSelected,
+      displayOrder: this.addOns.length
+    };
+
+    this.addOns.push(addOn);
+    this.resetAddOnForm();
+    this.showAddOnForm = false;
+    this.errorMessage = '';
+  }
+
+  removeAddOn(index: number): void {
+    this.addOns.splice(index, 1);
+  }
+
+  toggleAddOnForm(): void {
+    this.showAddOnForm = !this.showAddOnForm;
+    if (this.showAddOnForm) {
+      this.resetAddOnForm();
+    }
+  }
+
+  private resetAddOnForm(): void {
+    this.newAddOnName = '';
+    this.newAddOnDescription = '';
+    this.newAddOnMonthlyPrice = 0;
+    this.newAddOnMonthlyCost = 0;
+    this.newAddOnMonthlyMargin = 0;
+    this.newAddOnOneTimePrice = 0;
+    this.newAddOnOneTimeCost = 0;
+    this.newAddOnOneTimeMargin = 0;
+    this.newAddOnPricingUnit = 'per-user';
+    this.newAddOnIsDefaultSelected = false;
+  }
+
+  updateAddOnMonthlyPrice(): void {
+    this.newAddOnMonthlyPrice = this.calculatePrice(this.newAddOnMonthlyCost, this.newAddOnMonthlyMargin);
+  }
+
+  updateAddOnOneTimePrice(): void {
+    this.newAddOnOneTimePrice = this.calculatePrice(this.newAddOnOneTimeCost, this.newAddOnOneTimeMargin);
   }
 }

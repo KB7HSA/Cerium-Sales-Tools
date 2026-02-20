@@ -4,6 +4,22 @@ import { BehaviorSubject, Observable, tap, catchError } from 'rxjs';
 import { of } from 'rxjs';
 import { environment } from '../../../environments/environment';
 
+export interface MSPAddOn {
+  id: string;
+  name: string;
+  description: string;
+  monthlyPrice: number;
+  monthlyCost?: number;
+  marginPercent?: number;
+  oneTimePrice?: number;
+  oneTimeCost?: number;
+  oneTimeMargin?: number;
+  pricingUnit: PricingUnit;
+  isActive?: boolean;
+  isDefaultSelected?: boolean;
+  displayOrder?: number;
+}
+
 export interface MSPOption {
   id: string;
   name: string;
@@ -55,6 +71,8 @@ export interface MSPOffering {
   features: string[];
   options?: MSPOption[];
   serviceLevels: MSPServiceLevel[];
+  addOns?: MSPAddOn[];
+  AddOns?: MSPAddOn[];
   isActive: boolean;
   IsActive?: boolean;
   createdDate: string;
