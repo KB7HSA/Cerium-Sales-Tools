@@ -82,13 +82,31 @@ export class AppSidebarComponent {
         { name: "Settings", path: "/admin/settings", pro: false },
       ],
     },
-    
-    
     {
       icon: `<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M12 3.5C7.30558 3.5 3.5 7.30558 3.5 12C3.5 14.1526 4.3002 16.1184 5.61936 17.616C6.17279 15.3096 8.24852 13.5955 10.7246 13.5955H13.2746C15.7509 13.5955 17.8268 15.31 18.38 17.6167C19.6996 16.119 20.5 14.153 20.5 12C20.5 7.30558 16.6944 3.5 12 3.5ZM17.0246 18.8566V18.8455C17.0246 16.7744 15.3457 15.0955 13.2746 15.0955H10.7246C8.65354 15.0955 6.97461 16.7744 6.97461 18.8455V18.856C8.38223 19.8895 10.1198 20.5 12 20.5C13.8798 20.5 15.6171 19.8898 17.0246 18.8566ZM2 12C2 6.47715 6.47715 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12ZM11.9991 7.25C10.8847 7.25 9.98126 8.15342 9.98126 9.26784C9.98126 10.3823 10.8847 11.2857 11.9991 11.2857C13.1135 11.2857 14.0169 10.3823 14.0169 9.26784C14.0169 8.15342 13.1135 7.25 11.9991 7.25ZM8.48126 9.26784C8.48126 7.32499 10.0563 5.75 11.9991 5.75C13.9419 5.75 15.5169 7.32499 15.5169 9.26784C15.5169 11.2107 13.9419 12.7857 11.9991 12.7857C10.0563 12.7857 8.48126 11.2107 8.48126 9.26784Z" fill="currentColor"></path></svg>`,
       name: "User Profile",
       path: "/profile",
     },
+  ];
+
+  // Support nav items (empty - items moved to "To Be Developed")
+  supportItems: NavItem[] = [];
+
+  openSubmenu: string | null | number = null;
+  subMenuHeights: { [key: string]: number } = {};
+  @ViewChildren('subMenu') subMenuRefs!: QueryList<ElementRef>;
+
+  readonly isExpanded$: Observable<boolean>;
+  readonly isMobileOpen$: Observable<boolean>;
+  readonly isHovered$: Observable<boolean>;
+
+  private subscription: Subscription = new Subscription();
+
+  // Items grouped under "Others" for sidebar (empty - moved to "To Be Developed")
+  othersItems: NavItem[] = [];
+
+  // Items grouped under "To Be Developed" for sidebar
+  toBeDevelopedItems: NavItem[] = [
     {
       icon: `<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M11.665 3.75618C11.8762 3.65061 12.1247 3.65061 12.3358 3.75618L18.7807 6.97853L12.3358 10.2009C12.1247 10.3064 11.8762 10.3064 11.665 10.2009L5.22014 6.97853L11.665 3.75618ZM4.29297 8.19199V16.0946C4.29297 16.3787 4.45347 16.6384 4.70757 16.7654L11.25 20.0365V11.6512C11.1631 11.6205 11.0777 11.5843 10.9942 11.5425L4.29297 8.19199ZM12.75 20.037L19.2933 16.7654C19.5474 16.6384 19.7079 16.3787 19.7079 16.0946V8.19199L13.0066 11.5425C12.9229 11.5844 12.8372 11.6207 12.75 11.6515V20.037ZM13.0066 2.41453C12.3732 2.09783 11.6277 2.09783 10.9942 2.41453L4.03676 5.89316C3.27449 6.27429 2.79297 7.05339 2.79297 7.90563V16.0946C2.79297 16.9468 3.27448 17.7259 4.03676 18.1071L10.9942 21.5857L11.3296 20.9149L10.9942 21.5857C11.6277 21.9024 12.3732 21.9024 13.0066 21.5857L19.9641 18.1071C20.7264 17.7259 21.2079 16.9468 21.2079 16.0946V7.90563C21.2079 7.05339 20.7264 6.27429 19.9641 5.89316L13.0066 2.41453Z" fill="currentColor"></path></svg>`,
       name: "UI Elements",
@@ -131,13 +149,9 @@ export class AppSidebarComponent {
         },
       ],
     },
-  ];
-
-  // Support nav items
-  supportItems: NavItem[] = [
     {
       icon: `<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 17.0518V12C20 7.58174 16.4183 4 12 4C7.58168 4 3.99994 7.58174 3.99994 12V17.0518M19.9998 14.041V19.75C19.9998 20.5784 19.3282 21.25 18.4998 21.25H13.9998M6.5 18.75H5.5C4.67157 18.75 4 18.0784 4 17.25V13.75C4 12.9216 4.67157 12.25 5.5 12.25H6.5C7.32843 12.25 8 12.9216 8 13.75V17.25C8 18.0784 7.32843 18.75 6.5 18.75ZM17.4999 18.75H18.4999C19.3284 18.75 19.9999 18.0784 19.9999 17.25V13.75C19.9999 12.9216 19.3284 12.25 18.4999 12.25H17.4999C16.6715 12.25 15.9999 12.9216 15.9999 13.75V17.25C15.9999 18.0784 16.6715 18.75 17.4999 18.75Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>`,
-      name: "Support Ticket",
+      name: "Support Tickets",
       new: true,
       subItems: [
         { name: "Ticket List", path: "/support-tickets" },
@@ -152,20 +166,6 @@ export class AppSidebarComponent {
         { name: "Details", path: "/inbox-details" },
       ],
     },
-  ];
-
-  openSubmenu: string | null | number = null;
-  subMenuHeights: { [key: string]: number } = {};
-  @ViewChildren('subMenu') subMenuRefs!: QueryList<ElementRef>;
-
-  readonly isExpanded$: Observable<boolean>;
-  readonly isMobileOpen$: Observable<boolean>;
-  readonly isHovered$: Observable<boolean>;
-
-  private subscription: Subscription = new Subscription();
-
-  // Items grouped under "Others" for sidebar
-  othersItems: NavItem[] = [
     {
       icon: `<svg height="1em" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="1em"><path d="M18.75 2.42969V7.70424M9.42261 13.673C10.0259 14.4307 10.9562 14.9164 12 14.9164C13.0438 14.9164 13.9742 14.4307 14.5775 13.673M20 12V18.5C20 19.3284 19.3284 20 18.5 20H5.5C4.67157 20 4 19.3284 4 18.5V12C4 7.58172 7.58172 4 12 4C16.4183 4 20 7.58172 20 12Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M18.75 2.42969V2.43969M9.50391 9.875L9.50391 9.885M14.4961 9.875V9.885" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>`,
       name: "AI Assistant",
@@ -184,7 +184,7 @@ export class AppSidebarComponent {
     },
     {
       icon: `<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2.31641 4H3.49696C4.24468 4 4.87822 4.55068 4.98234 5.29112L5.13429 6.37161M5.13429 6.37161L6.23641 14.2089C6.34053 14.9493 6.97407 15.5 7.72179 15.5L17.0833 15.5C17.6803 15.5 18.2205 15.146 18.4587 14.5986L21.126 8.47023C21.5572 7.4795 20.8312 6.37161 19.7507 6.37161H5.13429Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M7.7832 19.5H7.7932M16.3203 19.5H16.3303" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>`,
-      name: "E-commerce",
+      name: "E-Commerce",
       new: true,
       subItems: [
         { name: "Products", path: "/products-list" },
@@ -326,9 +326,10 @@ export class AppSidebarComponent {
     }).unsubscribe();
   }
 
-  private setActiveMenuFromRoute(currentUrl: string) {
+  private setActiveMenuFromRoute(currentUrl:string) {
     const menuGroups = [
       { items: this.navItems, prefix: 'main' },
+      { items: this.toBeDevelopedItems, prefix: 'tobedeveloped' },
       { items: this.othersItems, prefix: 'others' },
       { items: this.supportItems, prefix: 'support' },
     ];

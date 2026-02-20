@@ -11,12 +11,12 @@ export const sqlConfig = {
   password: process.env.DB_PASSWORD || 'q7$fbVEXk3SJghD',
   database: process.env.DB_NAME || 'CeriumSalesTools',
   options: {
-    encrypt: process.env.DB_ENCRYPT === 'true', // Azure requires encryption
-    trustServerCertificate: process.env.DB_TRUST_CERT === 'true',
+    encrypt: true, // Azure requires encryption
+    trustServerCertificate: true,
     enableKeepAlive: true,
     keepAliveInitialDelaySeconds: 30,
-    connectionTimeout: 30000,
-    requestTimeout: 30000,
+    connectionTimeout: 60000, // Increased to 60 seconds
+    requestTimeout: 60000,
   },
   pool: {
     min: parseInt(process.env.DB_POOL_MIN || '2', 10),
