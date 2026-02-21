@@ -1,8 +1,11 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy, ElementRef, ViewChild, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
+import { Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 import { QuoteService, Quote } from '../../shared/services/quote.service';
+import { ExportSchemaService, ExportSchema } from '../../shared/services/export-schema.service';
 
 @Component({
   selector: 'app-quote-management',
@@ -11,15 +14,26 @@ import { QuoteService, Quote } from '../../shared/services/quote.service';
   templateUrl: './quote-management.component.html',
   styleUrl: './quote-management.component.css',
 })
-export class QuoteManagementComponent implements OnInit {
+export class QuoteManagementComponent implements OnInit, OnDestroy {
+  private destroy$ = new Subject<void>();
+  
   quotes: Quote[] = [];
   activeTab: 'all' | 'pending' | 'approved' | 'denied' = 'all';
   expandedQuoteId: string | null = null;
   laborSectionFilters: Record<string, string> = {};
   editingQuoteId: string | null = null;
   quoteDrafts: Record<string, Quote> = {};
+  
+  // Export functionality
+  showExportDropdown = false;
+  exportDropdownQuoteId: string | null = null;
+  availableExportSchemas: ExportSchema[] = [];
+  @ViewChild('exportDropdown') exportDropdownRef!: ElementRef;
 
-  constructor(public quoteService: QuoteService) {}
+  constructor(
+    public quoteService: QuoteService,
+    private exportSchemaService: ExportSchemaService
+  ) {}
 
   getQuoteId(quote: Quote): string {
     return (quote.id || quote.Id) || '';
@@ -29,6 +43,195 @@ export class QuoteManagementComponent implements OnInit {
     this.quoteService.quotes$.subscribe(quotes => {
       this.quotes = quotes;
     });
+    
+    // Load export schemas
+    this.exportSchemaService.schemas$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(schemas => {
+        this.availableExportSchemas = schemas;
+      });
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  // Click outside to close export dropdown
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent): void {
+    if (this.exportDropdownRef && !this.exportDropdownRef.nativeElement.contains(event.target)) {
+      this.showExportDropdown = false;
+    }
+    // Close per-quote dropdown when clicking outside
+    this.exportDropdownQuoteId = null;
+  }
+
+  toggleExportDropdown(): void {
+    this.showExportDropdown = !this.showExportDropdown;
+  }
+
+  toggleQuoteExportDropdown(quoteId: string): void {
+    if (this.exportDropdownQuoteId === quoteId) {
+      this.exportDropdownQuoteId = null;
+    } else {
+      this.exportDropdownQuoteId = quoteId;
+    }
+  }
+
+  getExportSchemasForQuote(quote: Quote): ExportSchema[] {
+    const quoteType = quote.type || (quote as any).QuoteType || 'msp';
+    return this.availableExportSchemas.filter(s => 
+      s.QuoteType.toLowerCase() === quoteType.toLowerCase()
+    );
+  }
+
+  exportSingleQuote(quote: Quote, schema: ExportSchema): void {
+    this.exportDropdownQuoteId = null;
+    
+    const columns = schema.columns || [];
+    if (columns.length === 0) {
+      alert('Export schema has no columns configured');
+      return;
+    }
+
+    // Headers
+    const headers = columns.map(col => this.escapeCSV(col.ExportHeader));
+    const csvRows = [headers.join(',')];
+
+    // Data row for single quote
+    const row = columns.map(col => {
+      const value = this.getQuoteFieldValue(quote, col.SourceField, col.FormatType);
+      return this.escapeCSV(value);
+    });
+    csvRows.push(row.join(','));
+
+    // Create and download file
+    const csvContent = csvRows.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const customerName = (quote.customerName || 'quote').replace(/[^a-zA-Z0-9]/g, '_');
+    const filename = `quote_${customerName}_${new Date().toISOString().split('T')[0]}.csv`;
+    
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  getQuoteTypeLabel(quoteType: string): string {
+    const types: Record<string, string> = {
+      'msp': 'MSP Service',
+      'labor': 'Labor Budget'
+    };
+    return types[quoteType] || quoteType;
+  }
+
+  exportQuotes(schema: ExportSchema): void {
+    this.showExportDropdown = false;
+    
+    const quotes = this.getFilteredQuotes();
+    if (quotes.length === 0) {
+      alert('No quotes to export');
+      return;
+    }
+
+    // Filter quotes by quote type if schema specifies one
+    const filteredQuotes = quotes.filter(q => {
+      const quoteType = q.type || (q as any).QuoteType || 'msp';
+      return quoteType.toLowerCase() === schema.QuoteType.toLowerCase();
+    });
+
+    if (filteredQuotes.length === 0) {
+      alert(`No ${this.getQuoteTypeLabel(schema.QuoteType)} quotes to export`);
+      return;
+    }
+
+    // Build CSV content
+    const columns = schema.columns || [];
+    if (columns.length === 0) {
+      alert('Export schema has no columns configured');
+      return;
+    }
+
+    // Headers
+    const headers = columns.map(col => this.escapeCSV(col.ExportHeader));
+    const csvRows = [headers.join(',')];
+
+    // Data rows
+    for (const quote of filteredQuotes) {
+      const row = columns.map(col => {
+        const value = this.getQuoteFieldValue(quote, col.SourceField, col.FormatType);
+        return this.escapeCSV(value);
+      });
+      csvRows.push(row.join(','));
+    }
+
+    // Create and download file
+    const csvContent = csvRows.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const filename = `quotes_${schema.QuoteType}_${new Date().toISOString().split('T')[0]}.csv`;
+    
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  getQuoteFieldValue(quote: Quote, field: string, formatType?: string): string {
+    // Handle both camelCase and PascalCase
+    const value = (quote as any)[field] ?? (quote as any)[this.toCamelCase(field)];
+    
+    if (value === null || value === undefined) {
+      return '';
+    }
+
+    // Format based on type
+    switch (formatType) {
+      case 'currency':
+        return typeof value === 'number' ? `$${value.toFixed(2)}` : String(value);
+      case 'date':
+        if (value instanceof Date) {
+          return value.toLocaleDateString();
+        }
+        if (typeof value === 'string' && value.includes('T')) {
+          return new Date(value).toLocaleDateString();
+        }
+        return String(value);
+      case 'datetime':
+        if (value instanceof Date) {
+          return value.toLocaleString();
+        }
+        if (typeof value === 'string' && value.includes('T')) {
+          return new Date(value).toLocaleString();
+        }
+        return String(value);
+      case 'boolean':
+        return value ? 'Yes' : 'No';
+      case 'number':
+        return String(value);
+      default:
+        return String(value);
+    }
+  }
+
+  toCamelCase(str: string): string {
+    return str.charAt(0).toLowerCase() + str.slice(1);
+  }
+
+  escapeCSV(value: string): string {
+    if (value === null || value === undefined) {
+      return '';
+    }
+    const str = String(value);
+    // If contains comma, newline, or quote, wrap in quotes and escape internal quotes
+    if (str.includes(',') || str.includes('\n') || str.includes('"')) {
+      return `"${str.replace(/"/g, '""')}"`;
+    }
+    return str;
   }
 
   getFilteredQuotes(): Quote[] {
@@ -187,9 +390,33 @@ export class QuoteManagementComponent implements OnInit {
 
   deleteQuote(quoteId: string): void {
     if (confirm('Are you sure you want to delete this quote?')) {
-      this.quoteService.deleteQuote(quoteId);
-      alert('Quote deleted successfully!');
+      this.quoteService.deleteQuote(quoteId).subscribe({
+        next: () => {
+          alert('Quote deleted successfully!');
+          // Collapse expanded view if this quote was expanded
+          if (this.expandedQuoteId === quoteId) {
+            this.expandedQuoteId = null;
+          }
+        },
+        error: (error) => alert('Error deleting quote: ' + (error?.error?.message || 'Unknown error'))
+      });
     }
+  }
+
+  /**
+   * Generate Statement of Work (SOW) document for approved quote
+   * TODO: Integrate with Word template when provided
+   */
+  generateSOW(quote: Quote): void {
+    console.log('[QuoteManagement] Generating SOW for quote:', quote.id);
+    
+    // For now, show a placeholder message until Word template is integrated
+    alert(`SOW Generation coming soon!\n\nQuote ID: ${quote.id}\nCustomer: ${quote.customerName}\nService: ${quote.service}\nTotal: $${quote.totalPrice.toFixed(2)}\n\nWord template integration pending.`);
+    
+    // TODO: When template is ready, implement:
+    // 1. Load Word template from assets or backend
+    // 2. Replace template placeholders with quote data
+    // 3. Generate and download the Word document
   }
 
   getStatusBadgeColor(status: string): string {

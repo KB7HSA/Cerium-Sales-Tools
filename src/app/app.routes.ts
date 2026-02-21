@@ -90,6 +90,7 @@ import { LaborBudgetComponent } from './pages/labor-budget/labor-budget.componen
 import { LaborBudgetWizardComponent } from './pages/labor-budget-wizard/labor-budget-wizard.component';
 import { LaborBudgetAdminComponent } from './pages/admin/labor-budget-admin.component';
 import { AdminSettingsComponent } from './pages/admin/admin-settings.component';
+import { ExportSchemaAdminComponent } from './pages/admin/export-schema-admin.component';
 import { SowGeneratorComponent } from './pages/sow-generator/sow-generator.component';
 import { CustomerManagementComponent } from './pages/admin/customer-management.component';
 
@@ -337,6 +338,11 @@ export const routes: Routes = [
         path:'admin/settings',
         component:AdminSettingsComponent,
         title:'Admin Settings | Cerium Sales Tools'
+      },
+      {
+        path:'admin/export-schemas',
+        component:ExportSchemaAdminComponent,
+        title:'Export Schema Configuration | Cerium Sales Tools'
       },
       {
         path:'blank',

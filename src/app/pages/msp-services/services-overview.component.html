@@ -41,28 +41,8 @@
           }
         </div>
 
-        @if (getDefaultLevel(service); as level) {
-          <div class="mb-4 rounded-lg border border-gray-200 dark:border-gray-700 p-3 text-sm text-gray-600 dark:text-gray-400">
-            <p class="font-medium text-gray-900 dark:text-white mb-2">Per-unit pricing</p>
-            <div class="mt-2 space-y-1">
-              <div class="flex items-center justify-between">
-                <span>License</span>
-                <span class="font-semibold text-gray-900 dark:text-white">${{ $any(level.basePrice || 0).toFixed(2) }}{{ getPricingUnitLabel(level.pricingUnit) }}</span>
-              </div>
-              <div class="flex items-center justify-between">
-                <span>Professional Services</span>
-                <span class="font-semibold text-gray-900 dark:text-white">${{ $any(level.professionalServicesPrice || 0).toFixed(2) }}{{ getPricingUnitLabel(level.pricingUnit) }}</span>
-              </div>
-              <div class="flex items-center justify-between border-t border-gray-200 dark:border-gray-600 pt-1">
-                <span>Total per unit</span>
-                <span class="font-semibold text-gray-900 dark:text-white">${{ $any(getPerUnitTotal(level) || 0).toFixed(2) }}{{ getPricingUnitLabel(level.pricingUnit) }}</span>
-              </div>
-            </div>
-          </div>
-        }
-
         <!-- Service Levels Summary -->
-        @if (service.serviceLevels && service.serviceLevels.length > 1) {
+        @if (service.serviceLevels && service.serviceLevels.length > 0) {
           <div class="mb-4 rounded-lg border border-blue-200 dark:border-blue-700/50 bg-blue-50 dark:bg-blue-900/20 p-3">
             <p class="font-medium text-blue-900 dark:text-blue-200 text-sm mb-2">Available Service Levels ({{ service.serviceLevels.length }})</p>
             <div class="space-y-1 text-xs">

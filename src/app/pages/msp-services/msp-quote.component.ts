@@ -139,7 +139,8 @@ export class MspQuoteComponent implements OnInit, OnDestroy {
     // Calculate total for duration
     let totalWithDuration = monthlyPrice * this.durationMonths;
 
-    // Apply annual discount if opted in and duration is 12 months or more
+    // Apply discount if opted in and duration is 12 months or more
+    // (Shown as "annual" for 12-23 months, "multi-year" for 24+ months)
     if (this.showAnnualDiscount && this.durationMonths >= 12) {
       this.discountAmount = totalWithDuration * (this.annualDiscount / 100);
       totalWithDuration -= this.discountAmount;

@@ -108,36 +108,43 @@ export class QuoteService {
 
   /**
    * Normalize quote object to consistent field names
+   * Maps PascalCase database fields to camelCase frontend fields
    */
-  private normalizeQuote(quote: Quote): Quote {
+  private normalizeQuote(quote: any): Quote {
     return {
       id: quote.id || quote.Id,
-      type: (quote.type as any) || 'msp',
-      customerName: quote.customerName || '',
-      notes: quote.notes || '',
-      service: quote.service || '',
-      serviceLevelName: quote.serviceLevelName,
-      pricingUnitLabel: quote.pricingUnitLabel,
-      basePricePerUnit: quote.basePricePerUnit,
-      professionalServicesPrice: quote.professionalServicesPrice,
-      professionalServicesTotal: quote.professionalServicesTotal,
-      perUnitTotal: quote.perUnitTotal,
-      selectedOptions: quote.selectedOptions || [],
-      addOnMonthlyTotal: quote.addOnMonthlyTotal,
-      addOnOneTimeTotal: quote.addOnOneTimeTotal,
-      addOnPerUnitTotal: quote.addOnPerUnitTotal,
+      type: (quote.type || quote.QuoteType || 'msp') as any,
+      customerName: quote.customerName || quote.CustomerName || '',
+      notes: quote.notes || quote.Notes || '',
+      service: quote.service || quote.ServiceName || '',
+      serviceLevelName: quote.serviceLevelName || quote.ServiceLevelName,
+      pricingUnitLabel: quote.pricingUnitLabel || quote.PricingUnitLabel,
+      basePricePerUnit: quote.basePricePerUnit ?? quote.BasePricePerUnit,
+      professionalServicesPrice: quote.professionalServicesPrice ?? quote.ProfessionalServicesPrice,
+      professionalServicesTotal: quote.professionalServicesTotal ?? quote.ProfessionalServicesTotal,
+      perUnitTotal: quote.perUnitTotal ?? quote.PerUnitTotal,
+      selectedOptions: (quote.selectedOptions || []).map((opt: any) => ({
+        id: opt.id || opt.Id || opt.OptionId || opt.optionId,
+        name: opt.name || opt.Name,
+        monthlyPrice: opt.monthlyPrice ?? opt.MonthlyPrice ?? 0,
+        pricingUnit: opt.pricingUnit || opt.PricingUnit || 'per-user'
+      })),
+      addOnMonthlyTotal: quote.addOnMonthlyTotal ?? quote.AddOnMonthlyTotal,
+      addOnOneTimeTotal: quote.addOnOneTimeTotal ?? quote.AddOnOneTimeTotal,
+      addOnPerUnitTotal: quote.addOnPerUnitTotal ?? quote.AddOnPerUnitTotal,
       workItems: quote.workItems || [],
       laborGroups: quote.laborGroups || [],
-      totalHours: quote.totalHours,
-      numberOfUsers: quote.numberOfUsers || 1,
-      durationMonths: quote.durationMonths || 1,
-      monthlyPrice: quote.monthlyPrice || 0,
-      totalPrice: quote.totalPrice || 0,
-      setupFee: quote.setupFee || 0,
-      discountAmount: quote.discountAmount || 0,
+      totalHours: quote.totalHours ?? quote.TotalHours,
+      numberOfUsers: quote.numberOfUsers || quote.NumberOfUsers || 1,
+      durationMonths: quote.durationMonths || quote.DurationMonths || 1,
+      monthlyPrice: quote.monthlyPrice ?? quote.MonthlyPrice ?? 0,
+      totalPrice: quote.totalPrice ?? quote.TotalPrice ?? 0,
+      setupFee: quote.setupFee ?? quote.SetupFee ?? 0,
+      discountAmount: quote.discountAmount ?? quote.DiscountAmount ?? 0,
+      annualDiscountApplied: quote.annualDiscountApplied ?? quote.AnnualDiscountApplied ?? false,
       status: ((quote.status || quote.Status || 'pending') as any),
-      createdDate: quote.createdDate,
-      createdTime: quote.createdTime
+      createdDate: quote.createdDate || quote.CreatedDate,
+      createdTime: quote.createdTime || quote.CreatedTime
     };
   }
 
@@ -164,13 +171,29 @@ export class QuoteService {
       CustomerName: quote.customerName,
       Notes: quote.notes || '',
       ServiceName: quote.service,
+      ServiceLevelName: quote.serviceLevelName || null,
+      PricingUnitLabel: quote.pricingUnitLabel || null,
+      BasePricePerUnit: quote.basePricePerUnit ?? 0,
+      ProfessionalServicesPrice: quote.professionalServicesPrice ?? 0,
+      ProfessionalServicesTotal: quote.professionalServicesTotal ?? 0,
+      PerUnitTotal: quote.perUnitTotal ?? 0,
+      AddOnMonthlyTotal: quote.addOnMonthlyTotal ?? 0,
+      AddOnOneTimeTotal: quote.addOnOneTimeTotal ?? 0,
+      AddOnPerUnitTotal: quote.addOnPerUnitTotal ?? 0,
       NumberOfUsers: quote.numberOfUsers,
       DurationMonths: quote.durationMonths,
       MonthlyPrice: quote.monthlyPrice,
       TotalPrice: quote.totalPrice,
-      SetupFee: quote.setupFee,
-      DiscountAmount: quote.discountAmount,
-      Status: quote.status || 'draft'
+      SetupFee: quote.setupFee ?? 0,
+      DiscountAmount: quote.discountAmount ?? 0,
+      AnnualDiscountApplied: quote.annualDiscountApplied ?? false,
+      TotalHours: quote.totalHours ?? 0,
+      Status: quote.status || 'pending',
+      CreatedDate: quote.createdDate || new Date().toLocaleDateString(),
+      CreatedTime: quote.createdTime || new Date().toLocaleTimeString(),
+      selectedOptions: quote.selectedOptions || [],
+      workItems: quote.workItems || [],
+      laborGroups: quote.laborGroups || []
     };
 
     console.log('[QuoteService] Creating quote:', payload);
@@ -199,16 +222,30 @@ export class QuoteService {
     const quoteId = id || updates.id || updates.Id;
     const payload: any = {};
 
-    if (updates.customerName) payload.CustomerName = updates.customerName;
-    if (updates.notes) payload.Notes = updates.notes;
-    if (updates.service) payload.ServiceName = updates.service;
-    if (updates.status) payload.Status = updates.status;
+    if (updates.customerName !== undefined) payload.CustomerName = updates.customerName;
+    if (updates.notes !== undefined) payload.Notes = updates.notes;
+    if (updates.service !== undefined) payload.ServiceName = updates.service;
+    if (updates.serviceLevelName !== undefined) payload.ServiceLevelName = updates.serviceLevelName;
+    if (updates.pricingUnitLabel !== undefined) payload.PricingUnitLabel = updates.pricingUnitLabel;
+    if (updates.basePricePerUnit !== undefined) payload.BasePricePerUnit = updates.basePricePerUnit;
+    if (updates.professionalServicesPrice !== undefined) payload.ProfessionalServicesPrice = updates.professionalServicesPrice;
+    if (updates.professionalServicesTotal !== undefined) payload.ProfessionalServicesTotal = updates.professionalServicesTotal;
+    if (updates.perUnitTotal !== undefined) payload.PerUnitTotal = updates.perUnitTotal;
+    if (updates.addOnMonthlyTotal !== undefined) payload.AddOnMonthlyTotal = updates.addOnMonthlyTotal;
+    if (updates.addOnOneTimeTotal !== undefined) payload.AddOnOneTimeTotal = updates.addOnOneTimeTotal;
+    if (updates.addOnPerUnitTotal !== undefined) payload.AddOnPerUnitTotal = updates.addOnPerUnitTotal;
+    if (updates.status !== undefined) payload.Status = updates.status;
     if (updates.numberOfUsers !== undefined) payload.NumberOfUsers = updates.numberOfUsers;
     if (updates.durationMonths !== undefined) payload.DurationMonths = updates.durationMonths;
     if (updates.monthlyPrice !== undefined) payload.MonthlyPrice = updates.monthlyPrice;
     if (updates.totalPrice !== undefined) payload.TotalPrice = updates.totalPrice;
     if (updates.setupFee !== undefined) payload.SetupFee = updates.setupFee;
     if (updates.discountAmount !== undefined) payload.DiscountAmount = updates.discountAmount;
+    if (updates.annualDiscountApplied !== undefined) payload.AnnualDiscountApplied = updates.annualDiscountApplied;
+    if (updates.totalHours !== undefined) payload.TotalHours = updates.totalHours;
+    if (updates.selectedOptions !== undefined) payload.selectedOptions = updates.selectedOptions;
+    if (updates.workItems !== undefined) payload.workItems = updates.workItems;
+    if (updates.laborGroups !== undefined) payload.laborGroups = updates.laborGroups;
 
     console.log('[QuoteService] Updating quote:', quoteId, payload);
     return this.http.put<ApiResponse<Quote>>(`${this.apiUrl}/${quoteId}`, payload)
@@ -235,7 +272,15 @@ export class QuoteService {
    * Update quote status
    */
   updateQuoteStatus(id: string, status: 'approved' | 'denied' | 'accepted' | 'rejected'): Observable<ApiResponse<Quote>> {
-    return this.updateQuote(id, { status });
+    // Map frontend status values to backend accepted values
+    const statusMap: Record<string, 'accepted' | 'rejected'> = {
+      'approved': 'accepted',
+      'denied': 'rejected',
+      'accepted': 'accepted',
+      'rejected': 'rejected'
+    };
+    const mappedStatus = statusMap[status];
+    return this.updateQuote(id, { status: mappedStatus });
   }
 
   /**
@@ -269,17 +314,23 @@ export class QuoteService {
   }
 
   /**
-   * Get approved quotes
+   * Get approved quotes (checks both 'approved' and 'accepted' statuses)
    */
   getApprovedQuotes(): Quote[] {
-    return this.quotesSubject.value.filter(q => (q.status === 'approved' || q.Status === 'approved'));
+    return this.quotesSubject.value.filter(q => 
+      q.status === 'approved' || q.Status === 'approved' ||
+      q.status === 'accepted' || q.Status === 'accepted'
+    );
   }
 
   /**
-   * Get denied quotes
+   * Get denied quotes (checks both 'denied' and 'rejected' statuses)
    */
   getDeniedQuotes(): Quote[] {
-    return this.quotesSubject.value.filter(q => (q.status === 'denied' || q.Status === 'denied'));
+    return this.quotesSubject.value.filter(q => 
+      q.status === 'denied' || q.Status === 'denied' ||
+      q.status === 'rejected' || q.Status === 'rejected'
+    );
   }
 
   /**

@@ -4,6 +4,7 @@ import { CustomerService } from '../services/customer.service';
 import { QuoteService } from '../services/quote.service';
 import { LaborItemService } from '../services/labor-item.service';
 import { MSPOfferingService } from '../services/msp-offering.service';
+import { ExportSchemaService } from '../services/export-schema.service';
 
 const router = Router();
 
@@ -310,6 +311,101 @@ router.post('/msp-offerings/:id/toggle-status', async (req: Request, res: Respon
     }
   } catch (error: any) {
     sendError(res, 'Failed to toggle MSP offering status', 500, error.message);
+  }
+});
+
+// ===== EXPORT SCHEMAS =====
+
+router.get('/export-schemas', async (req: Request, res: Response) => {
+  try {
+    const schemas = await ExportSchemaService.getAllSchemas();
+    sendSuccess(res, schemas, 200, 'Export schemas retrieved successfully');
+  } catch (error: any) {
+    sendError(res, 'Failed to retrieve export schemas', 500, error.message);
+  }
+});
+
+router.get('/export-schemas/quote-types', (req: Request, res: Response) => {
+  try {
+    const quoteTypes = ExportSchemaService.getQuoteTypes();
+    sendSuccess(res, quoteTypes, 200, 'Quote types retrieved successfully');
+  } catch (error: any) {
+    sendError(res, 'Failed to retrieve quote types', 500, error.message);
+  }
+});
+
+router.get('/export-schemas/available-fields', (req: Request, res: Response) => {
+  try {
+    const fields = ExportSchemaService.getAvailableFields();
+    sendSuccess(res, fields, 200, 'Available fields retrieved successfully');
+  } catch (error: any) {
+    sendError(res, 'Failed to retrieve available fields', 500, error.message);
+  }
+});
+
+router.get('/export-schemas/by-type/:quoteType', async (req: Request, res: Response) => {
+  try {
+    const schemas = await ExportSchemaService.getSchemasByQuoteType(req.params.quoteType);
+    sendSuccess(res, schemas, 200, 'Export schemas retrieved successfully');
+  } catch (error: any) {
+    sendError(res, 'Failed to retrieve export schemas', 500, error.message);
+  }
+});
+
+router.get('/export-schemas/default/:quoteType', async (req: Request, res: Response) => {
+  try {
+    const schema = await ExportSchemaService.getDefaultSchema(req.params.quoteType);
+    if (!schema) {
+      sendError(res, 'No default schema found for this quote type', 404);
+    } else {
+      sendSuccess(res, schema, 200, 'Default export schema retrieved successfully');
+    }
+  } catch (error: any) {
+    sendError(res, 'Failed to retrieve default export schema', 500, error.message);
+  }
+});
+
+router.get('/export-schemas/:id', async (req: Request, res: Response) => {
+  try {
+    const schema = await ExportSchemaService.getSchemaById(req.params.id);
+    if (!schema) {
+      sendError(res, 'Export schema not found', 404);
+    } else {
+      sendSuccess(res, schema, 200, 'Export schema retrieved successfully');
+    }
+  } catch (error: any) {
+    sendError(res, 'Failed to retrieve export schema', 500, error.message);
+  }
+});
+
+router.post('/export-schemas', async (req: Request, res: Response) => {
+  try {
+    const newSchema = await ExportSchemaService.createSchema(req.body);
+    sendSuccess(res, newSchema, 201, 'Export schema created successfully');
+  } catch (error: any) {
+    sendError(res, 'Failed to create export schema', 500, error.message);
+  }
+});
+
+router.put('/export-schemas/:id', async (req: Request, res: Response) => {
+  try {
+    const updated = await ExportSchemaService.updateSchema(req.params.id, req.body);
+    if (!updated) {
+      sendError(res, 'Export schema not found', 404);
+    } else {
+      sendSuccess(res, updated, 200, 'Export schema updated successfully');
+    }
+  } catch (error: any) {
+    sendError(res, 'Failed to update export schema', 500, error.message);
+  }
+});
+
+router.delete('/export-schemas/:id', async (req: Request, res: Response) => {
+  try {
+    await ExportSchemaService.deleteSchema(req.params.id);
+    sendSuccess(res, { id: req.params.id }, 200, 'Export schema deleted successfully');
+  } catch (error: any) {
+    sendError(res, 'Failed to delete export schema', 500, error.message);
   }
 });
 
