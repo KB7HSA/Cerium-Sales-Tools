@@ -93,6 +93,11 @@ import { AdminSettingsComponent } from './pages/admin/admin-settings.component';
 import { ExportSchemaAdminComponent } from './pages/admin/export-schema-admin.component';
 import { SowGeneratorComponent } from './pages/sow-generator/sow-generator.component';
 import { CustomerManagementComponent } from './pages/admin/customer-management.component';
+import { AssessmentGeneratorComponent } from './pages/assessments/assessment-generator.component';
+import { AssessmentTypesComponent } from './pages/admin/assessment-types.component';
+import { ERateComponent } from './pages/e-rate/e-rate.component';
+import { ERateDashboardComponent } from './pages/e-rate/e-rate-dashboard.component';
+import { ERateSettingsComponent } from './pages/admin/erate-settings.component';
 
 export const routes: Routes = [
   {
@@ -291,7 +296,22 @@ export const routes: Routes = [
       {
         path:'sow-generator',
         component:SowGeneratorComponent,
-        title:'SOW Generator | Cerium Sales Tools'
+        title:'SOW Documents | Cerium Sales Tools'
+      },
+      {
+        path:'assessment-generator',
+        component:AssessmentGeneratorComponent,
+        title:'Assessment Generator | Cerium Sales Tools'
+      },
+      {
+        path:'e-rate',
+        component:ERateComponent,
+        title:'E-Rate Opportunities | Cerium Sales Tools'
+      },
+      {
+        path:'e-rate/dashboard',
+        component:ERateDashboardComponent,
+        title:'E-Rate Dashboard | Cerium Sales Tools'
       },
       // Admin
       {
@@ -343,6 +363,16 @@ export const routes: Routes = [
         path:'admin/export-schemas',
         component:ExportSchemaAdminComponent,
         title:'Export Schema Configuration | Cerium Sales Tools'
+      },
+      {
+        path:'admin/assessment-types',
+        component:AssessmentTypesComponent,
+        title:'Assessment Types | Cerium Sales Tools'
+      },
+      {
+        path:'admin/erate-settings',
+        component:ERateSettingsComponent,
+        title:'E-Rate Settings | Cerium Sales Tools'
       },
       {
         path:'blank',

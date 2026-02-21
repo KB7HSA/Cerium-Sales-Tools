@@ -22,7 +22,7 @@ app.use(helmet());
 app.use(cors({
   origin: serverConfig.corsOrigin,
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
 }));
 
 // Body parsing

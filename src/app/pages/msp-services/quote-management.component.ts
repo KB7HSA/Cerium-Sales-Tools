@@ -6,6 +6,7 @@ import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { QuoteService, Quote } from '../../shared/services/quote.service';
 import { ExportSchemaService, ExportSchema } from '../../shared/services/export-schema.service';
+import { SowGeneratorService } from '../../shared/services/sow-generator.service';
 
 @Component({
   selector: 'app-quote-management',
@@ -29,10 +30,14 @@ export class QuoteManagementComponent implements OnInit, OnDestroy {
   exportDropdownQuoteId: string | null = null;
   availableExportSchemas: ExportSchema[] = [];
   @ViewChild('exportDropdown') exportDropdownRef!: ElementRef;
+  
+  // SOW generation
+  sowGenerating = false;
 
   constructor(
     public quoteService: QuoteService,
-    private exportSchemaService: ExportSchemaService
+    private exportSchemaService: ExportSchemaService,
+    private sowGeneratorService: SowGeneratorService
   ) {}
 
   getQuoteId(quote: Quote): string {
@@ -405,18 +410,32 @@ export class QuoteManagementComponent implements OnInit, OnDestroy {
 
   /**
    * Generate Statement of Work (SOW) document for approved quote
-   * TODO: Integrate with Word template when provided
+   * Uses the Word template and saves to database
    */
-  generateSOW(quote: Quote): void {
-    console.log('[QuoteManagement] Generating SOW for quote:', quote.id);
+  async generateSOW(quote: Quote): Promise<void> {
+    console.log('[QuoteManagement] Generating SOW for quote:', quote.id || quote.Id);
     
-    // For now, show a placeholder message until Word template is integrated
-    alert(`SOW Generation coming soon!\n\nQuote ID: ${quote.id}\nCustomer: ${quote.customerName}\nService: ${quote.service}\nTotal: $${quote.totalPrice.toFixed(2)}\n\nWord template integration pending.`);
+    if (this.sowGenerating) {
+      alert('SOW generation already in progress. Please wait.');
+      return;
+    }
     
-    // TODO: When template is ready, implement:
-    // 1. Load Word template from assets or backend
-    // 2. Replace template placeholders with quote data
-    // 3. Generate and download the Word document
+    this.sowGenerating = true;
+    
+    try {
+      // Generate and save to database
+      const savedDoc = await this.sowGeneratorService.generateAndSaveSOW(quote);
+      
+      // Also download the file
+      await this.sowGeneratorService.downloadSOW(quote);
+      
+      alert(`SOW document generated successfully!\n\nFile: ${savedDoc.FileName}\n\nThe document has been downloaded and saved to the SOW Documents list.`);
+    } catch (error: any) {
+      console.error('[QuoteManagement] SOW generation error:', error);
+      alert(`Failed to generate SOW: ${error.message || 'Unknown error'}\n\nPlease ensure the Word template file exists at templates/Template-Druva M365 MSP Agreement.docx`);
+    } finally {
+      this.sowGenerating = false;
+    }
   }
 
   getStatusBadgeColor(status: string): string {

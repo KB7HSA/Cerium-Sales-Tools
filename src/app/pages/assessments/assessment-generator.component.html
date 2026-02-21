@@ -1,0 +1,388 @@
+<div class="space-y-6">
+  <!-- Header -->
+  <div class="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-white/[0.03]">
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <h2 class="text-xl font-semibold text-gray-800 dark:text-white/90">Assessment Generator</h2>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Generate professional assessment documents with AI-powered content</p>
+      </div>
+      <button 
+        (click)="loadData()"
+        class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-all hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">
+        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+        </svg>
+        Refresh
+      </button>
+    </div>
+  </div>
+
+  <!-- Messages -->
+  <div *ngIf="errorMessage" class="rounded-lg bg-red-50 p-4 text-sm text-red-700 dark:bg-red-900/20 dark:text-red-400">
+    {{ errorMessage }}
+    <button (click)="errorMessage = ''" class="ml-2 font-medium hover:underline">Dismiss</button>
+  </div>
+  <div *ngIf="successMessage" class="rounded-lg bg-green-50 p-4 text-sm text-green-700 dark:bg-green-900/20 dark:text-green-400">
+    {{ successMessage }}
+    <button (click)="successMessage = ''" class="ml-2 font-medium hover:underline">Dismiss</button>
+  </div>
+
+  <!-- Tabs -->
+  <div class="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
+    <div class="flex border-b border-gray-200 dark:border-gray-800">
+      <button
+        (click)="activeTab = 'generate'"
+        class="flex-1 px-6 py-4 text-sm font-medium transition-colors"
+        [ngClass]="activeTab === 'generate' 
+          ? 'border-b-2 border-brand-500 text-brand-600 dark:text-brand-400' 
+          : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'">
+        <div class="flex items-center justify-center gap-2">
+          <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+          </svg>
+          Generate New
+        </div>
+      </button>
+      <button
+        (click)="activeTab = 'history'"
+        class="flex-1 px-6 py-4 text-sm font-medium transition-colors"
+        [ngClass]="activeTab === 'history' 
+          ? 'border-b-2 border-brand-500 text-brand-600 dark:text-brand-400' 
+          : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'">
+        <div class="flex items-center justify-center gap-2">
+          <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          Assessment History
+          <span *ngIf="generatedAssessments.length" class="rounded-full bg-gray-100 px-2 py-0.5 text-xs dark:bg-gray-800">
+            {{ generatedAssessments.length }}
+          </span>
+        </div>
+      </button>
+    </div>
+
+    <!-- Generate Tab -->
+    <div *ngIf="activeTab === 'generate'" class="p-6">
+      <div class="grid gap-6 lg:grid-cols-2">
+        <!-- Left Column - Selection -->
+        <div class="space-y-6">
+          <!-- Reference Architecture Selection (Practice Area) - Top Level -->
+          <div>
+            <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Practice Area *</label>
+            <select
+              [(ngModel)]="selectedArchitectureId"
+              (ngModelChange)="onArchitectureChange()"
+              class="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white">
+              <option value="">Select a practice area...</option>
+              <option *ngFor="let arch of referenceArchitectures" [value]="arch.Id">
+                {{ arch.Name }}
+              </option>
+            </select>
+            <p *ngIf="selectedArchitecture?.Description" class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+              {{ selectedArchitecture?.Description }}
+            </p>
+          </div>
+
+          <!-- Assessment Type Selection - Filtered by Practice Area -->
+          <div>
+            <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Assessment Type *</label>
+            <select
+              [(ngModel)]="selectedTypeId"
+              (ngModelChange)="onTypeChange()"
+              [disabled]="!selectedArchitectureId"
+              class="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white disabled:bg-gray-100 disabled:text-gray-500 dark:disabled:bg-gray-900 dark:disabled:text-gray-600">
+              <option value="">{{ selectedArchitectureId ? 'Select an assessment type...' : 'Select a practice area first...' }}</option>
+              <option *ngFor="let type of getAvailableAssessmentTypes()" [value]="type.Id">
+                {{ type.Name }}
+              </option>
+            </select>
+            <p *ngIf="selectedType?.Description" class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+              {{ selectedType?.Description }}
+            </p>
+          </div>
+
+          <!-- Customer Information -->
+          <div class="rounded-lg border border-gray-200 p-4 dark:border-gray-700">
+            <h3 class="mb-4 font-medium text-gray-800 dark:text-white/90">Customer Information</h3>
+            <div class="space-y-4">
+              <div>
+                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Customer *</label>
+                <select
+                  [(ngModel)]="selectedCustomerId"
+                  (ngModelChange)="onCustomerChange()"
+                  class="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white">
+                  <option value="">Select a customer...</option>
+                  <option *ngFor="let customer of customers" [value]="customer.id || customer.Id">
+                    {{ customer.name || customer.Name }}
+                  </option>
+                </select>
+              </div>
+              <div class="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Contact Name</label>
+                  <input
+                    type="text"
+                    [(ngModel)]="customerContact"
+                    placeholder="e.g., John Smith"
+                    class="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white">
+                </div>
+                <div>
+                  <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Contact Email</label>
+                  <input
+                    type="email"
+                    [(ngModel)]="customerEmail"
+                    placeholder="e.g., john&#64;acme.com"
+                    class="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Assessment Title -->
+          <div>
+            <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Assessment Title *</label>
+            <input
+              type="text"
+              [(ngModel)]="assessmentTitle"
+              placeholder="Auto-generated from selections..."
+              class="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white">
+          </div>
+
+          <!-- Additional Notes -->
+          <div>
+            <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Additional Notes</label>
+            <textarea
+              [(ngModel)]="customNotes"
+              rows="3"
+              placeholder="Any specific requirements or context for this assessment..."
+              class="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white"></textarea>
+          </div>
+        </div>
+
+        <!-- Right Column - Preview -->
+        <div class="space-y-6">
+          <!-- Preview Card -->
+          <div class="rounded-lg border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800/50">
+            <div class="border-b border-gray-200 px-4 py-3 dark:border-gray-700">
+              <h3 class="font-medium text-gray-800 dark:text-white/90">Assessment Preview</h3>
+            </div>
+            <div class="p-4 space-y-4">
+              <div *ngIf="selectedType; else noTypeSelected">
+                <div class="mb-4">
+                  <span class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Assessment Type</span>
+                  <p class="mt-1 font-medium text-gray-800 dark:text-white/90">{{ selectedType.Name }}</p>
+                </div>
+
+                <div *ngIf="selectedArchitecture" class="mb-4">
+                  <span class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Reference Architecture</span>
+                  <p class="mt-1 font-medium text-gray-800 dark:text-white/90">{{ selectedArchitecture.Name }}</p>
+                </div>
+
+                <div *ngIf="customerName" class="mb-4">
+                  <span class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Customer</span>
+                  <p class="mt-1 font-medium text-gray-800 dark:text-white/90">{{ customerName }}</p>
+                </div>
+
+                <div class="mb-4">
+                  <span class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Estimated Pricing</span>
+                  <p class="mt-1">
+                    <span class="text-lg font-semibold text-gray-800 dark:text-white/90">
+                      {{ formatCurrency((selectedType.DefaultHours || 0) * (selectedType.DefaultRate || 175)) }}
+                    </span>
+                    <span class="text-sm text-gray-500 dark:text-gray-400">
+                      ({{ selectedType.DefaultHours }} hrs &#64; {{ formatCurrency(selectedType.DefaultRate) }}/hr)
+                    </span>
+                  </p>
+                </div>
+
+                <!-- AI Content Generation -->
+                <div *ngIf="customerName && selectedArchitecture" class="mb-4 border-t border-gray-200 pt-4 dark:border-gray-700">
+                  <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">AI-Powered Content</span>
+                    <button
+                      (click)="generateAIContent()"
+                      [disabled]="isGeneratingAI"
+                      class="inline-flex items-center gap-1.5 rounded-lg bg-purple-500 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-purple-600 disabled:opacity-50">
+                      <svg *ngIf="!isGeneratingAI" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
+                      <svg *ngIf="isGeneratingAI" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                      </svg>
+                      {{ isGeneratingAI ? 'Generating...' : 'Generate with AI' }}
+                    </button>
+                  </div>
+                  
+                  <!-- AI Generated Content Preview -->
+                  <div *ngIf="showAIPreview && aiGeneratedOverview" class="mt-3 rounded-lg border border-purple-200 bg-purple-50 p-3 dark:border-purple-800 dark:bg-purple-900/20">
+                    <div class="flex items-center gap-2 mb-2">
+                      <svg class="h-4 w-4 text-purple-600 dark:text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                      </svg>
+                      <span class="text-xs font-medium text-purple-700 dark:text-purple-300">AI Generated Overview</span>
+                    </div>
+                    <p class="text-sm text-purple-800 dark:text-purple-200 whitespace-pre-line">{{ aiGeneratedOverview }}</p>
+                    <button
+                      (click)="useAIContent()"
+                      class="mt-3 w-full rounded-lg bg-purple-600 py-2 text-xs font-medium text-white transition-colors hover:bg-purple-700">
+                      Use This Content
+                    </button>
+                  </div>
+                </div>
+
+                <div *ngIf="!showAIPreview && selectedType.OverviewTemplate && customerName && selectedArchitecture" class="mt-4">
+                  <span class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Overview Preview</span>
+                  <p class="mt-2 text-sm text-gray-600 dark:text-gray-300 whitespace-pre-line">
+                    {{ aiGeneratedOverview || processTemplate(selectedType.OverviewTemplate) }}
+                  </p>
+                </div>
+              </div>
+
+              <ng-template #noTypeSelected>
+                <div class="py-8 text-center">
+                  <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Select an assessment type to see preview</p>
+                </div>
+              </ng-template>
+            </div>
+          </div>
+
+          <!-- Generate Button -->
+          <button
+            (click)="generateAssessment()"
+            [disabled]="!canGenerate() || isGenerating"
+            class="w-full rounded-lg bg-brand-500 py-3 text-sm font-medium text-white transition-colors hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-50">
+            <span *ngIf="!isGenerating" class="flex items-center justify-center gap-2">
+              <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              Generate Assessment
+            </span>
+            <span *ngIf="isGenerating" class="flex items-center justify-center gap-2">
+              <svg class="h-5 w-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Generating...
+            </span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- History Tab -->
+    <div *ngIf="activeTab === 'history'">
+      <!-- Filters -->
+      <div class="flex flex-col gap-4 border-b border-gray-200 p-5 dark:border-gray-800 sm:flex-row sm:items-center">
+        <div class="relative flex-1">
+          <input
+            type="text"
+            [(ngModel)]="searchTerm"
+            (ngModelChange)="onSearchChange()"
+            placeholder="Search assessments..."
+            class="w-full rounded-lg border border-gray-300 bg-white py-2 pl-10 pr-4 text-sm text-gray-700 placeholder-gray-400 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
+          <svg class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+        </div>
+        <div class="flex gap-2 flex-wrap">
+          <button
+            *ngFor="let status of ['all', 'draft', 'generated', 'sent', 'completed', 'archived']"
+            (click)="setStatusFilter(status)"
+            class="rounded-lg px-3 py-1.5 text-sm font-medium transition-colors"
+            [ngClass]="statusFilter === status 
+              ? 'bg-brand-500 text-white' 
+              : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800'">
+            {{ status === 'all' ? 'All' : (status | titlecase) }}
+          </button>
+        </div>
+      </div>
+
+      <!-- Loading -->
+      <div *ngIf="isLoading" class="flex items-center justify-center py-12">
+        <svg class="h-8 w-8 animate-spin text-brand-500" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+      </div>
+
+      <!-- Assessment List -->
+      <div *ngIf="!isLoading" class="divide-y divide-gray-200 dark:divide-gray-800">
+        <div
+          *ngFor="let assessment of filteredAssessments"
+          class="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-3 mb-1">
+              <h4 class="font-medium text-gray-800 dark:text-white/90 truncate">{{ assessment.Title }}</h4>
+              <span 
+                class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
+                [ngClass]="getStatusBadgeClass(assessment.Status)">
+                {{ assessment.Status | titlecase }}
+              </span>
+            </div>
+            <div class="flex flex-wrap items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
+              <span>{{ assessment.CustomerName }}</span>
+              <span>{{ assessment.AssessmentTypeName }}</span>
+              <span>{{ assessment.ReferenceArchitectureName }}</span>
+              <span>{{ formatDate(assessment.CreatedAt) }}</span>
+            </div>
+            <div *ngIf="assessment.TotalPrice" class="mt-1 text-sm font-medium text-gray-700 dark:text-gray-300">
+              {{ formatCurrency(assessment.TotalPrice) }}
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <select
+              [(ngModel)]="assessment.Status"
+              (ngModelChange)="updateStatus(assessment, $event)"
+              class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white">
+              <option value="draft">Draft</option>
+              <option value="generated">Generated</option>
+              <option value="sent">Sent</option>
+              <option value="completed">Completed</option>
+              <option value="archived">Archived</option>
+            </select>
+            <button
+              *ngIf="assessment.FileName"
+              (click)="downloadAssessment(assessment)"
+              class="rounded-lg border border-gray-300 p-2 text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+              title="Download">
+              <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+            </button>
+            <button
+              (click)="deleteAssessment(assessment)"
+              class="rounded-lg p-2 text-red-500 transition-colors hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-900/20"
+              title="Delete">
+              <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Empty State -->
+        <div *ngIf="filteredAssessments.length === 0 && !isLoading" class="py-12 text-center">
+          <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white/90">No assessments found</h3>
+          <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            {{ statusFilter !== 'all' ? 'Try changing the filter or ' : '' }}Generate your first assessment to get started.
+          </p>
+          <button
+            (click)="activeTab = 'generate'"
+            class="mt-4 inline-flex items-center gap-2 rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-600">
+            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            Generate Assessment
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

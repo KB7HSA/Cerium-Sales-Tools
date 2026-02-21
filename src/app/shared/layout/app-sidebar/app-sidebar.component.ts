@@ -65,9 +65,24 @@ export class AppSidebarComponent {
       path: "/quote-management",
     },
     {
-      name: "SOW Generator",
+      name: "SOW Documents",
       icon: `<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M5.25 4.5C5.25 3.25736 6.25736 2.25 7.5 2.25H13.3787C13.9755 2.25 14.5478 2.48705 14.9697 2.90901L17.341 5.28033C17.763 5.7023 18 6.27459 18 6.87132V19.5C18 20.7426 16.9926 21.75 15.75 21.75H7.5C6.25736 21.75 5.25 20.7426 5.25 19.5V4.5ZM7.5 3.75C7.08579 3.75 6.75 4.08579 6.75 4.5V19.5C6.75 19.9142 7.08579 20.25 7.5 20.25H15.75C16.1642 20.25 16.5 19.9142 16.5 19.5V6.87132C16.5 6.67241 16.421 6.48164 16.2803 6.341L13.909 3.96967C13.7684 3.82902 13.5776 3.75 13.3787 3.75H7.5Z" fill="currentColor"></path><path fill-rule="evenodd" clip-rule="evenodd" d="M18.2803 10.2197C18.5732 10.5126 18.5732 10.9874 18.2803 11.2803L12.2803 17.2803C12.1397 17.421 11.9489 17.5 11.75 17.5C11.5511 17.5 11.3603 17.421 11.2197 17.2803L9.21967 15.2803C8.92678 14.9874 8.92678 14.5126 9.21967 14.2197C9.51256 13.9268 9.98744 13.9268 10.2803 14.2197L11.75 15.6893L17.2197 10.2197C17.5126 9.92678 17.9874 9.92678 18.2803 10.2197Z" fill="currentColor"></path><path d="M9 8.25C8.58579 8.25 8.25 8.58579 8.25 9C8.25 9.41421 8.58579 9.75 9 9.75H11.5C11.9142 9.75 12.25 9.41421 12.25 9C12.25 8.58579 11.9142 8.25 11.5 8.25H9Z" fill="currentColor"></path><path d="M8.25 12C8.25 11.5858 8.58579 11.25 9 11.25H14C14.4142 11.25 14.75 11.5858 14.75 12C14.75 12.4142 14.4142 12.75 14 12.75H9C8.58579 12.75 8.25 12.4142 8.25 12Z" fill="currentColor"></path></svg>`,
       path: "/sow-generator",
+    },
+    {
+      name: "Assessments",
+      icon: `<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M3.75 6.5C3.75 5.25736 4.75736 4.25 6 4.25H18C19.2426 4.25 20.25 5.25736 20.25 6.5V17.5C20.25 18.7426 19.2426 19.75 18 19.75H6C4.75736 19.75 3.75 18.7426 3.75 17.5V6.5ZM6 5.75C5.58579 5.75 5.25 6.08579 5.25 6.5V17.5C5.25 17.9142 5.58579 18.25 6 18.25H18C18.4142 18.25 18.75 17.9142 18.75 17.5V6.5C18.75 6.08579 18.4142 5.75 18 5.75H6Z" fill="currentColor"></path><path d="M7.5 8C7.5 7.58579 7.83579 7.25 8.25 7.25H15.75C16.1642 7.25 16.5 7.58579 16.5 8C16.5 8.41421 16.1642 8.75 15.75 8.75H8.25C7.83579 8.75 7.5 8.41421 7.5 8Z" fill="currentColor"></path><path d="M7.5 11C7.5 10.5858 7.83579 10.25 8.25 10.25H15.75C16.1642 10.25 16.5 10.5858 16.5 11C16.5 11.4142 16.1642 11.75 15.75 11.75H8.25C7.83579 11.75 7.5 11.4142 7.5 11Z" fill="currentColor"></path><path d="M7.5 14C7.5 13.5858 7.83579 13.25 8.25 13.25H12.75C13.1642 13.25 13.5 13.5858 13.5 14C13.5 14.4142 13.1642 14.75 12.75 14.75H8.25C7.83579 14.75 7.5 14.4142 7.5 14Z" fill="currentColor"></path></svg>`,
+      path: "/assessment-generator",
+      new: true,
+    },
+    {
+      name: "E-Rate",
+      icon: `<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2ZM12 3.5C7.30558 3.5 3.5 7.30558 3.5 12C3.5 16.6944 7.30558 20.5 12 20.5C16.6944 20.5 20.5 16.6944 20.5 12C20.5 7.30558 16.6944 3.5 12 3.5Z" fill="currentColor"></path><path d="M9 8.25C8.58579 8.25 8.25 8.58579 8.25 9V15C8.25 15.4142 8.58579 15.75 9 15.75H15C15.4142 15.75 15.75 15.4142 15.75 15C15.75 14.5858 15.4142 14.25 15 14.25H10.5V12.75H14C14.4142 12.75 14.75 12.4142 14.75 12C14.75 11.5858 14.4142 11.25 14 11.25H10.5V9.75H15C15.4142 9.75 15.75 9.41421 15.75 9C15.75 8.58579 15.4142 8.25 15 8.25H9Z" fill="currentColor"></path></svg>`,
+      new: true,
+      subItems: [
+        { name: "Dashboard", path: "/e-rate/dashboard", pro: false },
+        { name: "Opportunities", path: "/e-rate", pro: false },
+      ],
     },
     {
       name: "Admin",
@@ -77,8 +92,10 @@ export class AppSidebarComponent {
         { name: "Customers", path: "/admin/customers", pro: false },
         { name: "Create User", path: "/admin/create-user", pro: false },
         { name: "MSP Offerings", path: "/admin/offerings", pro: false },
+        { name: "Assessment Types", path: "/admin/assessment-types", pro: false },
         { name: "Labor Budget Admin", path: "/admin/labor-budget", pro: false },
         { name: "Export Schemas", path: "/admin/export-schemas", pro: false },
+        { name: "E-Rate Settings", path: "/admin/erate-settings", pro: false },
         { name: "Settings", path: "/admin/settings", pro: false },
       ],
     },

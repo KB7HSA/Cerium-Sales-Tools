@@ -1,0 +1,279 @@
+<div class="mx-auto max-w-4xl">
+  <div class="mb-9">
+    <h1 class="text-3xl font-bold text-gray-900 dark:text-white">E-Rate Settings</h1>
+    <p class="mt-2 text-gray-600 dark:text-gray-400">Configure E-Rate data retrieval and status codes.</p>
+  </div>
+
+  <!-- API Settings Section -->
+  <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8 space-y-6">
+    @if (settingsError) {
+      <div class="rounded-lg border border-red-200 bg-red-50 p-4 text-red-700 dark:border-red-700 dark:bg-red-900 dark:text-red-200">
+        {{ settingsError }}
+      </div>
+    }
+    @if (settingsSuccess) {
+      <div class="rounded-lg border border-green-200 bg-green-50 p-4 text-green-700 dark:border-green-700 dark:bg-green-900 dark:text-green-200">
+        {{ settingsSuccess }}
+      </div>
+    }
+
+    <div class="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 pb-3">
+      <h2 class="text-lg font-semibold text-gray-900 dark:text-white">USAC Data Retrieval Settings</h2>
+      <button
+        type="button"
+        (click)="initializeTables()"
+        class="px-3 py-1 text-sm font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+      >
+        Initialize/Reset Tables
+      </button>
+    </div>
+
+    <p class="text-sm text-gray-600 dark:text-gray-400">
+      Configure the USAC Open Data API endpoint and filtering parameters for E-Rate Form 470 data retrieval.
+    </p>
+
+    @if (settingsLoading) {
+      <div class="flex items-center justify-center py-8">
+        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <span class="ml-3 text-gray-600 dark:text-gray-400">Loading settings...</span>
+      </div>
+    } @else {
+      <div class="space-y-4">
+        @for (setting of settings; track setting.Id) {
+          <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+            <div class="space-y-3">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  {{ getSettingLabel(setting.SettingKey) }}
+                </label>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                  {{ getSettingHelp(setting.SettingKey) }}
+                </p>
+              </div>
+              <div class="flex gap-2">
+                <input
+                  [(ngModel)]="setting.SettingValue"
+                  [name]="'setting-' + setting.SettingKey"
+                  type="text"
+                  class="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                <button
+                  type="button"
+                  (click)="updateSetting(setting)"
+                  class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+                >
+                  Save
+                </button>
+              </div>
+            </div>
+          </div>
+        }
+        @if (settings.length === 0) {
+          <div class="text-center py-6 text-gray-500 dark:text-gray-400">
+            <p>No settings found. Click "Initialize/Reset Tables" to set up default configuration.</p>
+          </div>
+        }
+      </div>
+    }
+  </div>
+
+  <!-- Status Codes Section -->
+  <div class="mt-8 bg-white dark:bg-gray-800 rounded-lg shadow-md p-8 space-y-6">
+    @if (statusCodesError) {
+      <div class="rounded-lg border border-red-200 bg-red-50 p-4 text-red-700 dark:border-red-700 dark:bg-red-900 dark:text-red-200">
+        {{ statusCodesError }}
+      </div>
+    }
+    @if (statusCodesSuccess) {
+      <div class="rounded-lg border border-green-200 bg-green-50 p-4 text-green-700 dark:border-green-700 dark:bg-green-900 dark:text-green-200">
+        {{ statusCodesSuccess }}
+      </div>
+    }
+
+    <div class="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 pb-3">
+      <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Status Codes</h2>
+    </div>
+
+    <p class="text-sm text-gray-600 dark:text-gray-400">
+      Manage the status options available for tracking E-Rate opportunities.
+    </p>
+
+    <!-- Add New Status Code -->
+    <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-4 bg-gray-50 dark:bg-gray-700/50">
+      <h3 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Add New Status Code</h3>
+      <div class="grid grid-cols-1 gap-4 md:grid-cols-5">
+        <div>
+          <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Code</label>
+          <input
+            [(ngModel)]="newStatusCode"
+            type="text"
+            placeholder="responding"
+            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Display Name</label>
+          <input
+            [(ngModel)]="newDisplayName"
+            type="text"
+            placeholder="Responding"
+            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Color</label>
+          <select
+            [(ngModel)]="newColorClass"
+            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          >
+            @for (color of colorOptions; track color.value) {
+              <option [value]="color.value">{{ color.label }}</option>
+            }
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Sort Order</label>
+          <input
+            [(ngModel)]="newSortOrder"
+            type="number"
+            min="0"
+            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+        </div>
+        <div class="flex items-end">
+          <button
+            type="button"
+            (click)="addStatusCode()"
+            class="w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+          >
+            Add
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Status Codes List -->
+    @if (statusCodesLoading) {
+      <div class="flex items-center justify-center py-8">
+        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <span class="ml-3 text-gray-600 dark:text-gray-400">Loading status codes...</span>
+      </div>
+    } @else {
+      <div class="space-y-3">
+        @for (code of statusCodes; track code.Id) {
+          <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-4" [class.opacity-50]="!code.IsActive">
+            @if (editingStatusCodeId === code.Id) {
+              <!-- Edit Mode -->
+              <div class="grid grid-cols-1 gap-4 md:grid-cols-6 items-end">
+                <div>
+                  <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Code</label>
+                  <input
+                    [(ngModel)]="editStatusCode"
+                    type="text"
+                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Display Name</label>
+                  <input
+                    [(ngModel)]="editDisplayName"
+                    type="text"
+                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Color</label>
+                  <select
+                    [(ngModel)]="editColorClass"
+                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    @for (color of colorOptions; track color.value) {
+                      <option [value]="color.value">{{ color.label }}</option>
+                    }
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Sort Order</label>
+                  <input
+                    [(ngModel)]="editSortOrder"
+                    type="number"
+                    min="0"
+                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div class="flex items-center gap-2">
+                  <input
+                    [(ngModel)]="editIsActive"
+                    type="checkbox"
+                    id="editActive"
+                    class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500"
+                  />
+                  <label for="editActive" class="text-sm text-gray-700 dark:text-gray-300">Active</label>
+                </div>
+                <div class="flex gap-2">
+                  <button
+                    type="button"
+                    (click)="saveEdit()"
+                    class="flex-1 rounded-lg bg-green-600 px-3 py-2 text-sm font-semibold text-white hover:bg-green-700"
+                  >
+                    Save
+                  </button>
+                  <button
+                    type="button"
+                    (click)="cancelEdit()"
+                    class="flex-1 rounded-lg bg-gray-500 px-3 py-2 text-sm font-semibold text-white hover:bg-gray-600"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            } @else {
+              <!-- View Mode -->
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                  <span class="w-8 text-center text-sm text-gray-500 dark:text-gray-400">{{ code.SortOrder }}</span>
+                  <span class="px-3 py-1 rounded-full text-sm font-medium" [ngClass]="code.ColorClass || 'bg-gray-100 text-gray-800'">
+                    {{ code.DisplayName }}
+                  </span>
+                  <span class="text-xs text-gray-500 dark:text-gray-400 font-mono">{{ code.StatusCode }}</span>
+                  @if (!code.IsActive) {
+                    <span class="text-xs text-red-500 dark:text-red-400">(Inactive)</span>
+                  }
+                </div>
+                <div class="flex items-center gap-2">
+                  <button
+                    type="button"
+                    (click)="toggleStatusCodeActive(code)"
+                    [class]="code.IsActive ? 'text-yellow-600 hover:text-yellow-700 dark:text-yellow-400' : 'text-green-600 hover:text-green-700 dark:text-green-400'"
+                    class="px-2 py-1 text-sm font-medium"
+                  >
+                    {{ code.IsActive ? 'Disable' : 'Enable' }}
+                  </button>
+                  <button
+                    type="button"
+                    (click)="startEdit(code)"
+                    class="px-2 py-1 text-sm font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    (click)="deleteStatusCode(code)"
+                    class="px-2 py-1 text-sm font-medium text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            }
+          </div>
+        }
+        @if (statusCodes.length === 0 && !statusCodesLoading) {
+          <div class="text-center py-6 text-gray-500 dark:text-gray-400">
+            <p>No status codes found. Click "Initialize/Reset Tables" above to set up defaults, or add one manually.</p>
+          </div>
+        }
+      </div>
+    }
+  </div>
+</div>
