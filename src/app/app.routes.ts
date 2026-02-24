@@ -100,6 +100,7 @@ import { ERateDashboardComponent } from './pages/e-rate/e-rate-dashboard.compone
 import { FRNStatusComponent } from './pages/e-rate/frn-status.component';
 import { FRNDashboardComponent } from './pages/e-rate/frn-dashboard.component';
 import { ERateSettingsComponent } from './pages/admin/erate-settings.component';
+import { MenuAdminComponent } from './pages/admin/menu-admin.component';
 
 export const routes: Routes = [
   {
@@ -385,6 +386,11 @@ export const routes: Routes = [
         path:'admin/erate-settings',
         component:ERateSettingsComponent,
         title:'E-Rate Settings | Cerium Sales Tools'
+      },
+      {
+        path:'admin/menu-admin',
+        component:MenuAdminComponent,
+        title:'Menu Admin | Cerium Sales Tools'
       },
       {
         path:'blank',

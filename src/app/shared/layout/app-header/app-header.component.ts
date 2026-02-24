@@ -5,6 +5,7 @@ import { RouterModule } from '@angular/router';
 import { ThemeToggleButtonComponent } from '../../components/common/theme-toggle/theme-toggle-button.component';
 import { NotificationDropdownComponent } from '../../components/header/notification-dropdown/notification-dropdown.component';
 import { UserDropdownComponent } from '../../components/header/user-dropdown/user-dropdown.component';
+import { HelpDropdownComponent } from '../../components/header/help-dropdown/help-dropdown.component';
 
 @Component({
   selector: 'app-header',
@@ -14,6 +15,7 @@ import { UserDropdownComponent } from '../../components/header/user-dropdown/use
     ThemeToggleButtonComponent,
     NotificationDropdownComponent,
     UserDropdownComponent,
+    HelpDropdownComponent,
   ],
   templateUrl: './app-header.component.html',
 })

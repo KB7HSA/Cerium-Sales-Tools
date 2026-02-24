@@ -79,7 +79,7 @@
             }
           </h2>
           <ul class="flex flex-col gap-1">
-            @for (nav of navItems; track $index;let i = $index) {
+            @for (nav of filteredNavItems; track $index;let i = $index) {
             <li>
               @if (nav.subItems) {
                 <button
@@ -677,7 +677,7 @@
           </h2>
 
           <ul class="flex flex-col gap-1">
-            @for (nav of toBeDevelopedItems; track $index;let i = $index) {
+            @for (nav of filteredToBeDevelopedItems; track $index;let i = $index) {
             <li>
               @if (nav.subItems) {
                 <button
@@ -845,8 +845,5 @@
         <!-- end To Be Developed section -->
       </div>
     </nav>
-    @if ((isExpanded$ | async) || (isHovered$ | async) || (isMobileOpen$ | async)) {
-    <app-sidebar-widget />
-    }
   </div>
 </aside>

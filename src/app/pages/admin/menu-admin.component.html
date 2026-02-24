@@ -1,0 +1,254 @@
+<div class="mx-auto max-w-4xl">
+  <div class="mb-9">
+    <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Menu Admin</h1>
+    <p class="mt-2 text-gray-600 dark:text-gray-400">
+      Control which menu items are visible in the sidebar. Protected items
+      <span class="inline-flex items-center gap-1">
+        <svg class="h-4 w-4 text-amber-500" fill="currentColor" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"></path>
+        </svg>
+      </span>
+      are always visible for Super Admins.
+    </p>
+  </div>
+
+  @if (loading) {
+    <div class="flex items-center justify-center py-12">
+      <div class="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent"></div>
+      <span class="ml-3 text-gray-600 dark:text-gray-400">Loading menu configuration...</span>
+    </div>
+  } @else if (migrationNeeded) {
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8 text-center">
+      <svg class="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+      </svg>
+      <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">Menu Configuration Setup</h2>
+      <p class="text-gray-600 dark:text-gray-400 mb-6">
+        The menu configuration table needs to be created in the database. Click below to set it up.
+      </p>
+      <button
+        (click)="runMigration()"
+        class="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-6 py-3 text-sm font-semibold text-white hover:bg-blue-700 transition-colors"
+      >
+        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+        </svg>
+        Initialize Menu Configuration
+      </button>
+    </div>
+  } @else {
+    <!-- Success/Error Messages -->
+    @if (successMessage) {
+      <div class="mb-6 rounded-lg border border-green-200 bg-green-50 p-4 text-green-700 dark:border-green-700 dark:bg-green-900/30 dark:text-green-300 flex items-center gap-2">
+        <svg class="h-5 w-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+        </svg>
+        {{ successMessage }}
+      </div>
+    }
+    @if (errorMessage) {
+      <div class="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300 flex items-center gap-2">
+        <svg class="h-5 w-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
+        </svg>
+        {{ errorMessage }}
+      </div>
+    }
+
+    <!-- Menu Items with Children (Groups) -->
+    <div class="space-y-6">
+      @for (parent of getParentsWithChildren(); track parent.MenuItemKey) {
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
+          <!-- Parent Header -->
+          <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700"
+               [class.opacity-50]="!parent.IsVisible && !parent.IsProtected">
+            <div class="flex items-center gap-3">
+              <!-- Reorder Arrows -->
+              <div class="flex flex-col gap-0.5 mr-1">
+                <button
+                  (click)="moveItem(parent, 'up')"
+                  [disabled]="reordering || isFirstParent(parent)"
+                  class="p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
+                  title="Move up"
+                >
+                  <svg class="h-3.5 w-3.5 text-gray-500 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7" />
+                  </svg>
+                </button>
+                <button
+                  (click)="moveItem(parent, 'down')"
+                  [disabled]="reordering || isLastParent(parent)"
+                  class="p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
+                  title="Move down"
+                >
+                  <svg class="h-3.5 w-3.5 text-gray-500 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+              </div>
+              <h2 class="text-lg font-semibold text-gray-900 dark:text-white">{{ parent.DisplayName }}</h2>
+              @if (parent.IsProtected) {
+                <span class="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
+                  <svg class="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"></path>
+                  </svg>
+                  Protected
+                </span>
+              }
+            </div>
+            <label class="relative inline-flex cursor-pointer items-center"
+                   [class.pointer-events-none]="parent.IsProtected"
+                   [class.opacity-60]="parent.IsProtected">
+              <input
+                type="checkbox"
+                class="peer sr-only"
+                [checked]="parent.IsVisible"
+                [disabled]="parent.IsProtected || saving"
+                (change)="toggleVisibility(parent)"
+              />
+              <div class="h-6 w-11 rounded-full bg-gray-300 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all peer-checked:bg-blue-600 peer-checked:after:translate-x-full dark:bg-gray-600 dark:peer-checked:bg-blue-500"></div>
+            </label>
+          </div>
+
+          <!-- Children -->
+          <div class="divide-y divide-gray-100 dark:divide-gray-700/50">
+            @for (child of childrenMap[parent.MenuItemKey]; track child.MenuItemKey) {
+              <div class="flex items-center justify-between px-6 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"
+                   [class.opacity-40]="!child.IsVisible && !child.IsProtected">
+                <div class="flex items-center gap-3 pl-4">
+                  <!-- Child Reorder Arrows -->
+                  <div class="flex flex-col gap-0.5 mr-1">
+                    <button
+                      (click)="moveItem(child, 'up')"
+                      [disabled]="reordering || isFirstChild(child, parent.MenuItemKey)"
+                      class="p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
+                      title="Move up"
+                    >
+                      <svg class="h-3 w-3 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7" />
+                      </svg>
+                    </button>
+                    <button
+                      (click)="moveItem(child, 'down')"
+                      [disabled]="reordering || isLastChild(child, parent.MenuItemKey)"
+                      class="p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
+                      title="Move down"
+                    >
+                      <svg class="h-3 w-3 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                  </div>
+                  <span class="text-sm text-gray-700 dark:text-gray-300">{{ child.DisplayName }}</span>
+                  @if (child.IsProtected) {
+                    <span class="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
+                      <svg class="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"></path>
+                      </svg>
+                      Protected
+                    </span>
+                  }
+                </div>
+                <label class="relative inline-flex cursor-pointer items-center"
+                       [class.pointer-events-none]="child.IsProtected"
+                       [class.opacity-60]="child.IsProtected">
+                  <input
+                    type="checkbox"
+                    class="peer sr-only"
+                    [checked]="child.IsVisible"
+                    [disabled]="child.IsProtected || saving || !parent.IsVisible"
+                    (change)="toggleVisibility(child)"
+                  />
+                  <div class="h-5 w-9 rounded-full bg-gray-300 after:absolute after:left-[2px] after:top-[2px] after:h-4 after:w-4 after:rounded-full after:bg-white after:transition-all peer-checked:bg-blue-600 peer-checked:after:translate-x-full dark:bg-gray-600 dark:peer-checked:bg-blue-500"></div>
+                </label>
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- Standalone Items (no children) -->
+      @if (getStandaloneItems().length > 0) {
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
+          <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Individual Menu Items</h2>
+          </div>
+          <div class="divide-y divide-gray-100 dark:divide-gray-700/50">
+            @for (item of getStandaloneItems(); track item.MenuItemKey) {
+              <div class="flex items-center justify-between px-6 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"
+                   [class.opacity-40]="!item.IsVisible && !item.IsProtected">
+                <div class="flex items-center gap-3">
+                  <!-- Standalone Reorder Arrows -->
+                  <div class="flex flex-col gap-0.5 mr-1">
+                    <button
+                      (click)="moveItem(item, 'up')"
+                      [disabled]="reordering || isFirstParent(item)"
+                      class="p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
+                      title="Move up"
+                    >
+                      <svg class="h-3 w-3 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7" />
+                      </svg>
+                    </button>
+                    <button
+                      (click)="moveItem(item, 'down')"
+                      [disabled]="reordering || isLastParent(item)"
+                      class="p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
+                      title="Move down"
+                    >
+                      <svg class="h-3 w-3 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                  </div>
+                  <span class="text-sm text-gray-700 dark:text-gray-300">{{ item.DisplayName }}</span>
+                  @if (item.IsProtected) {
+                    <span class="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
+                      <svg class="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"></path>
+                      </svg>
+                      Protected
+                    </span>
+                  }
+                </div>
+                <label class="relative inline-flex cursor-pointer items-center"
+                       [class.pointer-events-none]="item.IsProtected"
+                       [class.opacity-60]="item.IsProtected">
+                  <input
+                    type="checkbox"
+                    class="peer sr-only"
+                    [checked]="item.IsVisible"
+                    [disabled]="item.IsProtected || saving"
+                    (change)="toggleVisibility(item)"
+                  />
+                  <div class="h-5 w-9 rounded-full bg-gray-300 after:absolute after:left-[2px] after:top-[2px] after:h-4 after:w-4 after:rounded-full after:bg-white after:transition-all peer-checked:bg-blue-600 peer-checked:after:translate-x-full dark:bg-gray-600 dark:peer-checked:bg-blue-500"></div>
+                </label>
+              </div>
+            }
+          </div>
+        </div>
+      }
+    </div>
+
+    <!-- Legend -->
+    <div class="mt-8 rounded-lg bg-gray-50 dark:bg-gray-800/50 p-4">
+      <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Legend</h3>
+      <div class="flex flex-wrap gap-6 text-xs text-gray-600 dark:text-gray-400">
+        <div class="flex items-center gap-2">
+          <div class="h-5 w-9 rounded-full bg-blue-600"></div>
+          <span>Visible to all users</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <div class="h-5 w-9 rounded-full bg-gray-300 dark:bg-gray-600"></div>
+          <span>Hidden from sidebar</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <svg class="h-4 w-4 text-amber-500" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"></path>
+          </svg>
+          <span>Protected — always visible for Super Admins</span>
+        </div>
+      </div>
+    </div>
+  }
+</div>

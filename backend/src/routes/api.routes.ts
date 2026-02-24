@@ -1787,4 +1787,280 @@ router.get('/dashboard/stats', async (req: Request, res: Response) => {
   }
 });
 
+// ===== MENU CONFIGURATION =====
+
+// Run menu configuration migration (create table & seed data)
+router.post('/menu-config/migrate', async (req: Request, res: Response) => {
+  try {
+    // Check if table exists
+    const tableCheck = await executeQuery<{ cnt: number }>(
+      `SELECT COUNT(*) as cnt FROM sys.tables WHERE name = 'MenuConfiguration'`
+    );
+
+    if (tableCheck[0]?.cnt === 0) {
+      // Create table
+      await executeQuery(`
+        CREATE TABLE dbo.MenuConfiguration (
+          Id INT IDENTITY(1,1) PRIMARY KEY,
+          MenuItemKey NVARCHAR(100) NOT NULL UNIQUE,
+          DisplayName NVARCHAR(200) NOT NULL,
+          ParentKey NVARCHAR(100) NULL,
+          IsVisible BIT NOT NULL DEFAULT 1,
+          IsProtected BIT NOT NULL DEFAULT 0,
+          SortOrder INT NOT NULL DEFAULT 0,
+          UpdatedAt DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
+          UpdatedBy NVARCHAR(200) NULL
+        )
+      `);
+
+      // Seed data
+      await executeQuery(`
+        INSERT INTO dbo.MenuConfiguration (MenuItemKey, DisplayName, ParentKey, IsVisible, IsProtected, SortOrder) VALUES
+        ('dashboard', 'Dashboard', NULL, 1, 0, 1),
+        ('dashboard-tech-sales', 'Tech Sales', 'dashboard', 1, 0, 1),
+        ('dashboard-analytics', 'Analytics', 'dashboard', 1, 0, 2),
+        ('dashboard-marketing', 'Marketing', 'dashboard', 1, 0, 3),
+        ('dashboard-crm', 'CRM', 'dashboard', 1, 0, 4),
+        ('dashboard-stocks', 'Stocks', 'dashboard', 1, 0, 5),
+        ('dashboard-saas', 'SaaS', 'dashboard', 1, 0, 6),
+        ('dashboard-logistics', 'Logistics', 'dashboard', 1, 0, 7),
+        ('msp-services', 'MSP Services', NULL, 1, 0, 2),
+        ('msp-services-dashboard', 'Dashboard', 'msp-services', 1, 0, 1),
+        ('msp-services-overview', 'Services Overview', 'msp-services', 1, 0, 2),
+        ('labor-budget', 'Labor Budget', NULL, 1, 0, 3),
+        ('labor-budget-calculator', 'Calculator', 'labor-budget', 1, 0, 1),
+        ('labor-budget-wizard', 'Wizard', 'labor-budget', 1, 0, 2),
+        ('quote-management', 'Quote Management', NULL, 1, 0, 4),
+        ('sow-documents', 'SOW Documents', NULL, 1, 0, 5),
+        ('assessments', 'Assessments', NULL, 1, 0, 6),
+        ('e-rate', 'E-Rate', NULL, 1, 0, 7),
+        ('e-rate-dashboard', 'Dashboard', 'e-rate', 1, 0, 1),
+        ('e-rate-opportunities', 'Opportunities', 'e-rate', 1, 0, 2),
+        ('e-rate-frn-dashboard', 'FRN Dashboard', 'e-rate', 1, 0, 3),
+        ('e-rate-frn-status', 'FRN Status', 'e-rate', 1, 0, 4),
+        ('admin', 'Admin', NULL, 1, 1, 8),
+        ('admin-users', 'Users', 'admin', 1, 1, 1),
+        ('admin-customers', 'Customers', 'admin', 1, 0, 2),
+        ('admin-create-user', 'Create User', 'admin', 1, 1, 3),
+        ('admin-msp-offerings', 'MSP Offerings', 'admin', 1, 0, 4),
+        ('admin-assessment-types', 'Assessment Types', 'admin', 1, 0, 5),
+        ('admin-labor-budget', 'Labor Budget Admin', 'admin', 1, 0, 6),
+        ('admin-export-schemas', 'Export Schemas', 'admin', 1, 0, 7),
+        ('admin-erate-settings', 'E-Rate Settings', 'admin', 1, 0, 8),
+        ('admin-settings', 'Settings', 'admin', 1, 0, 9),
+        ('admin-menu-admin', 'Menu Admin', 'admin', 1, 1, 10),
+        ('user-profile', 'User Profile', NULL, 1, 0, 9)
+      `);
+
+      sendSuccess(res, { created: true }, 200, 'MenuConfiguration table created and seeded');
+    } else {
+      // Table exists - ensure Menu Admin entry exists
+      const menuAdminCheck = await executeQuery<{ cnt: number }>(
+        `SELECT COUNT(*) as cnt FROM dbo.MenuConfiguration WHERE MenuItemKey = 'admin-menu-admin'`
+      );
+      if (menuAdminCheck[0]?.cnt === 0) {
+        await executeQuery(
+          `INSERT INTO dbo.MenuConfiguration (MenuItemKey, DisplayName, ParentKey, IsVisible, IsProtected, SortOrder)
+           VALUES ('admin-menu-admin', 'Menu Admin', 'admin', 1, 1, 10)`
+        );
+      }
+      sendSuccess(res, { created: false }, 200, 'MenuConfiguration table already exists');
+    }
+  } catch (error: any) {
+    sendError(res, 'Failed to run menu configuration migration', 500, error.message);
+  }
+});
+
+// Get all menu configuration items
+router.get('/menu-config', async (req: Request, res: Response) => {
+  try {
+    const items = await executeQuery(
+      `SELECT Id, MenuItemKey, DisplayName, ParentKey, IsVisible, IsProtected, SortOrder, UpdatedAt, UpdatedBy
+       FROM dbo.MenuConfiguration
+       ORDER BY SortOrder, DisplayName`
+    );
+    sendSuccess(res, items, 200, 'Menu configuration retrieved');
+  } catch (error: any) {
+    sendError(res, 'Failed to retrieve menu configuration', 500, error.message);
+  }
+});
+
+// Get only visible menu items (for non-admin sidebar filtering)
+router.get('/menu-config/visible', async (req: Request, res: Response) => {
+  try {
+    const items = await executeQuery(
+      `SELECT MenuItemKey, DisplayName, ParentKey, IsProtected, SortOrder
+       FROM dbo.MenuConfiguration
+       WHERE IsVisible = 1
+       ORDER BY SortOrder, DisplayName`
+    );
+    sendSuccess(res, items, 200, 'Visible menu items retrieved');
+  } catch (error: any) {
+    sendError(res, 'Failed to retrieve visible menu items', 500, error.message);
+  }
+});
+
+// Reorder menu items - swap sort order between two sibling items
+router.put('/menu-config/reorder', async (req: Request, res: Response) => {
+  try {
+    const { menuItemKey, direction } = req.body;
+
+    if (!menuItemKey || !direction || !['up', 'down'].includes(direction)) {
+      return sendError(res, 'menuItemKey and direction (up/down) are required', 400);
+    }
+
+    // Get the item to move
+    const itemResult = await executeQuery(
+      `SELECT * FROM dbo.MenuConfiguration WHERE MenuItemKey = @key`,
+      { key: menuItemKey }
+    );
+
+    if (itemResult.length === 0) {
+      return sendError(res, 'Menu item not found', 404);
+    }
+
+    const item = itemResult[0];
+
+    // Find the sibling to swap with (same parent level)
+    let siblingQuery: string;
+    if (direction === 'up') {
+      if (item.ParentKey) {
+        siblingQuery = `SELECT TOP 1 * FROM dbo.MenuConfiguration 
+                        WHERE ParentKey = @parent AND SortOrder < @sortOrder 
+                        ORDER BY SortOrder DESC`;
+      } else {
+        siblingQuery = `SELECT TOP 1 * FROM dbo.MenuConfiguration 
+                        WHERE ParentKey IS NULL AND SortOrder < @sortOrder 
+                        ORDER BY SortOrder DESC`;
+      }
+    } else {
+      if (item.ParentKey) {
+        siblingQuery = `SELECT TOP 1 * FROM dbo.MenuConfiguration 
+                        WHERE ParentKey = @parent AND SortOrder > @sortOrder 
+                        ORDER BY SortOrder ASC`;
+      } else {
+        siblingQuery = `SELECT TOP 1 * FROM dbo.MenuConfiguration 
+                        WHERE ParentKey IS NULL AND SortOrder > @sortOrder 
+                        ORDER BY SortOrder ASC`;
+      }
+    }
+
+    const siblingResult = await executeQuery(siblingQuery, {
+      parent: item.ParentKey,
+      sortOrder: item.SortOrder
+    });
+
+    if (siblingResult.length === 0) {
+      return sendError(res, `Cannot move ${direction} — already at the ${direction === 'up' ? 'top' : 'bottom'}`, 400);
+    }
+
+    const sibling = siblingResult[0];
+
+    // Swap sort orders
+    await executeQuery(
+      `UPDATE dbo.MenuConfiguration SET SortOrder = @newSort, UpdatedAt = GETUTCDATE() WHERE MenuItemKey = @key`,
+      { key: item.MenuItemKey, newSort: sibling.SortOrder }
+    );
+    await executeQuery(
+      `UPDATE dbo.MenuConfiguration SET SortOrder = @newSort, UpdatedAt = GETUTCDATE() WHERE MenuItemKey = @key`,
+      { key: sibling.MenuItemKey, newSort: item.SortOrder }
+    );
+
+    // Return all items after reorder
+    const allItems = await executeQuery(
+      `SELECT Id, MenuItemKey, DisplayName, ParentKey, IsVisible, IsProtected, SortOrder, UpdatedAt, UpdatedBy
+       FROM dbo.MenuConfiguration
+       ORDER BY SortOrder, DisplayName`
+    );
+
+    sendSuccess(res, allItems, 200, 'Menu item reordered');
+  } catch (error: any) {
+    sendError(res, 'Failed to reorder menu item', 500, error.message);
+  }
+});
+
+// Update menu item visibility
+router.put('/menu-config/:key', async (req: Request, res: Response) => {
+  try {
+    const { key } = req.params;
+    const { IsVisible, UpdatedBy } = req.body;
+
+    if (IsVisible === undefined) {
+      return sendError(res, 'IsVisible is required', 400);
+    }
+
+    // Check if item exists
+    const existing = await executeQuery(
+      `SELECT * FROM dbo.MenuConfiguration WHERE MenuItemKey = @key`,
+      { key }
+    );
+
+    if (existing.length === 0) {
+      return sendError(res, 'Menu item not found', 404);
+    }
+
+    // Update visibility
+    await executeQuery(
+      `UPDATE dbo.MenuConfiguration 
+       SET IsVisible = @isVisible, UpdatedAt = GETUTCDATE(), UpdatedBy = @updatedBy
+       WHERE MenuItemKey = @key`,
+      { key, isVisible: IsVisible ? 1 : 0, updatedBy: UpdatedBy || null }
+    );
+
+    // If this is a parent item being hidden, also update children
+    if (!IsVisible) {
+      await executeQuery(
+        `UPDATE dbo.MenuConfiguration 
+         SET IsVisible = 0, UpdatedAt = GETUTCDATE(), UpdatedBy = @updatedBy
+         WHERE ParentKey = @key AND IsProtected = 0`,
+        { key, updatedBy: UpdatedBy || null }
+      );
+    }
+
+    // Get the updated item
+    const updated = await executeQuery(
+      `SELECT * FROM dbo.MenuConfiguration WHERE MenuItemKey = @key`,
+      { key }
+    );
+
+    sendSuccess(res, updated[0], 200, 'Menu item updated');
+  } catch (error: any) {
+    sendError(res, 'Failed to update menu item', 500, error.message);
+  }
+});
+
+// Bulk update menu item visibility
+router.put('/menu-config/bulk/update', async (req: Request, res: Response) => {
+
+  try {
+    const { items, UpdatedBy } = req.body;
+
+    if (!items || !Array.isArray(items)) {
+      return sendError(res, 'items array is required', 400);
+    }
+
+    for (const item of items) {
+      if (item.MenuItemKey && item.IsVisible !== undefined) {
+        await executeQuery(
+          `UPDATE dbo.MenuConfiguration 
+           SET IsVisible = @isVisible, UpdatedAt = GETUTCDATE(), UpdatedBy = @updatedBy
+           WHERE MenuItemKey = @key AND IsProtected = 0`,
+          { key: item.MenuItemKey, isVisible: item.IsVisible ? 1 : 0, updatedBy: UpdatedBy || null }
+        );
+      }
+    }
+
+    // Return all items after update
+    const allItems = await executeQuery(
+      `SELECT Id, MenuItemKey, DisplayName, ParentKey, IsVisible, IsProtected, SortOrder, UpdatedAt, UpdatedBy
+       FROM dbo.MenuConfiguration
+       ORDER BY SortOrder, DisplayName`
+    );
+
+    sendSuccess(res, allItems, 200, 'Menu items updated');
+  } catch (error: any) {
+    sendError(res, 'Failed to bulk update menu items', 500, error.message);
+  }
+});
+
 export default router;
