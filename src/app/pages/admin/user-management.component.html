@@ -44,14 +44,17 @@
     </div>
 
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
-      <div class="flex items-center justify-between">
+      <div class="flex justify-between items-center mb-4">
         <div>
-          <a routerLink="/admin/create-user" class="inline-block">
-            <button class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors w-full">
-              + Create New User
-            </button>
-          </a>
+          <p class="text-gray-600 dark:text-gray-400 text-sm">Manage User Permissions</p>
+          <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Users must sign in with Microsoft 365 before permissions can be assigned</p>
         </div>
+        <button 
+          (click)="refreshUsers()"
+          class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
+        >
+          Refresh Users
+        </button>
       </div>
     </div>
   </div>
@@ -70,7 +73,7 @@
       </div>
       <div>
         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Filter by Role</label>
-        <div class="flex gap-2">
+        <div class="flex gap-2 flex-wrap">
           <button 
             (click)="setRoleFilter('all')"
             [ngClass]="{'bg-blue-600 text-white': activeFilter === 'all', 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white': activeFilter !== 'all'}"
@@ -83,7 +86,7 @@
             [ngClass]="{'bg-red-600 text-white': activeFilter === 'admin', 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white': activeFilter !== 'admin'}"
             class="px-3 py-2 rounded-lg text-sm font-medium transition-colors"
           >
-            Admin
+            Super Admin
           </button>
           <button 
             (click)="setRoleFilter('manager')"
@@ -98,6 +101,13 @@
             class="px-3 py-2 rounded-lg text-sm font-medium transition-colors"
           >
             User
+          </button>
+          <button 
+            (click)="setRoleFilter('readonly')"
+            [ngClass]="{'bg-yellow-600 text-white': activeFilter === 'readonly', 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white': activeFilter !== 'readonly'}"
+            class="px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+          >
+            Read-Only
           </button>
         </div>
       </div>
@@ -145,10 +155,9 @@
               <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Name</th>
               <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Email</th>
               <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Role</th>
-              <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Department</th>
+              <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Module Access</th>
               <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Status</th>
               <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Join Date</th>
-              <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Last Login</th>
               <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Actions</th>
             </tr>
           </thead>
@@ -158,32 +167,23 @@
                 <td class="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">{{ user.name }}</td>
                 <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{{ user.email }}</td>
                 <td class="px-6 py-4 text-sm">
-                  <span [ngClass]="getRoleColor(user.role)" class="px-3 py-1 rounded-full text-xs font-semibold capitalize">
-                    {{ user.role }}
+                  <span [ngClass]="getRoleColor(user.role)" class="px-3 py-1 rounded-full text-xs font-semibold">
+                    {{ getRoleDisplayName(user.role) }}
                   </span>
                 </td>
-                <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{{ user.department || 'N/A' }}</td>
+                <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                  {{ getModuleCount(user) }} / 5 modules
+                </td>
                 <td class="px-6 py-4 text-sm">
-                  <button 
-                    (click)="toggleUserStatus(user)"
-                    [ngClass]="getStatusColor(user.status)"
-                    class="px-3 py-1 rounded-full text-xs font-semibold capitalize cursor-pointer hover:opacity-80 transition-opacity"
-                  >
+                  <span [ngClass]="getStatusColor(user.status)" class="px-3 py-1 rounded-full text-xs font-semibold capitalize">
                     {{ user.status }}
-                  </button>
+                  </span>
                 </td>
                 <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{{ user.joinDate }}</td>
-                <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{{ user.lastLogin || 'Never' }}</td>
-                <td class="px-6 py-4 text-sm space-x-2">
+                <td class="px-6 py-4 text-sm">
                   <a [routerLink]="['/admin/edit-user', user.id]" class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 font-medium">
-                    Edit
+                    Edit Permissions
                   </a>
-                  <button 
-                    (click)="deleteUser(user.id)"
-                    class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 font-medium ml-2"
-                  >
-                    Delete
-                  </button>
                 </td>
               </tr>
             }

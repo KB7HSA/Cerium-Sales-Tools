@@ -33,6 +33,8 @@ export interface AssessmentType {
   AIPromptOverview?: string;
   AIPromptFindings?: string;
   AIPromptRecommendations?: string;
+  AIPromptScope?: string;
+  ResourceFolder?: string;
   DefaultHours?: number;
   DefaultRate?: number;
   IsActive: boolean;

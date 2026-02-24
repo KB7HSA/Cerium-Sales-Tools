@@ -19,6 +19,13 @@
       >
         Manage Labor Items
       </a>
+      <button
+        type="button"
+        (click)="clearLaborBudget()"
+        class="inline-flex items-center gap-2 rounded-lg border border-red-300 dark:border-red-700 px-4 py-2 text-sm font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
+      >
+        Clear Labor Budget
+      </button>
     </div>
   </div>
 
@@ -114,17 +121,41 @@
         }
       </div>
 
-      <!-- Work item grid with filters and inline edit -->
+      <!-- Work item grid with filters, grouping, and inline edit -->
       <div class="rounded-lg bg-white dark:bg-gray-800 p-6 shadow">
         <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Work Items</h2>
-          <button
-            type="button"
-            (click)="addWorkItemRow()"
-            class="rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700"
-          >
-            Add Row
-          </button>
+          <div class="flex items-center gap-2">
+            @if (showNewGroupInput) {
+              <div class="flex items-center gap-1">
+                <input
+                  type="text"
+                  [(ngModel)]="newGroupName"
+                  (keydown)="handleNewGroupKeydown($event)"
+                  placeholder="Group name"
+                  class="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-xs text-gray-900 dark:text-white"
+                  autofocus
+                />
+                <button type="button" (click)="confirmAddGroup()" class="text-xs font-semibold text-green-600 hover:text-green-700 dark:text-green-400">Add</button>
+                <button type="button" (click)="cancelAddGroup()" class="text-xs font-semibold text-gray-500 hover:text-gray-700 dark:text-gray-400">Cancel</button>
+              </div>
+            } @else {
+              <button
+                type="button"
+                (click)="addGroup()"
+                class="rounded-lg border border-gray-300 dark:border-gray-700 px-3 py-2 text-xs font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800"
+              >
+                + Group
+              </button>
+            }
+            <button
+              type="button"
+              (click)="addWorkItemRow()"
+              class="rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700"
+            >
+              Add Row
+            </button>
+          </div>
         </div>
 
         <div class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
@@ -166,254 +197,268 @@
         </div>
 
         @if (selectedSolution && selectedSolution.items.length > 0) {
-          <div class="mt-6 overflow-x-auto">
-            <div class="min-w-[900px]">
-              <div
-                class="grid items-center gap-4 pb-3 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400"
-                [style.gridTemplateColumns]="gridTemplateColumns"
-              >
-                <button type="button" class="relative text-left" (click)="toggleSort('name')">
-                  Work Item
-                  <span class="column-resize-handle" (mousedown)="startResize($event, 0)"></span>
-                </button>
-                <button type="button" class="relative text-left" (click)="toggleSort('role')">
-                  Role
-                  <span class="column-resize-handle" (mousedown)="startResize($event, 1)"></span>
-                </button>
-                <div class="relative">
-                  Quantity
-                  <span class="column-resize-handle" (mousedown)="startResize($event, 2)"></span>
+          <div class="mt-6 space-y-4">
+            @for (group of getWorkItemGroups(); track group) {
+              <div class="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+                <!-- Group header -->
+                <div class="flex items-center justify-between bg-gray-50 dark:bg-gray-750 px-4 py-2.5 border-b border-gray-200 dark:border-gray-700">
+                  <div class="flex items-center gap-2">
+                    <button type="button" (click)="toggleGroupCollapse(group)" class="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-transform" [class.rotate-90]="!isGroupCollapsed(group)">
+                      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                    </button>
+                    @if (editingGroupName === group) {
+                      <input
+                        type="text"
+                        [(ngModel)]="editingGroupDraft"
+                        (keydown)="handleGroupNameKeydown($event, group)"
+                        (blur)="saveGroupName(group)"
+                        class="rounded border border-blue-400 dark:border-blue-600 bg-white dark:bg-gray-700 px-2 py-0.5 text-sm font-semibold text-gray-900 dark:text-white"
+                        autofocus
+                      />
+                    } @else {
+                      <button type="button" (click)="startEditGroupName(group)" class="text-sm font-semibold text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400" title="Click to rename group">
+                        {{ group }}
+                      </button>
+                    }
+                    <span class="text-xs text-gray-500 dark:text-gray-400">({{ getFilteredWorkItemsByGroup(group).length }} items)</span>
+                  </div>
+                  <div class="flex items-center gap-3">
+                    <span class="text-xs font-medium text-gray-600 dark:text-gray-300">{{ getGroupHours(group) | number:'1.1-1' }} hrs</span>
+                    <span class="text-xs font-semibold text-gray-900 dark:text-white">${{ getGroupSubtotal(group) | number:'1.2-2' }}</span>
+                    <button type="button" (click)="addWorkItemRow(group)" class="text-xs font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400" title="Add row to this group">+ Row</button>
+                    @if (getWorkItemGroups().length > 1) {
+                      <button type="button" (click)="deleteGroup(group)" class="text-xs font-semibold text-red-500 hover:text-red-700 dark:text-red-400" title="Delete group">
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                      </button>
+                    }
+                  </div>
                 </div>
-                <div class="relative">
-                  Hours/Unit
-                  <span class="column-resize-handle" (mousedown)="startResize($event, 3)"></span>
-                </div>
-                <div class="relative">
-                  Rate/Hour
-                  <span class="column-resize-handle" (mousedown)="startResize($event, 4)"></span>
-                </div>
-                <button type="button" class="relative text-left" (click)="toggleSort('cost')">
-                  Cost
-                  <span class="column-resize-handle" (mousedown)="startResize($event, 5)"></span>
-                </button>
-                <div class="text-right">Actions</div>
-              </div>
 
-              <div class="space-y-2">
-                @for (entry of getFilteredWorkItems(); track entry.id) {
-                  <div class="grid items-center gap-4 rounded-lg border border-gray-200 dark:border-gray-700 p-3" [style.gridTemplateColumns]="gridTemplateColumns">
-                    <div>
-                      <div class="flex items-center gap-2">
-                        <select
-                          [ngModel]="entry.catalogItemId"
-                          (ngModelChange)="updateCatalogItem(entry, $event)"
-                          class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-white"
-                        >
-                          @for (item of getFilteredCatalogItems(); track item.id) {
-                            <option [value]="item.id">{{ item.name }}</option>
-                          }
-                        </select>
-                        @if (getCatalogItem(entry); as catalog) {
-                          @if (catalog.tooltip) {
-                            <span class="info-tooltip" tabindex="0" aria-label="Work item info">
-                              i
-                              <span class="info-tooltip__content">{{ catalog.tooltip }}</span>
-                            </span>
-                          }
-                        }
+                <!-- Group items -->
+                @if (!isGroupCollapsed(group)) {
+                  <div class="overflow-x-auto">
+                    <div class="min-w-[960px]">
+                      <!-- Column headers -->
+                      <div
+                        class="grid items-center gap-4 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700"
+                        style="grid-template-columns: 28px 1fr 160px 90px 100px 100px 110px 100px"
+                      >
+                        <div></div>
+                        <div>Work Item</div>
+                        <div>Section / Unit</div>
+                        <div>Qty</div>
+                        <div>Hrs/Unit</div>
+                        <div>Rate</div>
+                        <div>Cost</div>
+                        <div class="text-right">Actions</div>
                       </div>
-                      @if (getCatalogItem(entry); as catalog) {
-                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ catalog.referenceArchitecture }}</p>
-                      }
-                    </div>
-                    <div>
-                      @if (getCatalogItem(entry); as catalog) {
-                        <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ catalog.section }}</p>
-                        <p class="text-xs text-gray-500 dark:text-gray-400">{{ catalog.unitOfMeasure }}</p>
-                      } @else {
-                        <p class="text-sm text-gray-500 dark:text-gray-400">--</p>
-                      }
-                    </div>
-                    <div>
-                      @if (editingItemId === entry.id && editDraft) {
-                        <input
-                          type="number"
-                          min="1"
-                          [ngModel]="getEditDraftValue('quantity')"
-                          (ngModelChange)="updateEditDraftValue('quantity', $event)"
-                          (keydown)="handleEditKeydown($event, entry)"
-                          class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-2 py-1 text-sm text-gray-900 dark:text-white"
-                        />
-                      } @else {
-                        <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ entry.quantity }}</p>
-                      }
-                    </div>
-                    <div>
-                      @if (editingItemId === entry.id && editDraft) {
-                        <input
-                          type="number"
-                          min="0"
-                          step="0.1"
-                          [ngModel]="getEditDraftValue('hoursPerUnit')"
-                          (ngModelChange)="updateEditDraftValue('hoursPerUnit', $event)"
-                          (keydown)="handleEditKeydown($event, entry)"
-                          class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-2 py-1 text-sm text-gray-900 dark:text-white"
-                        />
-                      } @else {
-                        <p class="text-sm text-gray-700 dark:text-gray-300">{{ entry.hoursPerUnit }}</p>
-                      }
-                    </div>
-                    <div>
-                      @if (editingItemId === entry.id && editDraft) {
-                        <input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          [ngModel]="getEditDraftValue('ratePerHour')"
-                          (ngModelChange)="updateEditDraftValue('ratePerHour', $event)"
-                          (keydown)="handleEditKeydown($event, entry)"
-                          class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-2 py-1 text-sm text-gray-900 dark:text-white"
-                        />
-                      } @else {
-                        <p class="text-sm text-gray-700 dark:text-gray-300">${{ entry.ratePerHour.toFixed(2) }}</p>
-                      }
-                    </div>
-                    <div>
-                      <p class="text-sm font-semibold text-gray-900 dark:text-white">${{ getLineCost(entry).toFixed(2) }}</p>
-                    </div>
-                    <div class="flex items-center justify-end gap-2">
-                      @if (editingItemId === entry.id) {
-                        <button
-                          type="button"
-                          (click)="saveEdit(entry)"
-                          class="text-xs font-semibold text-green-600 hover:text-green-700 dark:text-green-400"
+
+                      <!-- Rows -->
+                      @for (entry of getFilteredWorkItemsByGroup(group); track entry.id; let i = $index; let first = $first; let last = $last) {
+                        <div
+                          class="grid items-center gap-4 px-4 py-2.5 border-b border-gray-100 dark:border-gray-700 transition-colors"
+                          [class.bg-blue-50]="dragOverItemId === entry.id && dragOverPosition === 'above'"
+                          [class.dark:bg-blue-900/20]="dragOverItemId === entry.id && dragOverPosition === 'above'"
+                          [class.bg-blue-50]="dragOverItemId === entry.id && dragOverPosition === 'below'"
+                          [class.opacity-50]="dragItemId === entry.id"
+                          style="grid-template-columns: 28px 1fr 160px 90px 100px 100px 110px 100px"
+                          draggable="true"
+                          (dragstart)="onDragStart($event, entry)"
+                          (dragover)="onDragOver($event, entry)"
+                          (dragleave)="onDragLeave($event)"
+                          (drop)="onDrop($event, entry)"
+                          (dragend)="onDragEnd()"
                         >
-                          Save
-                        </button>
-                        <button
-                          type="button"
-                          (click)="cancelEdit()"
-                          class="text-xs font-semibold text-gray-500 hover:text-gray-700 dark:text-gray-400"
-                        >
-                          Cancel
-                        </button>
-                      } @else {
-                        <button
-                          type="button"
-                          (click)="startEdit(entry)"
-                          class="text-xs font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          (click)="removeWorkItemRow(entry)"
-                          class="text-xs font-semibold text-red-600 hover:text-red-700 dark:text-red-400"
-                        >
-                          Remove
-                        </button>
+                          <!-- Drag handle + reorder -->
+                          <div class="flex flex-col items-center gap-0.5">
+                            <button type="button" (click)="moveItemUp(entry)" [disabled]="first" class="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 disabled:opacity-30 disabled:cursor-default" title="Move up">
+                              <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>
+                            </button>
+                            <svg class="w-4 h-4 text-gray-400 cursor-grab" fill="currentColor" viewBox="0 0 24 24"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg>
+                            <button type="button" (click)="moveItemDown(entry)" [disabled]="last" class="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 disabled:opacity-30 disabled:cursor-default" title="Move down">
+                              <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                            </button>
+                          </div>
+
+                          <!-- Work Item selector -->
+                          <div>
+                            <div class="flex items-center gap-2">
+                              <select
+                                [ngModel]="entry.catalogItemId"
+                                (ngModelChange)="updateCatalogItem(entry, $event)"
+                                class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-1.5 text-sm text-gray-900 dark:text-white"
+                              >
+                                @for (item of getFilteredCatalogItems(); track item.id) {
+                                  <option [value]="item.id">{{ item.name }}</option>
+                                }
+                              </select>
+                              @if (getCatalogItem(entry); as catalog) {
+                                @if (catalog.tooltip) {
+                                  <span class="info-tooltip" tabindex="0" aria-label="Work item info">
+                                    i
+                                    <span class="info-tooltip__content">{{ catalog.tooltip }}</span>
+                                  </span>
+                                }
+                              }
+                            </div>
+                            @if (getCatalogItem(entry); as catalog) {
+                              <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">{{ catalog.referenceArchitecture }}</p>
+                            }
+                          </div>
+
+                          <!-- Section / Unit -->
+                          <div>
+                            @if (getCatalogItem(entry); as catalog) {
+                              <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ catalog.section }}</p>
+                              <p class="text-xs text-gray-500 dark:text-gray-400">{{ catalog.unitOfMeasure }}</p>
+                            } @else {
+                              <p class="text-sm text-gray-500 dark:text-gray-400">--</p>
+                            }
+                          </div>
+
+                          <!-- Quantity -->
+                          <div>
+                            @if (editingItemId === entry.id && editDraft) {
+                              <input type="number" min="1"
+                                [ngModel]="getEditDraftValue('quantity')"
+                                (ngModelChange)="updateEditDraftValue('quantity', $event)"
+                                (keydown)="handleEditKeydown($event, entry)"
+                                class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-2 py-1 text-sm text-gray-900 dark:text-white"
+                              />
+                            } @else {
+                              <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ entry.quantity }}</p>
+                            }
+                          </div>
+
+                          <!-- Hours/Unit -->
+                          <div>
+                            @if (editingItemId === entry.id && editDraft) {
+                              <input type="number" min="0" step="0.1"
+                                [ngModel]="getEditDraftValue('hoursPerUnit')"
+                                (ngModelChange)="updateEditDraftValue('hoursPerUnit', $event)"
+                                (keydown)="handleEditKeydown($event, entry)"
+                                class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-2 py-1 text-sm text-gray-900 dark:text-white"
+                              />
+                            } @else {
+                              <p class="text-sm text-gray-700 dark:text-gray-300">{{ entry.hoursPerUnit }}</p>
+                            }
+                          </div>
+
+                          <!-- Rate/Hour -->
+                          <div>
+                            @if (editingItemId === entry.id && editDraft) {
+                              <input type="number" min="0" step="0.01"
+                                [ngModel]="getEditDraftValue('ratePerHour')"
+                                (ngModelChange)="updateEditDraftValue('ratePerHour', $event)"
+                                (keydown)="handleEditKeydown($event, entry)"
+                                class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-2 py-1 text-sm text-gray-900 dark:text-white"
+                              />
+                            } @else {
+                              <p class="text-sm text-gray-700 dark:text-gray-300">${{ entry.ratePerHour.toFixed(2) }}</p>
+                            }
+                          </div>
+
+                          <!-- Cost -->
+                          <div>
+                            <p class="text-sm font-semibold text-gray-900 dark:text-white">${{ getLineCost(entry).toFixed(2) }}</p>
+                          </div>
+
+                          <!-- Actions -->
+                          <div class="flex items-center justify-end gap-1.5">
+                            @if (editingItemId === entry.id) {
+                              <button type="button" (click)="saveEdit(entry)" class="text-xs font-semibold text-green-600 hover:text-green-700 dark:text-green-400">Save</button>
+                              <button type="button" (click)="cancelEdit()" class="text-xs font-semibold text-gray-500 hover:text-gray-700 dark:text-gray-400">Cancel</button>
+                            } @else {
+                              <button type="button" (click)="startEdit(entry)" class="text-xs font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400">Edit</button>
+                              <button type="button" (click)="removeWorkItemRow(entry)" class="text-xs font-semibold text-red-600 hover:text-red-700 dark:text-red-400">Remove</button>
+                            }
+                          </div>
+                        </div>
                       }
                     </div>
                   </div>
                 }
               </div>
-            </div>
+            }
           </div>
         } @else {
           <p class="mt-4 text-sm text-gray-500 dark:text-gray-400">Add a work item to begin calculating labor.</p>
         }
       </div>
 
-      <div class="rounded-lg bg-white dark:bg-gray-800 p-6 shadow">
-        <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Servers / General / Licensing</h2>
-        <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">New</label>
-            <input
-              type="number"
-              min="0"
-              [(ngModel)]="serverNew"
-              class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2 text-gray-900 dark:text-white"
-              placeholder="0"
-            />
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Upgrade</label>
-            <input
-              type="number"
-              min="0"
-              [(ngModel)]="serverUpgrade"
-              class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2 text-gray-900 dark:text-white"
-              placeholder="0"
-            />
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Physical Installation</label>
-            <input
-              type="number"
-              min="0"
-              [(ngModel)]="serverPhysicalInstall"
-              class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2 text-gray-900 dark:text-white"
-              placeholder="0"
-            />
-          </div>
-        </div>
-        <div class="mt-4 rounded-lg border border-gray-200 dark:border-gray-700 p-3">
-          <p class="text-sm text-gray-700 dark:text-gray-300">Worksheet total: <span class="font-semibold">{{ serverWorksheetTotal }}</span></p>
-        </div>
-      </div>
     </main>
 
     <aside class="space-y-6 xl:col-span-4">
-      <!-- Solution selector -->
+      <!-- Blueprint selector -->
       <div class="rounded-lg bg-white dark:bg-gray-800 p-6 shadow">
         <div class="flex items-center justify-between">
-          <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Solutions</h2>
+          <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Blueprints</h2>
           <button
             type="button"
-            (click)="addSolution()"
+            (click)="toggleBlueprintPicker()"
             class="rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700"
           >
-            Add Solution
+            @if (showBlueprintPicker) { Cancel } @else { + Blueprint }
           </button>
         </div>
+
+        <!-- Blueprint picker dropdown -->
+        @if (showBlueprintPicker) {
+          <div class="mt-3 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 p-3">
+            <p class="text-xs font-semibold text-blue-700 dark:text-blue-300 mb-2">Select a Blueprint</p>
+            @if (blueprints.length > 0) {
+              <div class="space-y-1.5 max-h-60 overflow-y-auto">
+                @for (bp of blueprints; track bp.id) {
+                  <button
+                    type="button"
+                    (click)="addFromBlueprint(bp)"
+                    class="flex w-full items-center justify-between rounded-lg border border-blue-100 dark:border-blue-800 bg-white dark:bg-gray-800 px-3 py-2 text-left text-sm hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
+                  >
+                    <div>
+                      <p class="font-semibold text-gray-900 dark:text-white">{{ bp.name }}</p>
+                      <p class="text-xs text-gray-500 dark:text-gray-400">{{ bp.items.length }} work item(s) · OH {{ bp.overheadPercent }}% · Cont {{ bp.contingencyPercent }}%</p>
+                      @if (bp.description) {
+                        <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{{ bp.description }}</p>
+                      }
+                    </div>
+                    <svg class="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                  </button>
+                }
+              </div>
+            } @else {
+              <p class="text-xs text-gray-500 dark:text-gray-400">No blueprints found. Create one using the <a routerLink="/labor-budget-wizard" class="text-blue-600 hover:underline dark:text-blue-400">Wizard</a>.</p>
+            }
+          </div>
+        }
+
         <div class="mt-4 space-y-2">
-          @for (solution of solutions; track solution.id) {
-            <button
-              type="button"
-              (click)="selectSolution(solution)"
-              class="flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-sm transition-colors"
-              [class.border-blue-500]="solution.id === selectedSolutionId"
-              [class.bg-blue-50]="solution.id === selectedSolutionId"
-              [class.dark:bg-blue-900/20]="solution.id === selectedSolutionId"
-              [class.border-gray-200]="solution.id !== selectedSolutionId"
-              [class.dark:border-gray-700]="solution.id !== selectedSolutionId"
-            >
+          @for (addedBp of addedBlueprints; track addedBp.id) {
+            <div class="flex w-full items-center justify-between rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2 text-left text-sm">
               <div>
-                <p class="font-semibold text-gray-900 dark:text-white">{{ solution.name }}</p>
-                <p class="text-xs text-gray-500 dark:text-gray-400">{{ solution.items.length }} item(s)</p>
+                <p class="font-semibold text-gray-900 dark:text-white">{{ addedBp.name }}</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400">{{ addedBp.itemCount }} work item(s)</p>
               </div>
               <button
                 type="button"
-                (click)="$event.stopPropagation(); deleteSolution(solution)"
+                (click)="removeAddedBlueprint(addedBp)"
                 class="text-xs font-semibold text-red-600 hover:text-red-700 dark:text-red-400"
               >
                 Remove
               </button>
-            </button>
+            </div>
           }
-          @if (solutions.length === 0) {
-            <p class="text-sm text-gray-500 dark:text-gray-400">Add a solution to start.</p>
+          @if (addedBlueprints.length === 0) {
+            <p class="text-sm text-gray-500 dark:text-gray-400">Add a blueprint to start.</p>
           }
         </div>
       </div>
 
       <div class="rounded-lg bg-white dark:bg-gray-800 p-6 shadow">
-        <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Rollup Summary</h2>
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Totals</h2>
         @if (selectedSolution) {
           <div class="space-y-4 text-sm text-gray-600 dark:text-gray-400">
             <div class="flex items-center justify-between">
-              <span>Solution Subtotal</span>
+              <span>Subtotal</span>
               <span class="font-semibold text-gray-900 dark:text-white">${{ getSolutionSubtotal(selectedSolution).toFixed(2) }}</span>
             </div>
             <div class="flex items-center justify-between">
@@ -425,12 +470,19 @@
               <span class="font-semibold text-gray-900 dark:text-white">${{ getSolutionContingency(selectedSolution).toFixed(2) }}</span>
             </div>
             <div class="flex items-center justify-between border-t border-gray-200 dark:border-gray-700 pt-3 text-base">
-              <span class="font-semibold text-gray-900 dark:text-white">Solution Total</span>
+              <span class="font-semibold text-gray-900 dark:text-white">Total</span>
               <span class="font-bold text-blue-600 dark:text-blue-400">${{ getSolutionTotal(selectedSolution).toFixed(2) }}</span>
             </div>
           </div>
+          <button
+            type="button"
+            (click)="createQuote()"
+            class="mt-6 w-full rounded-lg bg-green-600 px-4 py-3 text-sm font-semibold text-white hover:bg-green-700"
+          >
+            Create Quote
+          </button>
         } @else {
-          <p class="text-sm text-gray-500 dark:text-gray-400">Select a solution to view totals.</p>
+          <p class="text-sm text-gray-500 dark:text-gray-400">Add a blueprint to view totals.</p>
         }
       </div>
 
@@ -458,35 +510,6 @@
         } @else {
           <p class="mt-3 text-sm text-gray-500 dark:text-gray-400">No grouped totals yet.</p>
         }
-      </div>
-
-      <div class="rounded-lg bg-white dark:bg-gray-800 p-6 shadow">
-        <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300">Grand Totals</h3>
-        <div class="mt-3 space-y-3 text-sm text-gray-600 dark:text-gray-400">
-          <div class="flex items-center justify-between">
-            <span>Subtotal</span>
-            <span class="font-semibold text-gray-900 dark:text-white">${{ getGrandSubtotal().toFixed(2) }}</span>
-          </div>
-          <div class="flex items-center justify-between">
-            <span>Overhead</span>
-            <span class="font-semibold text-gray-900 dark:text-white">${{ getGrandOverhead().toFixed(2) }}</span>
-          </div>
-          <div class="flex items-center justify-between">
-            <span>Contingency</span>
-            <span class="font-semibold text-gray-900 dark:text-white">${{ getGrandContingency().toFixed(2) }}</span>
-          </div>
-          <div class="flex items-center justify-between border-t border-gray-200 dark:border-gray-700 pt-3 text-base">
-            <span class="font-semibold text-gray-900 dark:text-white">Grand Total</span>
-            <span class="font-bold text-blue-600 dark:text-blue-400">${{ getGrandTotal().toFixed(2) }}</span>
-          </div>
-        </div>
-        <button
-          type="button"
-          (click)="createQuote()"
-          class="mt-6 w-full rounded-lg bg-green-600 px-4 py-3 text-sm font-semibold text-white hover:bg-green-700"
-        >
-          Create Quote
-        </button>
       </div>
     </aside>
   </div>

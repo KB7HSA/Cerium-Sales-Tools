@@ -1,0 +1,112 @@
+<!-- Example: Labor Budget Module with RBAC -->
+
+<!-- Regular User View - Can view and create labor budgets -->
+<div class="labor-budget-section">
+  <h2>Labor Budget</h2>
+  
+  <!-- Everyone with VIEW permission can see this -->
+  <div *hasPermission="{ module: 'labor-budget', permission: 'view' }">
+    <a routerLink="/labor-budget">View Labor Budget</a>
+  </div>
+  
+  <!-- Users with CREATE permission can see this -->
+  <div *hasPermission="{ module: 'labor-budget', permission: 'create' }">
+    <button>Create New Budget</button>
+  </div>
+  
+  <!-- Users with EDIT permission can see this -->
+  <button *hasPermission="{ module: 'labor-budget', permission: 'edit' }">
+    Edit Budget
+  </button>
+  
+  <!-- Only users with ADMIN permission for Labor Budget can see this -->
+  <div *hasPermission="{ module: 'labor-budget', permission: 'admin' }">
+    <a routerLink="/admin/labor-budget">
+      <i class="icon-settings"></i>
+      Labor Budget Admin Settings
+    </a>
+  </div>
+  
+  <!-- Alternative using isModuleAdmin directive -->
+  <div *isModuleAdmin="'labor-budget'">
+    <a routerLink="/admin/labor-budget">Admin Panel</a>
+  </div>
+</div>
+
+<!-- Admin Menu Section - Only visible to module admins -->
+<nav class="admin-menu">
+  <h3>Administration</h3>
+  
+  <ul>
+    <!-- Labor Budget Admin - Only for labor-budget admins -->
+    <li *isModuleAdmin="'labor-budget'">
+      <a routerLink="/admin/labor-budget">Labor Budget Settings</a>
+    </li>
+    
+    <!-- MSP Services Admin - Only for msp-services admins -->
+    <li *isModuleAdmin="'msp-services'">
+      <a routerLink="/admin/offerings">MSP Offerings</a>
+    </li>
+    
+    <!-- E-Rate Admin - Only for e-rate admins -->
+    <li *isModuleAdmin="'e-rate'">
+      <a routerLink="/admin/erate-settings">E-Rate Settings</a>
+    </li>
+    
+    <!-- SOW Admin - Only for sow-documents admins -->
+    <li *hasPermission="{ module: 'sow-documents', permission: 'admin' }">
+      <a routerLink="/admin/sow-templates">SOW Templates</a>
+    </li>
+    
+    <!-- Quote Management Admin -->
+    <li *isModuleAdmin="'quote-management'">
+      <a routerLink="/admin/quote-settings">Quote Settings</a>
+    </li>
+    
+    <!-- Super Admin Only Features -->
+    <li *hasPermission="'super-admin'">
+      <a routerLink="/admin/users">User Management</a>
+    </li>
+    
+    <li *hasPermission="'super-admin'">
+      <a routerLink="/admin/system-settings">System Settings</a>
+    </li>
+  </ul>
+</nav>
+
+<!-- Example Component TypeScript -->
+<!--
+import { Component, inject } from '@angular/core';
+import { RBACService, AppModule, Permission } from '../services/rbac.service';
+import { HasPermissionDirective, IsModuleAdminDirective } from '../directives/has-permission.directive';
+
+@Component({
+  selector: 'app-module-view',
+  imports: [HasPermissionDirective, IsModuleAdminDirective],
+  templateUrl: './module-view.component.html'
+})
+export class ModuleViewComponent {
+  private rbacService = inject(RBACService);
+  
+  // Access AppModule enum in template
+  readonly AppModule = AppModule;
+  readonly Permission = Permission;
+  
+  // Check permissions programmatically
+  canEditBudget(): boolean {
+    return this.rbacService.hasPermission(AppModule.LABOR_BUDGET, Permission.EDIT);
+  }
+  
+  isLaborAdmin(): boolean {
+    return this.rbacService.isModuleAdmin(AppModule.LABOR_BUDGET);
+  }
+  
+  handleEdit() {
+    if (this.canEditBudget()) {
+      // Perform edit
+    } else {
+      // Show access denied message
+    }
+  }
+}
+-->

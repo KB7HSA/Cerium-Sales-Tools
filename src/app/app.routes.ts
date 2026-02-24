@@ -97,6 +97,8 @@ import { AssessmentGeneratorComponent } from './pages/assessments/assessment-gen
 import { AssessmentTypesComponent } from './pages/admin/assessment-types.component';
 import { ERateComponent } from './pages/e-rate/e-rate.component';
 import { ERateDashboardComponent } from './pages/e-rate/e-rate-dashboard.component';
+import { FRNStatusComponent } from './pages/e-rate/frn-status.component';
+import { FRNDashboardComponent } from './pages/e-rate/frn-dashboard.component';
 import { ERateSettingsComponent } from './pages/admin/erate-settings.component';
 
 export const routes: Routes = [
@@ -109,7 +111,7 @@ export const routes: Routes = [
         component: EcommerceComponent,
         pathMatch: 'full',
         title:
-          'Angular Ecommerce Dashboard | Cerium Sales Tools',
+          'Tech Sales Dashboard | Cerium Sales Tools',
       },
       {
         path:'analytics',
@@ -312,6 +314,16 @@ export const routes: Routes = [
         path:'e-rate/dashboard',
         component:ERateDashboardComponent,
         title:'E-Rate Dashboard | Cerium Sales Tools'
+      },
+      {
+        path:'e-rate/frn-status',
+        component:FRNStatusComponent,
+        title:'FRN Status | Cerium Sales Tools'
+      },
+      {
+        path:'e-rate/frn-dashboard',
+        component:FRNDashboardComponent,
+        title:'FRN Dashboard | Cerium Sales Tools'
       },
       // Admin
       {

@@ -7,6 +7,7 @@ import { MSPOfferingsService, MSPOffering, MSPOption, MSPServiceLevel, PricingUn
 import { CustomerManagementService, Customer } from '../../shared/services/customer-management.service';
 import { PricingUnitOption, PricingUnitsService } from '../../shared/services/pricing-units.service';
 import { Subscription } from 'rxjs';
+import { AuthService } from '../../shared/services/auth.service';
 
 @Component({
   selector: 'app-msp-quote',
@@ -50,7 +51,8 @@ export class MspQuoteComponent implements OnInit, OnDestroy {
     private offeringsService: MSPOfferingsService,
     private customerService: CustomerManagementService,
     private pricingUnitsService: PricingUnitsService,
-    private router: Router
+    private router: Router,
+    private authService: AuthService
   ) {}
 
   ngOnInit(): void {
@@ -260,6 +262,7 @@ export class MspQuoteComponent implements OnInit, OnDestroy {
     const now = new Date();
     const createdDate = now.toLocaleDateString();
     const createdTime = now.toLocaleTimeString();
+    const currentUser = this.authService.getCurrentUser();
     const basePricePerUnit = this.currentServiceLevel.basePrice || 0;
     const professionalServicesPerUnit = this.currentServiceLevel.professionalServicesPrice || 0;
     const professionalServicesTotal = professionalServicesPerUnit * this.quantity;
@@ -304,6 +307,8 @@ export class MspQuoteComponent implements OnInit, OnDestroy {
       status: 'pending',
       createdDate,
       createdTime,
+      createdBy: currentUser?.name || 'Unknown User',
+      createdByEmail: currentUser?.email || '',
     };
 
     console.log('[MspQuoteComponent] Generating and saving quote:', quoteData);

@@ -1,11 +1,12 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Subscription } from 'rxjs';
+import { Subscription, forkJoin, of } from 'rxjs';
 import { AssessmentService, AssessmentType, ReferenceArchitecture, GeneratedAssessment } from '../../shared/services/assessment.service';
-import { AssessmentAIService } from '../../shared/services/assessment-ai.service';
+import { AssessmentAIService, AIGenerationContext, AIDocumentReviewResponse } from '../../shared/services/assessment-ai.service';
 import { CustomerManagementService, Customer } from '../../shared/services/customer-management.service';
 import { AssessmentDocumentService, AssessmentDocumentData } from '../../shared/services/assessment-document.service';
+import { AuthService } from '../../shared/services/auth.service';
 
 @Component({
   selector: 'app-assessment-generator',
@@ -44,7 +45,40 @@ export class AssessmentGeneratorComponent implements OnInit, OnDestroy {
   
   // AI Generated Content
   aiGeneratedOverview: string = '';
+  aiGeneratedFindings: string = '';
+  aiGeneratedRecommendations: string = '';
+  aiGeneratedScope: string = '';
   showAIPreview: boolean = false;
+  aiConfigured: boolean = false;
+  aiModel: string = '';
+  
+  // AI prompt enable/disable checkboxes
+  enableAIOverview: boolean = true;
+  enableAIFindings: boolean = true;
+  enableAIRecommendations: boolean = true;
+  enableAIScope: boolean = false;
+  enableTechnicalResources: boolean = false;
+  
+  // Technical Resources
+  technicalResourcesContent: string = '';
+  technicalResourcesFiles: string[] = [];
+  isLoadingResources: boolean = false;
+  resourcesLoaded: boolean = false;
+  
+  // Debug prompt preview
+  showDebugPrompt: boolean = false;
+  debugSystemPrompt: string = '';
+  debugUserPrompt: string = '';
+  debugModel: string = '';
+  debugConfigured: boolean = false;
+  
+  // Professional Review
+  enableProfessionalReview: boolean = false;
+  isReviewing: boolean = false;
+  showReviewResults: boolean = false;
+  reviewRating: number = 0;
+  reviewSuggestions: string[] = [];
+  reviewSummary: string = '';
   
   // Selected type for display
   selectedType: AssessmentType | null = null;
@@ -56,7 +90,8 @@ export class AssessmentGeneratorComponent implements OnInit, OnDestroy {
     private assessmentService: AssessmentService,
     private aiService: AssessmentAIService,
     private customerService: CustomerManagementService,
-    private documentService: AssessmentDocumentService
+    private documentService: AssessmentDocumentService,
+    private authService: AuthService
   ) {}
 
   ngOnInit(): void {
@@ -87,6 +122,11 @@ export class AssessmentGeneratorComponent implements OnInit, OnDestroy {
     );
     
     this.loadData();
+    
+    // Check Azure OpenAI status
+    this.aiService.checkAIStatus().subscribe(status => {
+      this.aiConfigured = status.configured;
+    });
   }
 
   ngOnDestroy(): void {
@@ -102,6 +142,19 @@ export class AssessmentGeneratorComponent implements OnInit, OnDestroy {
 
   onTypeChange(): void {
     this.selectedType = this.assessmentTypes.find(t => t.Id === this.selectedTypeId) || null;
+    // Auto-enable checkboxes based on whether the AI prompt field has content
+    if (this.selectedType) {
+      this.enableAIOverview = !!(this.selectedType.AIPromptOverview && this.selectedType.AIPromptOverview.trim());
+      this.enableAIFindings = !!(this.selectedType.AIPromptFindings && this.selectedType.AIPromptFindings.trim());
+      this.enableAIRecommendations = !!(this.selectedType.AIPromptRecommendations && this.selectedType.AIPromptRecommendations.trim());
+      this.enableAIScope = !!(this.selectedType.AIPromptScope && this.selectedType.AIPromptScope.trim());
+      // Auto-enable technical resources if a resource folder is configured
+      this.enableTechnicalResources = !!(this.selectedType.ResourceFolder && this.selectedType.ResourceFolder.trim());
+      // Reset loaded resources when type changes
+      this.technicalResourcesContent = '';
+      this.technicalResourcesFiles = [];
+      this.resourcesLoaded = false;
+    }
     this.updateTitle();
   }
 
@@ -140,8 +193,8 @@ export class AssessmentGeneratorComponent implements OnInit, OnDestroy {
   onCustomerChange(): void {
     const selectedCustomer = this.customers.find(c => (c.id || c.Id) === this.selectedCustomerId);
     if (selectedCustomer) {
-      this.customerName = selectedCustomer.name || selectedCustomer.Name || '';
-      this.customerContact = ''; // Reset contact - can be filled manually
+      this.customerName = selectedCustomer.company || selectedCustomer.Company || selectedCustomer.name || selectedCustomer.Name || '';
+      this.customerContact = selectedCustomer.name || selectedCustomer.Name || '';
       this.customerEmail = selectedCustomer.email || selectedCustomer.Email || '';
     }
     this.updateTitle();
@@ -173,10 +226,10 @@ export class AssessmentGeneratorComponent implements OnInit, OnDestroy {
     try {
       // Process templates with placeholders
       const processedOverview = this.aiGeneratedOverview || this.processTemplate(this.selectedType.OverviewTemplate || '');
-      const processedScope = this.processTemplate(this.selectedType.ScopeTemplate || '');
+      const processedScope = this.aiGeneratedScope || this.processTemplate(this.selectedType.ScopeTemplate || '');
       const processedMethodology = this.processTemplate(this.selectedType.MethodologyTemplate || '');
       const processedDeliverables = this.processTemplate(this.selectedType.DeliverablesTemplate || '');
-      const processedRecommendations = this.processTemplate(this.selectedType.RecommendationsTemplate || '');
+      const processedRecommendations = this.aiGeneratedRecommendations || this.processTemplate(this.selectedType.RecommendationsTemplate || '');
 
       const assessment: GeneratedAssessment = {
         AssessmentTypeId: this.selectedTypeId,
@@ -188,18 +241,20 @@ export class AssessmentGeneratorComponent implements OnInit, OnDestroy {
         ExecutiveSummary: processedOverview,
         Scope: processedScope,
         Methodology: processedMethodology,
-        Findings: '', // To be filled by AI or user
+        Findings: this.aiGeneratedFindings || '', // AI-generated or empty
         Recommendations: processedRecommendations,
         NextSteps: processedDeliverables,
         EstimatedHours: this.selectedType.DefaultHours || 16,
         HourlyRate: this.selectedType.DefaultRate || 175,
         Status: 'draft',
+        GeneratedBy: this.authService.getCurrentUser()?.name || this.authService.getCurrentUser()?.email || undefined,
         Notes: this.customNotes || undefined
       };
 
       // Prepare document data for DOCX generation
       const documentData: AssessmentDocumentData = {
         customerName: this.customerName,
+        customerContact: this.customerContact || this.customerName,
         assessmentTitle: this.assessmentTitle,
         practiceArea: this.selectedArchitecture?.Name || '',
         assessmentType: this.selectedType.Name,
@@ -210,7 +265,11 @@ export class AssessmentGeneratorComponent implements OnInit, OnDestroy {
         estimatedHours: this.selectedType.DefaultHours || 16,
         hourlyRate: this.selectedType.DefaultRate || 175,
         totalPrice: (this.selectedType.DefaultHours || 16) * (this.selectedType.DefaultRate || 175),
-        templateFileName: this.selectedType.TemplateFileName || 'Assessment-Template.docx'
+        templateFileName: this.selectedType.TemplateFileName || 'Assessment-Template.docx',
+        aiSummary: this.aiGeneratedOverview || '',
+        aiFindings: this.aiGeneratedFindings || '',
+        aiRecommendations: this.aiGeneratedRecommendations || '',
+        aiScope: this.aiGeneratedScope || ''
       };
 
       this.assessmentService.createGeneratedAssessment(assessment).subscribe({
@@ -244,15 +303,25 @@ export class AssessmentGeneratorComponent implements OnInit, OnDestroy {
                     } else {
                       this.successMessage = `Assessment "${this.assessmentTitle}" created! (Document save failed)`;
                     }
-                    this.resetForm();
-                    this.activeTab = 'history';
+
+                    // If professional review is enabled, run it before resetting
+                    if (this.enableProfessionalReview) {
+                      this.performProfessionalReview(documentData);
+                    } else {
+                      this.resetForm();
+                      this.activeTab = 'history';
+                    }
                     this.isGenerating = false;
                   },
                   error: (err) => {
                     console.error('Error saving document:', err);
                     this.successMessage = `Assessment "${this.assessmentTitle}" created! (Document save failed)`;
-                    this.resetForm();
-                    this.activeTab = 'history';
+                    if (this.enableProfessionalReview) {
+                      this.performProfessionalReview(documentData);
+                    } else {
+                      this.resetForm();
+                      this.activeTab = 'history';
+                    }
                     this.isGenerating = false;
                   }
                 });
@@ -287,8 +356,13 @@ export class AssessmentGeneratorComponent implements OnInit, OnDestroy {
     if (!template) return '';
     
     return template
+      .replace(/\{companyName\}/gi, this.customerName)
       .replace(/\{customerName\}/gi, this.customerName)
-      .replace(/\{referenceArchitecture\}/gi, this.selectedArchitecture?.Name || '');
+      .replace(/\{referenceArchitecture\}/gi, this.selectedArchitecture?.Name || '')
+      .replace(/\{AI_Summary\}/gi, this.aiGeneratedOverview || '')
+      .replace(/\{AI_Findings\}/gi, this.aiGeneratedFindings || '')
+      .replace(/\{AI_Recommendations\}/gi, this.aiGeneratedRecommendations || '')
+      .replace(/\{AI_Scope\}/gi, this.aiGeneratedScope || '');
   }
 
   resetForm(): void {
@@ -302,7 +376,14 @@ export class AssessmentGeneratorComponent implements OnInit, OnDestroy {
     this.selectedType = null;
     this.selectedArchitecture = null;
     this.aiGeneratedOverview = '';
+    this.aiGeneratedFindings = '';
+    this.aiGeneratedRecommendations = '';
+    this.aiGeneratedScope = '';
     this.showAIPreview = false;
+    this.technicalResourcesContent = '';
+    this.technicalResourcesFiles = [];
+    this.resourcesLoaded = false;
+    this.enableTechnicalResources = false;
   }
 
   // AI Content Generation
@@ -312,20 +393,87 @@ export class AssessmentGeneratorComponent implements OnInit, OnDestroy {
       return;
     }
 
-    this.isGeneratingAI = true;
-    this.errorMessage = '';
+    if (!this.enableAIOverview && !this.enableAIFindings && !this.enableAIRecommendations && !this.enableAIScope) {
+      this.errorMessage = 'Please enable at least one AI content section to generate.';
+      return;
+    }
 
-    this.aiService.generateExecutiveSummary(
-      this.customerName,
-      this.selectedType.Name,
-      this.selectedArchitecture.Name,
-      this.selectedType.AIPromptOverview
-    ).subscribe({
-      next: (content) => {
-        this.aiGeneratedOverview = content;
+    // If technical resources are enabled and not yet loaded, load them first
+    if (this.enableTechnicalResources && this.selectedType.ResourceFolder && !this.resourcesLoaded) {
+      this.isLoadingResources = true;
+      this.isGeneratingAI = true;
+      this.errorMessage = '';
+      
+      this.aiService.getTechnicalResources(this.selectedType.ResourceFolder).subscribe({
+        next: (result) => {
+          this.technicalResourcesContent = result.content;
+          this.technicalResourcesFiles = result.files;
+          this.resourcesLoaded = true;
+          this.isLoadingResources = false;
+          // Now proceed with AI generation
+          this.doGenerateAIContent();
+        },
+        error: (error) => {
+          console.error('Error loading technical resources:', error);
+          this.isLoadingResources = false;
+          // Proceed without resources
+          this.doGenerateAIContent();
+        }
+      });
+    } else {
+      this.isGeneratingAI = true;
+      this.errorMessage = '';
+      this.doGenerateAIContent();
+    }
+  }
+
+  private doGenerateAIContent(): void {
+    const contactName = this.customerContact || this.customerName;
+    const companyName = this.customerName;
+
+    // Build rich context object with all available information
+    const baseContext: AIGenerationContext = {
+      prompt: '',
+      customerName: contactName,
+      companyName: companyName,
+      customerEmail: this.customerEmail || '',
+      assessmentType: this.selectedType!.Name,
+      assessmentTypeDescription: this.selectedType!.Description || '',
+      assessmentTypeCategory: this.selectedType!.Category || '',
+      referenceArchitecture: this.selectedArchitecture!.Name,
+      scopeContext: this.selectedType!.ScopeTemplate || '',
+      methodologyContext: this.selectedType!.MethodologyTemplate || '',
+      additionalNotes: this.customNotes || '',
+      technicalResources: (this.enableTechnicalResources && this.technicalResourcesContent) ? this.technicalResourcesContent : undefined,
+    };
+
+    // Only call enabled AI endpoints — use of('') to skip disabled ones
+    forkJoin({
+      overview: this.enableAIOverview
+        ? this.aiService.generateExecutiveSummary({ ...baseContext, prompt: this.selectedType!.AIPromptOverview || '' })
+        : of(''),
+      findings: this.enableAIFindings
+        ? this.aiService.generateFindings({ ...baseContext, prompt: this.selectedType!.AIPromptFindings || '' })
+        : of(''),
+      recommendations: this.enableAIRecommendations
+        ? this.aiService.generateRecommendations({ ...baseContext, prompt: this.selectedType!.AIPromptRecommendations || '' })
+        : of(''),
+      scope: this.enableAIScope
+        ? this.aiService.generateScope({ ...baseContext, prompt: this.selectedType!.AIPromptScope || '' })
+        : of(''),
+    }).subscribe({
+      next: (results) => {
+        if (this.enableAIOverview) this.aiGeneratedOverview = results.overview;
+        if (this.enableAIFindings) this.aiGeneratedFindings = results.findings;
+        if (this.enableAIRecommendations) this.aiGeneratedRecommendations = results.recommendations;
+        if (this.enableAIScope) this.aiGeneratedScope = results.scope;
         this.showAIPreview = true;
         this.isGeneratingAI = false;
-        this.successMessage = 'AI content generated successfully!';
+        const enabled = [this.enableAIOverview && 'Overview', this.enableAIFindings && 'Findings', this.enableAIRecommendations && 'Recommendations', this.enableAIScope && 'Scope'].filter(Boolean).join(', ');
+        const resourceNote = this.enableTechnicalResources && this.technicalResourcesFiles.length > 0
+          ? ` (with ${this.technicalResourcesFiles.length} technical resource${this.technicalResourcesFiles.length > 1 ? 's' : ''})`
+          : '';
+        this.successMessage = `AI content generated: ${enabled}${resourceNote}`;
       },
       error: (error) => {
         console.error('Error generating AI content:', error);
@@ -339,6 +487,129 @@ export class AssessmentGeneratorComponent implements OnInit, OnDestroy {
     // The AI content will be used when generating the assessment
     this.showAIPreview = false;
     this.successMessage = 'AI content will be included in the generated assessment.';
+  }
+
+  // Professional Review
+  performProfessionalReview(documentData: AssessmentDocumentData): void {
+    this.isReviewing = true;
+    this.showReviewResults = true;
+    this.reviewRating = 0;
+    this.reviewSuggestions = [];
+    this.reviewSummary = 'Reviewing document...';
+
+    // Build comprehensive document text for review — include all available content
+    const sections: string[] = [];
+
+    // Always include document metadata for context
+    sections.push(`DOCUMENT: ${documentData.assessmentTitle}`);
+    sections.push(`CLIENT: ${documentData.customerName}`);
+    sections.push(`ASSESSMENT TYPE: ${documentData.assessmentType}`);
+    sections.push(`PRACTICE AREA: ${documentData.practiceArea}`);
+    sections.push('');
+
+    // Include all text sections — use the best available content for each
+    const overview = documentData.aiSummary || documentData.executiveSummary || '';
+    if (overview.trim()) {
+      sections.push('EXECUTIVE SUMMARY:\n' + overview);
+    }
+
+    if (documentData.scope && documentData.scope.trim()) {
+      sections.push('SCOPE:\n' + documentData.scope);
+    }
+
+    const aiScope = documentData.aiScope || '';
+    if (aiScope.trim() && aiScope !== documentData.scope) {
+      sections.push('PROPOSED ASSESSMENT SCOPE:\n' + aiScope);
+    }
+
+    if (documentData.methodology && documentData.methodology.trim()) {
+      sections.push('METHODOLOGY:\n' + documentData.methodology);
+    }
+
+    const findings = documentData.aiFindings || '';
+    if (findings.trim()) {
+      sections.push('FINDINGS:\n' + findings);
+    }
+
+    const recs = documentData.aiRecommendations || documentData.recommendations || '';
+    if (recs.trim()) {
+      sections.push('RECOMMENDATIONS:\n' + recs);
+    }
+
+    // Include pricing context
+    if (documentData.estimatedHours && documentData.hourlyRate) {
+      sections.push(`PRICING: ${documentData.estimatedHours} hours × $${documentData.hourlyRate}/hr = $${documentData.totalPrice}`);
+    }
+
+    const fullContent = sections.join('\n\n---\n\n');
+
+    // Guard: If somehow there's still no meaningful content, show a helpful error
+    if (fullContent.trim().length < 50) {
+      this.isReviewing = false;
+      this.reviewRating = 0;
+      this.reviewSuggestions = ['The document has very little text content to review. Generate AI content first (Overview, Findings, Recommendations) before requesting a professional review.'];
+      this.reviewSummary = 'Insufficient content for review.';
+      return;
+    }
+
+    this.aiService.reviewDocument(
+      fullContent,
+      documentData.assessmentType,
+      documentData.customerName
+    ).subscribe({
+      next: (result) => {
+        this.reviewRating = result.rating;
+        this.reviewSuggestions = result.suggestions;
+        this.reviewSummary = result.summary;
+        this.isReviewing = false;
+      },
+      error: (error) => {
+        console.error('Professional review error:', error);
+        this.reviewRating = 0;
+        this.reviewSuggestions = ['Review failed. Please try again.'];
+        this.reviewSummary = 'Unable to complete review.';
+        this.isReviewing = false;
+      }
+    });
+  }
+
+  dismissReview(): void {
+    this.showReviewResults = false;
+    this.resetForm();
+    this.activeTab = 'history';
+  }
+
+  // Debug: Show prompt that will be sent to Azure OpenAI
+  showPromptDebug(): void {
+    if (!this.selectedType || !this.selectedArchitecture || !this.customerName) {
+      this.errorMessage = 'Please select an assessment type, reference architecture, and enter customer name first.';
+      return;
+    }
+
+    const contactName = this.customerContact || this.customerName;
+    const companyName = this.customerName;
+
+    const context: AIGenerationContext = {
+      prompt: this.selectedType.AIPromptOverview || '',
+      customerName: contactName,
+      companyName: companyName,
+      customerEmail: this.customerEmail || '',
+      assessmentType: this.selectedType.Name,
+      assessmentTypeDescription: this.selectedType.Description || '',
+      assessmentTypeCategory: this.selectedType.Category || '',
+      referenceArchitecture: this.selectedArchitecture.Name,
+      scopeContext: this.selectedType.ScopeTemplate || '',
+      methodologyContext: this.selectedType.MethodologyTemplate || '',
+      additionalNotes: this.customNotes || '',
+    };
+
+    this.aiService.debugPromptPreview(context).subscribe(preview => {
+      this.debugSystemPrompt = preview.systemPrompt;
+      this.debugUserPrompt = preview.userPrompt;
+      this.debugModel = preview.model;
+      this.debugConfigured = preview.configured;
+      this.showDebugPrompt = true;
+    });
   }
 
   // History Tab Methods

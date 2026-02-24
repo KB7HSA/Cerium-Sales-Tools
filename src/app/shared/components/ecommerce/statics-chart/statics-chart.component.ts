@@ -1,8 +1,10 @@
 
-import { AfterViewInit, Component, ElementRef, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, OnInit, ViewChild } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 import flatpickr from 'flatpickr';
 import { Instance } from 'flatpickr/dist/types/instance';
 import { NgApexchartsModule } from 'ng-apexcharts';
+import { environment } from '../../../../../environments/environment';
 
 import {
   ApexAxisChartSeries,
@@ -24,8 +26,50 @@ import { ChartTabComponent } from '../../common/chart-tab/chart-tab.component';
   imports: [NgApexchartsModule, ChartTabComponent],
   templateUrl: './statics-chart.component.html',
 })
-export class StatisticsChartComponent implements AfterViewInit {
+export class StatisticsChartComponent implements AfterViewInit, OnInit {
   @ViewChild('datepicker') datepicker!: ElementRef<HTMLInputElement>;
+
+  constructor(private http: HttpClient) {}
+
+  ngOnInit(): void {
+    this.http.get<any>(`${environment.apiUrl}/dashboard/stats`).subscribe({
+      next: (res) => {
+        if (res.success && res.data) {
+          this.updateChartData(res.data.quotesByDay || [], res.data.assessmentsByDay || []);
+        }
+      },
+      error: () => { /* silently fail */ }
+    });
+  }
+
+  private updateChartData(quotesByDay: { day: string; count: number }[], assessmentsByDay: { day: string; count: number }[]) {
+    // Build full 30-day date range
+    const days: string[] = [];
+    const now = new Date();
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      days.push(d.toISOString().split('T')[0]);
+    }
+
+    const quotesMap = new Map(quotesByDay.map(q => [q.day, q.count]));
+    const assessmentsMap = new Map(assessmentsByDay.map(a => [a.day, a.count]));
+
+    const quotesData = days.map(d => quotesMap.get(d) || 0);
+    const assessmentsData = days.map(d => assessmentsMap.get(d) || 0);
+
+    // Format labels as "MMM d"
+    const labels = days.map(d => {
+      const dt = new Date(d + 'T00:00:00');
+      return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    });
+
+    this.series = [
+      { name: 'Quotes', data: quotesData },
+      { name: 'Assessments', data: assessmentsData },
+    ];
+    this.xaxis = { ...this.xaxis, categories: labels };
+  }
 
   ngAfterViewInit() {
     flatpickr(this.datepicker.nativeElement, {
@@ -46,12 +90,12 @@ export class StatisticsChartComponent implements AfterViewInit {
   }
   public series: ApexAxisChartSeries = [
     {
-      name: 'Sales',
-      data: [180, 190, 170, 160, 175, 165, 170, 205, 230, 210, 240, 235],
+      name: 'Quotes',
+      data: [],
     },
     {
-      name: 'Revenue',
-      data: [40, 30, 50, 40, 55, 40, 70, 100, 110, 120, 150, 140],
+      name: 'Assessments',
+      data: [],
     },
   ];
 
@@ -98,20 +142,7 @@ export class StatisticsChartComponent implements AfterViewInit {
 
   public xaxis: ApexXAxis = {
     type: 'category',
-    categories: [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ],
+    categories: [],
     axisBorder: { show: false },
     axisTicks: { show: false },
     tooltip: { enabled: false },

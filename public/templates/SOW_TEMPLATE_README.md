@@ -10,7 +10,8 @@ When creating your Word template, use the following placeholders that will be re
 ### Quote Information
 | Placeholder | Description | Example |
 |------------|-------------|---------|
-| `{customerName}` | Customer/Company Name | Acme Corporation |
+| `{companyName}` | Company/Organization Name | Acme Corporation |
+| `{customerName}` | Customer Contact Name | Acme Corporation |
 | `{serviceName}` | MSP Service Name | Managed Security |
 | `{serviceLevelName}` | Service Level/Tier | Premium |
 | `{numberOfUsers}` | Number of Users/Licenses | 50 |

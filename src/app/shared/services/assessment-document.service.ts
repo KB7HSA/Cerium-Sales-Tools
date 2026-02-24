@@ -7,6 +7,7 @@ import PizZip from 'pizzip';
  */
 export interface AssessmentDocumentData {
   customerName: string;
+  customerContact?: string;
   assessmentTitle: string;
   practiceArea: string;
   assessmentType: string;
@@ -18,6 +19,10 @@ export interface AssessmentDocumentData {
   hourlyRate: number;
   totalPrice: number;
   templateFileName?: string;
+  aiSummary?: string;
+  aiFindings?: string;
+  aiRecommendations?: string;
+  aiScope?: string;
 }
 
 /**
@@ -90,7 +95,9 @@ export class AssessmentDocumentService {
    */
   private prepareTemplateData(data: AssessmentDocumentData): Record<string, any> {
     return {
+      companyName: data.customerName || 'Customer',
       customerName: data.customerName || 'Customer',
+      customerContact: data.customerContact || data.customerName || '',
       assessmentTitle: data.assessmentTitle || 'Assessment',
       practiceArea: data.practiceArea || '',
       assessmentType: data.assessmentType || '',
@@ -102,6 +109,10 @@ export class AssessmentDocumentService {
       estimatedHours: data.estimatedHours?.toString() || '0',
       hourlyRate: this.formatCurrency(data.hourlyRate),
       totalPrice: this.formatCurrency(data.totalPrice),
+      AI_Summary: data.aiSummary || data.executiveSummary || '',
+      AI_Findings: data.aiFindings || '',
+      AI_Recommendations: data.aiRecommendations || data.recommendations || '',
+      AI_Scope: data.aiScope || data.scope || '',
     };
   }
 

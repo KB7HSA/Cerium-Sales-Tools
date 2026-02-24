@@ -70,6 +70,8 @@ export class AssessmentTypesComponent implements OnInit, OnDestroy {
       AIPromptOverview: '',
       AIPromptFindings: '',
       AIPromptRecommendations: '',
+      AIPromptScope: '',
+      ResourceFolder: '',
       DefaultHours: 16,
       DefaultRate: 175,
       IsActive: true,

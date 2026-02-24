@@ -11,6 +11,7 @@ import { InputFieldComponent } from '../../form/input/input-field.component';
 import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { MicrosoftAuthService } from '../../../services/microsoft-auth.service';
+import { AuthService } from '../../../services/auth.service';
 
 @Component({
   selector: 'app-signin-form',
@@ -35,6 +36,7 @@ export class SigninFormComponent {
   password = '';
 
   private microsoftAuthService = inject(MicrosoftAuthService);
+  private authService = inject(AuthService);
   private router = inject(Router);
 
   isLoggingIn = false;
@@ -71,8 +73,22 @@ export class SigninFormComponent {
     this.microsoftAuthService.loginPopup().subscribe({
       next: (result) => {
         console.log('Microsoft sign-in successful:', result.account?.username);
-        this.isLoggingIn = false;
-        this.router.navigate(['/']);
+        
+        // Sync user profile to backend
+        this.authService.syncMicrosoftUser().subscribe({
+          next: (syncResult) => {
+            this.isLoggingIn = false;
+            if (syncResult) {
+              console.log('User profile synced:', syncResult.data?.user?.name);
+            }
+            this.router.navigate(['/']);
+          },
+          error: (error) => {
+            console.error('Profile sync failed, but login succeeded:', error);
+            this.isLoggingIn = false;
+            this.router.navigate(['/']);
+          }
+        });
       },
       error: (error) => {
         this.handleMicrosoftLoginError(error);

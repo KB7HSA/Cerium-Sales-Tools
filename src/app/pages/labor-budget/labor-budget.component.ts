@@ -5,9 +5,11 @@ import { RouterModule } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { LaborBudgetItem, LaborBudgetService, ReferenceArchitectureTag } from '../../shared/services/labor-budget.service';
 import { LaborSolutionsService, LaborSolution, LaborSolutionItem } from '../../shared/services/labor-solutions.service';
+import { SolutionBlueprintService, SolutionBlueprint } from '../../shared/services/solution-blueprint.service';
 import { LaborUnitsService } from '../../shared/services/labor-units.service';
 import { Customer, CustomerManagementService } from '../../shared/services/customer-management.service';
 import { QuoteService } from '../../shared/services/quote.service';
+import { AuthService } from '../../shared/services/auth.service';
 
 // Labor Budget calculator page: solution-based work item planning and quote creation.
 @Component({
@@ -43,6 +45,19 @@ export class LaborBudgetComponent implements OnInit, OnDestroy {
   serverNew: number = 0;
   serverUpgrade: number = 0;
   serverPhysicalInstall: number = 0;
+  // Blueprint picker state.
+  blueprints: SolutionBlueprint[] = [];
+  addedBlueprints: { id: string; name: string; itemCount: number }[] = [];
+  showBlueprintPicker: boolean = false;
+  // Grouping and reorder state.
+  collapsedGroups: Set<string> = new Set();
+  editingGroupName: string | null = null;
+  editingGroupDraft: string = '';
+  newGroupName: string = '';
+  showNewGroupInput: boolean = false;
+  dragItemId: string | null = null;
+  dragOverItemId: string | null = null;
+  dragOverPosition: 'above' | 'below' | null = null;
 
   referenceArchitectureTags: ReferenceArchitectureTag[] = [
     'Enterprise Networking',
@@ -69,9 +84,11 @@ export class LaborBudgetComponent implements OnInit, OnDestroy {
   constructor(
     private laborBudgetService: LaborBudgetService,
     private laborSolutionsService: LaborSolutionsService,
+    private blueprintService: SolutionBlueprintService,
     private laborUnitsService: LaborUnitsService,
     private customerService: CustomerManagementService,
-    private quoteService: QuoteService
+    private quoteService: QuoteService,
+    private authService: AuthService
   ) {}
 
   // Wire up subscriptions and restore any persisted UI state.
@@ -98,6 +115,11 @@ export class LaborBudgetComponent implements OnInit, OnDestroy {
         if (!this.selectedCustomerId && this.customers.length > 0) {
           this.selectedCustomerId = this.customers[0].id || '';
         }
+      })
+    );
+    this.subscription.add(
+      this.blueprintService.getBlueprints().subscribe(blueprints => {
+        this.blueprints = blueprints;
       })
     );
     this.subscription.add(
@@ -210,6 +232,58 @@ export class LaborBudgetComponent implements OnInit, OnDestroy {
     this.selectedSolutionId = solution.id;
   }
 
+  // Blueprint picker controls.
+  toggleBlueprintPicker(): void {
+    this.showBlueprintPicker = !this.showBlueprintPicker;
+  }
+
+  addFromBlueprint(blueprint: SolutionBlueprint): void {
+    this.showBlueprintPicker = false;
+
+    // Ensure a solution exists to hold work items.
+    let solution = this.selectedSolution;
+    if (!solution) {
+      solution = this.laborSolutionsService.addSolution('Labor Budget');
+      this.selectedSolutionId = solution.id;
+    }
+
+    // Determine the next sortOrder so new items append after existing ones.
+    const maxOrder = solution.items.reduce((max, item) => Math.max(max, item.sortOrder ?? 0), -1);
+
+    // Map blueprint items using the blueprint name as the group name.
+    const newItems: LaborSolutionItem[] = blueprint.items.map((bpItem, index) => ({
+      id: `sol-item-${Date.now()}-${Math.random().toString(36).substr(2, 9)}-${index}`,
+      catalogItemId: bpItem.catalogItemId,
+      quantity: bpItem.quantity,
+      hoursPerUnit: bpItem.hoursPerUnit,
+      ratePerHour: bpItem.ratePerHour,
+      groupName: blueprint.name,
+      sortOrder: maxOrder + 1 + index
+    }));
+
+    this.laborSolutionsService.updateSolution(solution.id, {
+      items: [...solution.items, ...newItems]
+    });
+
+    // Track which blueprints have been added for sidebar display.
+    this.addedBlueprints = [...this.addedBlueprints, {
+      id: `added-bp-${Date.now()}`,
+      name: blueprint.name,
+      itemCount: blueprint.items.length
+    }];
+  }
+
+  removeAddedBlueprint(addedBp: { id: string; name: string; itemCount: number }): void {
+    if (!confirm(`Remove blueprint "${addedBp.name}" and its work items?`)) return;
+    const solution = this.selectedSolution;
+    if (solution) {
+      // Remove all work items whose groupName matches this blueprint.
+      const updatedItems = solution.items.filter(item => (item.groupName || 'Default') !== addedBp.name);
+      this.laborSolutionsService.updateSolution(solution.id, { items: updatedItems });
+    }
+    this.addedBlueprints = this.addedBlueprints.filter(bp => bp.id !== addedBp.id);
+  }
+
   selectSolution(solution: LaborSolution): void {
     this.selectedSolutionId = solution.id;
     this.cancelEdit();
@@ -232,16 +306,19 @@ export class LaborBudgetComponent implements OnInit, OnDestroy {
   }
 
   // Work item row management inside a solution.
-  addWorkItemRow(): void {
+  addWorkItemRow(groupName?: string): void {
     const solution = this.selectedSolution;
     if (!solution || this.items.length === 0) return;
     const catalogItem = this.items[0];
+    const maxOrder = solution.items.reduce((max, item) => Math.max(max, item.sortOrder ?? 0), -1);
     const newItem: LaborSolutionItem = {
       id: `sol-item-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       catalogItemId: catalogItem.id,
       quantity: 1,
       hoursPerUnit: catalogItem.hoursPerSwitch,
-      ratePerHour: catalogItem.ratePerHour
+      ratePerHour: catalogItem.ratePerHour,
+      groupName: groupName || this.getWorkItemGroups()[0] || 'Default',
+      sortOrder: maxOrder + 1
     };
     this.laborSolutionsService.updateSolution(solution.id, {
       items: [...solution.items, newItem]
@@ -333,27 +410,210 @@ export class LaborBudgetComponent implements OnInit, OnDestroy {
       return name.toLowerCase().includes(term) || role.toLowerCase().includes(term);
     });
 
-    return filtered.sort((a, b) => {
-      const catalogA = this.getCatalogItem(a);
-      const catalogB = this.getCatalogItem(b);
-      const nameA = catalogA?.name || '';
-      const nameB = catalogB?.name || '';
-      const roleA = catalogA?.section || '';
-      const roleB = catalogB?.section || '';
-      const costA = this.getLineCost(a);
-      const costB = this.getLineCost(b);
+    // Sort primarily by sortOrder to respect user-defined order
+    return filtered.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+  }
 
-      let comparison = 0;
-      if (this.sortKey === 'name') {
-        comparison = nameA.localeCompare(nameB);
-      } else if (this.sortKey === 'role') {
-        comparison = roleA.localeCompare(roleB);
-      } else {
-        comparison = costA - costB;
-      }
+  getFilteredWorkItemsByGroup(group: string): LaborSolutionItem[] {
+    return this.getFilteredWorkItems().filter(item => (item.groupName || 'Default') === group);
+  }
 
-      return this.sortDirection === 'asc' ? comparison : comparison * -1;
+  // Get distinct group names preserving order of first appearance.
+  getWorkItemGroups(): string[] {
+    const solution = this.selectedSolution;
+    if (!solution) return [];
+    const groupSet = new Set<string>();
+    const sortedItems = [...solution.items].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+    for (const item of sortedItems) {
+      groupSet.add(item.groupName || 'Default');
+    }
+    return Array.from(groupSet);
+  }
+
+  getGroupSubtotal(group: string): number {
+    return this.getFilteredWorkItemsByGroup(group).reduce((sum, entry) => sum + this.getLineCost(entry), 0);
+  }
+
+  getGroupHours(group: string): number {
+    return this.getFilteredWorkItemsByGroup(group).reduce((sum, entry) => sum + this.getLineHours(entry), 0);
+  }
+
+  toggleGroupCollapse(group: string): void {
+    if (this.collapsedGroups.has(group)) {
+      this.collapsedGroups.delete(group);
+    } else {
+      this.collapsedGroups.add(group);
+    }
+  }
+
+  isGroupCollapsed(group: string): boolean {
+    return this.collapsedGroups.has(group);
+  }
+
+  // Group name editing
+  startEditGroupName(group: string): void {
+    this.editingGroupName = group;
+    this.editingGroupDraft = group;
+  }
+
+  saveGroupName(oldName: string): void {
+    const newName = this.editingGroupDraft.trim();
+    if (!newName || newName === oldName) {
+      this.editingGroupName = null;
+      return;
+    }
+    const solution = this.selectedSolution;
+    if (!solution) return;
+    const updatedItems = solution.items.map(item =>
+      (item.groupName || 'Default') === oldName ? { ...item, groupName: newName } : item
+    );
+    this.laborSolutionsService.updateSolution(solution.id, { items: updatedItems });
+    // Update collapsed state
+    if (this.collapsedGroups.has(oldName)) {
+      this.collapsedGroups.delete(oldName);
+      this.collapsedGroups.add(newName);
+    }
+    this.editingGroupName = null;
+  }
+
+  cancelEditGroupName(): void {
+    this.editingGroupName = null;
+  }
+
+  handleGroupNameKeydown(event: KeyboardEvent, group: string): void {
+    if (event.key === 'Enter') { event.preventDefault(); this.saveGroupName(group); }
+    if (event.key === 'Escape') { event.preventDefault(); this.cancelEditGroupName(); }
+  }
+
+  // Add new group
+  addGroup(): void {
+    this.showNewGroupInput = true;
+    this.newGroupName = '';
+  }
+
+  confirmAddGroup(): void {
+    const name = this.newGroupName.trim();
+    this.showNewGroupInput = false;
+    if (!name) return;
+    // Just add a work item row with the new group name
+    this.addWorkItemRow(name);
+  }
+
+  cancelAddGroup(): void {
+    this.showNewGroupInput = false;
+  }
+
+  handleNewGroupKeydown(event: KeyboardEvent): void {
+    if (event.key === 'Enter') { event.preventDefault(); this.confirmAddGroup(); }
+    if (event.key === 'Escape') { event.preventDefault(); this.cancelAddGroup(); }
+  }
+
+  deleteGroup(group: string): void {
+    const solution = this.selectedSolution;
+    if (!solution) return;
+    const itemsInGroup = solution.items.filter(item => (item.groupName || 'Default') === group);
+    if (itemsInGroup.length > 0 && !confirm(`Delete group "${group}" and its ${itemsInGroup.length} work item(s)?`)) return;
+    const updatedItems = solution.items.filter(item => (item.groupName || 'Default') !== group);
+    this.laborSolutionsService.updateSolution(solution.id, { items: updatedItems });
+  }
+
+  // Change a work item's group assignment
+  changeItemGroup(entry: LaborSolutionItem, newGroup: string): void {
+    const solution = this.selectedSolution;
+    if (!solution) return;
+    const updatedItems = solution.items.map(item =>
+      item.id === entry.id ? { ...item, groupName: newGroup } : item
+    );
+    this.laborSolutionsService.updateSolution(solution.id, { items: updatedItems });
+  }
+
+  // Move item up or down within the same group, persisting sortOrder
+  moveItemUp(entry: LaborSolutionItem): void {
+    this.moveItem(entry, -1);
+  }
+
+  moveItemDown(entry: LaborSolutionItem): void {
+    this.moveItem(entry, 1);
+  }
+
+  private moveItem(entry: LaborSolutionItem, direction: -1 | 1): void {
+    const solution = this.selectedSolution;
+    if (!solution) return;
+    const group = entry.groupName || 'Default';
+    const groupItems = solution.items
+      .filter(item => (item.groupName || 'Default') === group)
+      .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+    const idx = groupItems.findIndex(item => item.id === entry.id);
+    const swapIdx = idx + direction;
+    if (swapIdx < 0 || swapIdx >= groupItems.length) return;
+    // Swap sort orders
+    const tempOrder = groupItems[idx].sortOrder ?? idx;
+    const swapOrder = groupItems[swapIdx].sortOrder ?? swapIdx;
+    const updatedItems = solution.items.map(item => {
+      if (item.id === groupItems[idx].id) return { ...item, sortOrder: swapOrder };
+      if (item.id === groupItems[swapIdx].id) return { ...item, sortOrder: tempOrder };
+      return item;
     });
+    this.laborSolutionsService.updateSolution(solution.id, { items: updatedItems });
+  }
+
+  // Drag and drop reorder
+  onDragStart(event: DragEvent, entry: LaborSolutionItem): void {
+    this.dragItemId = entry.id;
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData('text/plain', entry.id);
+    }
+  }
+
+  onDragOver(event: DragEvent, entry: LaborSolutionItem): void {
+    event.preventDefault();
+    if (this.dragItemId === entry.id) return;
+    this.dragOverItemId = entry.id;
+    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    this.dragOverPosition = event.clientY < rect.top + rect.height / 2 ? 'above' : 'below';
+  }
+
+  onDragLeave(event: DragEvent): void {
+    this.dragOverItemId = null;
+    this.dragOverPosition = null;
+  }
+
+  onDrop(event: DragEvent, targetEntry: LaborSolutionItem): void {
+    event.preventDefault();
+    const solution = this.selectedSolution;
+    if (!solution || !this.dragItemId) return;
+    const draggedItem = solution.items.find(item => item.id === this.dragItemId);
+    if (!draggedItem) return;
+
+    // Move dragged item into target's group at target position
+    const targetGroup = targetEntry.groupName || 'Default';
+    const groupItems = solution.items
+      .filter(item => (item.groupName || 'Default') === targetGroup && item.id !== draggedItem.id)
+      .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+    const targetIdx = groupItems.findIndex(item => item.id === targetEntry.id);
+    const insertIdx = this.dragOverPosition === 'below' ? targetIdx + 1 : targetIdx;
+    groupItems.splice(insertIdx, 0, { ...draggedItem, groupName: targetGroup });
+
+    // Reassign sort orders for the group
+    const updatedMap = new Map<string, LaborSolutionItem>();
+    groupItems.forEach((item, i) => updatedMap.set(item.id, { ...item, sortOrder: i }));
+
+    const updatedItems = solution.items.map(item => {
+      if (updatedMap.has(item.id)) return updatedMap.get(item.id)!;
+      if (item.id === draggedItem.id) return { ...draggedItem, groupName: targetGroup, sortOrder: insertIdx };
+      return item;
+    });
+    this.laborSolutionsService.updateSolution(solution.id, { items: updatedItems });
+    this.dragItemId = null;
+    this.dragOverItemId = null;
+    this.dragOverPosition = null;
+  }
+
+  onDragEnd(): void {
+    this.dragItemId = null;
+    this.dragOverItemId = null;
+    this.dragOverPosition = null;
   }
 
   toggleSort(key: 'name' | 'role' | 'cost'): void {
@@ -515,6 +775,21 @@ export class LaborBudgetComponent implements OnInit, OnDestroy {
     return (this.serverNew || 0) + (this.serverUpgrade || 0) + (this.serverPhysicalInstall || 0);
   }
 
+  clearLaborBudget(): void {
+    if (!confirm('Are you sure you want to clear the current labor budget? This will remove all work items and blueprints.')) {
+      return;
+    }
+    // Clear solutions and work items
+    this.laborSolutionsService.replaceSolutions([]);
+    this.solutions = [];
+    this.selectedSolutionId = '';
+    this.addedBlueprints = [];
+    // Reset form fields
+    this.selectedCustomerId = '';
+    this.notes = '';
+    this.errorMessage = '';
+  }
+
   // Finalize a labor budget quote from the current calculator state.
   createQuote(): void {
     this.errorMessage = '';
@@ -536,6 +811,7 @@ export class LaborBudgetComponent implements OnInit, OnDestroy {
     const now = new Date();
     const createdDate = now.toLocaleDateString();
     const createdTime = now.toLocaleTimeString();
+    const currentUser = this.authService.getCurrentUser();
 
     const workItems = this.solutions
       .flatMap(solution => solution.items.map(entry => {
@@ -554,7 +830,9 @@ export class LaborBudgetComponent implements OnInit, OnDestroy {
           ratePerHour: entry.ratePerHour,
           lineHours,
           lineTotal,
-          solutionName: solution.name
+          solutionName: solution.name,
+          groupName: entry.groupName || 'Default',
+          sortOrder: entry.sortOrder ?? 0
         };
       }))
       .filter(Boolean) as Array<{
@@ -592,8 +870,17 @@ export class LaborBudgetComponent implements OnInit, OnDestroy {
       status: 'pending',
       createdDate,
       createdTime,
+      createdBy: currentUser?.name || 'Unknown User',
+      createdByEmail: currentUser?.email || '',
+    }).subscribe({
+      next: (response) => {
+        console.log('[LaborBudget] Quote created successfully:', response);
+        alert('Labor budget quote created successfully.');
+      },
+      error: (error) => {
+        console.error('[LaborBudget] Failed to create quote:', error);
+        this.errorMessage = 'Failed to create quote. Please try again.';
+      }
     });
-
-    alert('Labor budget quote created successfully.');
   }
 }

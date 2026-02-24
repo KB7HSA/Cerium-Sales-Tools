@@ -17,7 +17,8 @@ When creating your Word template, use the following placeholders that will be re
 ### Customer & Assessment Information
 | Placeholder | Description | Example |
 |-------------|-------------|---------|
-| `{customerName}` | Customer/Company Name | Acme Corporation |
+| `{companyName}` | Company/Organization Name | Acme Corporation |
+| `{customerName}` | Customer Contact Name | Acme Corporation |
 | `{assessmentTitle}` | Full Assessment Title | Acme Corp - Microsoft 365 (Security) |
 | `{practiceArea}` | Reference Architecture/Practice Area | Security |
 | `{assessmentType}` | Assessment Type Name | Microsoft 365 |
@@ -55,7 +56,8 @@ A typical assessment template might include:
 
 1. **Header Section**
    - Company Logo
-   - `{customerName}` - Customer Name
+   - `{companyName}` - Company/Organization Name
+   - `{customerName}` - Customer Contact
    - `{assessmentTitle}` - Assessment Title
    - `{currentDate}` - Date
 

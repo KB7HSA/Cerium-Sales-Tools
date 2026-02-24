@@ -8,7 +8,11 @@ import { ExportSchemaService } from '../services/export-schema.service';
 import { SOWDocumentService } from '../services/sow-document.service';
 import { ReferenceArchitectureService, AssessmentTypeService, GeneratedAssessmentService } from '../services/assessment.service';
 import { USACForm470Service } from '../services/usac470.service';
+import { USACFRNStatusService } from '../services/usac-frn.service';
 import { ERateSettingsService } from '../services/erate-settings.service';
+import { AzureOpenAIService } from '../services/openai.service';
+import { TechnicalResourcesService } from '../services/technical-resources.service';
+import { userService } from '../services/user.service';
 import { executeQuery } from '../config/database';
 
 const router = Router();
@@ -138,8 +142,26 @@ router.get('/quotes/:id', async (req: Request, res: Response) => {
 
 router.post('/quotes', async (req: Request, res: Response) => {
   try {
-    const newQuote = await QuoteService.createQuote(req.body);
-    sendSuccess(res, newQuote, 201, 'Quote created successfully');
+    const body = req.body;
+    const quoteType = (body.QuoteType || body.type || 'msp').toLowerCase();
+
+    if (quoteType === 'labor' && (body.workItems?.length > 0 || body.laborGroups?.length > 0)) {
+      const workItems = body.workItems || [];
+      const laborGroups = body.laborGroups || [];
+      const newQuote = await QuoteService.createLaborQuote(body, workItems, laborGroups);
+      // Attach workItems and laborGroups to response
+      const fullQuote = await QuoteService.getQuoteById(newQuote.Id);
+      const responseData = {
+        ...fullQuote.quote,
+        workItems: fullQuote.workItems,
+        laborGroups: fullQuote.laborGroups,
+        selectedOptions: fullQuote.selectedOptions
+      };
+      sendSuccess(res, responseData, 201, 'Labor quote created successfully');
+    } else {
+      const newQuote = await QuoteService.createQuote(body);
+      sendSuccess(res, newQuote, 201, 'Quote created successfully');
+    }
   } catch (error: any) {
     sendError(res, 'Failed to create quote', 500, error.message);
   }
@@ -1151,6 +1173,617 @@ router.delete('/erate/status-codes/:id', async (req: Request, res: Response) => 
     sendSuccess(res, null, 200, 'Status code deleted successfully');
   } catch (error: any) {
     sendError(res, 'Failed to delete status code', 500, error.message);
+  }
+});
+
+// ===== E-RATE FRN STATUS =====
+
+// Get all FRN Status records
+router.get('/erate/frn', async (req: Request, res: Response) => {
+  try {
+    const lastRefreshId = req.query.lastRefreshId as string | undefined;
+    const records = await USACFRNStatusService.getAll(lastRefreshId);
+    sendSuccess(res, records, 200, 'FRN Status records retrieved successfully');
+  } catch (error: any) {
+    sendError(res, 'Failed to retrieve FRN Status records', 500, error.message);
+  }
+});
+
+// Download FRN updates from USAC SODA API (SSE progress stream)
+router.post('/erate/frn/download', async (req: Request, res: Response) => {
+  try {
+    console.log('[API] Starting E-Rate FRN Status download with SSE progress...');
+
+    // Set up SSE headers
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
+    res.flushHeaders();
+
+    // Register progress callback
+    USACFRNStatusService.progressCallback = (event) => {
+      try {
+        if (!res.writableEnded) {
+          res.write(`data: ${JSON.stringify(event)}\n\n`);
+        }
+      } catch (e) {
+        // Client disconnected
+      }
+    };
+
+    const result = await USACFRNStatusService.downloadUpdates();
+
+    // Send final result
+    if (!res.writableEnded) {
+      res.write(`data: ${JSON.stringify({ phase: 'done', result })}\n\n`);
+      res.end();
+    }
+
+    // Clean up callback
+    USACFRNStatusService.progressCallback = null;
+
+  } catch (error: any) {
+    console.error('[API] E-Rate FRN download failed:', error);
+    USACFRNStatusService.progressCallback = null;
+    if (!res.writableEnded) {
+      res.write(`data: ${JSON.stringify({ phase: 'error', message: error.message })}\n\n`);
+      res.end();
+    }
+  }
+});
+
+// Get latest FRN refresh info
+router.get('/erate/frn/refresh/latest', async (req: Request, res: Response) => {
+  try {
+    const refresh = await USACFRNStatusService.getLatestRefresh();
+    sendSuccess(res, refresh, 200, refresh ? 'Latest FRN refresh retrieved' : 'No FRN refresh history found');
+  } catch (error: any) {
+    sendError(res, 'Failed to retrieve FRN refresh info', 500, error.message);
+  }
+});
+
+// Get FRN refresh history
+router.get('/erate/frn/refresh/history', async (req: Request, res: Response) => {
+  try {
+    const limit = parseInt(req.query.limit as string || '10', 10);
+    const history = await USACFRNStatusService.getRefreshHistory(limit);
+    sendSuccess(res, history, 200, 'FRN refresh history retrieved successfully');
+  } catch (error: any) {
+    sendError(res, 'Failed to retrieve FRN refresh history', 500, error.message);
+  }
+});
+
+// Update user status on a FRN record
+router.patch('/erate/frn/:id/status', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { userStatus } = req.body;
+
+    const validStatuses = ['', 'Bypassed', 'Responded', 'In Process', 'Reviewing', 'Not Interested'];
+    if (userStatus && !validStatuses.includes(userStatus)) {
+      sendError(res, `Invalid status. Must be one of: ${validStatuses.join(', ')}`, 400);
+      return;
+    }
+
+    await USACFRNStatusService.updateUserStatus(id, userStatus || null);
+    sendSuccess(res, { id, userStatus }, 200, 'FRN status updated successfully');
+  } catch (error: any) {
+    sendError(res, 'Failed to update FRN status', 500, error.message);
+  }
+});
+
+// Clear all FRN data (for fresh start)
+router.delete('/erate/frn/clear', async (req: Request, res: Response) => {
+  try {
+    console.log('[API] Clearing all E-Rate FRN data...');
+    await executeQuery('DELETE FROM dbo.ERateFRNStatus', {});
+    await executeQuery('DELETE FROM dbo.ERateFRNRefreshHistory', {});
+    sendSuccess(res, { cleared: true }, 200, 'All FRN data cleared successfully');
+  } catch (error: any) {
+    sendError(res, 'Failed to clear FRN data', 500, error.message);
+  }
+});
+
+// ===== USER TABLE PREFERENCES =====
+
+// Get table preferences for a user
+router.get('/user-preferences/table/:tableName', async (req: Request, res: Response) => {
+  try {
+    const { tableName } = req.params;
+    const userEmail = req.query.userEmail as string;
+    
+    if (!userEmail) {
+      sendError(res, 'userEmail query parameter is required', 400);
+      return;
+    }
+    
+    const results = await executeQuery<{ Preferences: string }>(
+      `SELECT Preferences FROM dbo.UserTablePreferences WHERE UserEmail = @userEmail AND TableName = @tableName`,
+      { userEmail, tableName }
+    );
+    
+    if (results.length > 0) {
+      const preferences = JSON.parse(results[0].Preferences);
+      sendSuccess(res, preferences, 200, 'Table preferences retrieved');
+    } else {
+      sendSuccess(res, null, 200, 'No saved preferences found');
+    }
+  } catch (error: any) {
+    sendError(res, 'Failed to retrieve table preferences', 500, error.message);
+  }
+});
+
+// Save/update table preferences for a user
+router.put('/user-preferences/table/:tableName', async (req: Request, res: Response) => {
+  try {
+    const { tableName } = req.params;
+    const { userEmail, preferences } = req.body;
+    
+    if (!userEmail || !preferences) {
+      sendError(res, 'userEmail and preferences are required', 400);
+      return;
+    }
+    
+    const preferencesJson = JSON.stringify(preferences);
+    
+    // Upsert: insert or update
+    await executeQuery(
+      `MERGE dbo.UserTablePreferences AS target
+       USING (SELECT @userEmail AS UserEmail, @tableName AS TableName) AS source
+       ON target.UserEmail = source.UserEmail AND target.TableName = source.TableName
+       WHEN MATCHED THEN
+         UPDATE SET Preferences = @preferences, UpdatedAt = GETUTCDATE()
+       WHEN NOT MATCHED THEN
+         INSERT (UserEmail, TableName, Preferences)
+         VALUES (@userEmail, @tableName, @preferences);`,
+      { userEmail, tableName, preferences: preferencesJson }
+    );
+    
+    sendSuccess(res, { userEmail, tableName, preferences }, 200, 'Table preferences saved');
+  } catch (error: any) {
+    sendError(res, 'Failed to save table preferences', 500, error.message);
+  }
+});
+
+// ===== USER AUTHENTICATION =====
+
+// Sync Microsoft 365 user - called after successful M365 login
+router.post('/auth/microsoft/sync', async (req: Request, res: Response) => {
+  try {
+    const { profile } = req.body;
+    
+    if (!profile || (!profile.mail && !profile.userPrincipalName)) {
+      sendError(res, 'Invalid profile data - email is required', 400);
+      return;
+    }
+
+    const result = await userService.syncMicrosoftUser(profile);
+    sendSuccess(res, {
+      user: {
+        id: result.adminUser.Id,
+        name: result.adminUser.Name,
+        email: result.adminUser.Email,
+        role: result.adminUser.RoleName,
+        status: result.adminUser.Status,
+        department: result.adminUser.Department,
+        roleAssignments: result.roleAssignments
+      },
+      profile: {
+        firstName: result.userProfile.FirstName,
+        lastName: result.userProfile.LastName,
+        jobTitle: result.userProfile.RoleName,
+        location: result.userProfile.Location,
+        email: result.userProfile.Email,
+        phone: result.userProfile.Phone
+      },
+      isNewUser: result.isNewUser
+    }, 200, result.isNewUser ? 'User created successfully' : 'User synced successfully');
+  } catch (error: any) {
+    console.error('Microsoft sync error:', error);
+    sendError(res, 'Failed to sync Microsoft user', 500, error.message);
+  }
+});
+
+// Get current user by email
+router.get('/auth/user/:email', async (req: Request, res: Response) => {
+  try {
+    const { email } = req.params;
+    const user = await userService.getUserByEmail(email);
+    
+    if (!user) {
+      sendError(res, 'User not found', 404);
+      return;
+    }
+
+    const profile = await userService.getUserProfile(user.Id);
+    
+    sendSuccess(res, {
+      user: {
+        id: user.Id,
+        name: user.Name,
+        email: user.Email,
+        role: user.RoleName,
+        status: user.Status,
+        department: user.Department,
+        lastLogin: user.LastLogin
+      },
+      profile: profile ? {
+        firstName: profile.FirstName,
+        lastName: profile.LastName,
+        jobTitle: profile.RoleName,
+        location: profile.Location,
+        phone: profile.Phone
+      } : null
+    }, 200, 'User retrieved successfully');
+  } catch (error: any) {
+    sendError(res, 'Failed to get user', 500, error.message);
+  }
+});
+
+// Get all users (admin only)
+router.get('/auth/users', async (req: Request, res: Response) => {
+  try {
+    const users = await userService.getAllUsers();
+    sendSuccess(res, users, 200, 'Users retrieved successfully');
+  } catch (error: any) {
+    sendError(res, 'Failed to get users', 500, error.message);
+  }
+});
+
+// Get user role assignments
+router.get('/auth/users/:userId/roles', async (req: Request, res: Response) => {
+  try {
+    const { userId } = req.params;
+    const roleAssignments = await userService.getUserRoleAssignments(userId);
+    sendSuccess(res, roleAssignments, 200, 'Role assignments retrieved successfully');
+  } catch (error: any) {
+    sendError(res, 'Failed to get role assignments', 500, error.message);
+  }
+});
+
+// Update module permissions for a user
+router.put('/auth/users/:userId/modules/:moduleName/permissions', async (req: Request, res: Response) => {
+  try {
+    const { userId, moduleName } = req.params;
+    const { permissions } = req.body;
+
+    if (!Array.isArray(permissions)) {
+      sendError(res, 'Permissions must be an array', 400);
+      return;
+    }
+
+    const validPermissions = ['view', 'create', 'edit', 'delete', 'admin'];
+    const invalidPermissions = permissions.filter(p => !validPermissions.includes(p));
+    
+    if (invalidPermissions.length > 0) {
+      sendError(res, `Invalid permissions: ${invalidPermissions.join(', ')}`, 400);
+      return;
+    }
+
+    await userService.setModulePermissions(userId, moduleName, permissions);
+    sendSuccess(res, null, 200, 'Permissions updated successfully');
+  } catch (error: any) {
+    sendError(res, 'Failed to update permissions', 500, error.message);
+  }
+});
+
+// Update user role (admin, manager, user, readonly)
+router.put('/auth/users/:userId/role', async (req: Request, res: Response) => {
+  try {
+    const { userId } = req.params;
+    const { role } = req.body;
+
+    const validRoles = ['admin', 'manager', 'user', 'readonly'];
+    if (!validRoles.includes(role)) {
+      sendError(res, `Invalid role. Must be one of: ${validRoles.join(', ')}`, 400);
+      return;
+    }
+
+    await userService.updateUserRole(userId, role);
+    sendSuccess(res, null, 200, 'User role updated successfully');
+  } catch (error: any) {
+    sendError(res, 'Failed to update user role', 500, error.message);
+  }
+});
+
+// Remove module access for a user
+router.delete('/auth/users/:userId/modules/:moduleName', async (req: Request, res: Response) => {
+  try {
+    const { userId, moduleName } = req.params;
+    await userService.removeModuleAccess(userId, moduleName);
+    sendSuccess(res, null, 200, 'Module access removed successfully');
+  } catch (error: any) {
+    sendError(res, 'Failed to remove module access', 500, error.message);
+  }
+});
+
+// ===== TECHNICAL RESOURCES =====
+
+// List available resource folders
+router.get('/technical-resources/folders', (req: Request, res: Response) => {
+  try {
+    const folders = TechnicalResourcesService.listAvailableFolders();
+    sendSuccess(res, folders, 200, 'Resource folders retrieved');
+  } catch (error: any) {
+    sendError(res, 'Failed to list resource folders', 500, error.message);
+  }
+});
+
+// List files in a resource folder
+router.get('/technical-resources/files', async (req: Request, res: Response) => {
+  try {
+    const folder = req.query.folder as string;
+    if (!folder) {
+      sendError(res, 'folder query parameter is required', 400);
+      return;
+    }
+    const files = await TechnicalResourcesService.listFiles(folder);
+    sendSuccess(res, files, 200, 'Resource files listed');
+  } catch (error: any) {
+    sendError(res, 'Failed to list resource files', 500, error.message);
+  }
+});
+
+// Get extracted text content from all files in a resource folder
+router.get('/technical-resources/content', async (req: Request, res: Response) => {
+  try {
+    const folder = req.query.folder as string;
+    if (!folder) {
+      sendError(res, 'folder query parameter is required', 400);
+      return;
+    }
+    const result = await TechnicalResourcesService.getResourceContent(folder);
+    sendSuccess(res, result, 200, `Extracted content from ${result.files.length} files`);
+  } catch (error: any) {
+    sendError(res, 'Failed to extract resource content', 500, error.message);
+  }
+});
+
+// ===== AI CONTENT GENERATION (Azure OpenAI) =====
+
+// Check if Azure OpenAI is configured
+router.get('/ai/status', (req: Request, res: Response) => {
+  const configured = AzureOpenAIService.isConfigured();
+  sendSuccess(res, {
+    configured,
+    message: configured
+      ? 'Azure OpenAI is configured and ready'
+      : 'Azure OpenAI is not configured. Set AZURE_OPENAI_ENDPOINT and AZURE_OPENAI_API_KEY environment variables.',
+  }, 200, 'AI status retrieved');
+});
+
+// Debug: Preview the prompt that would be sent to Azure OpenAI
+router.post('/ai/debug-prompt', (req: Request, res: Response) => {
+  try {
+    const { customerName, companyName, customerEmail, assessmentType, referenceArchitecture,
+            assessmentTypeDescription, assessmentTypeCategory, scopeContext, methodologyContext,
+            prompt, additionalNotes, systemPromptOverride } = req.body;
+
+    const preview = AzureOpenAIService.buildPromptPreview({
+      prompt: prompt || '',
+      customerName: customerName || '',
+      companyName: companyName || customerName || '',
+      customerEmail,
+      assessmentType: assessmentType || '',
+      assessmentTypeDescription,
+      assessmentTypeCategory,
+      referenceArchitecture: referenceArchitecture || '',
+      scopeContext,
+      methodologyContext,
+      additionalNotes,
+    }, systemPromptOverride);
+
+    sendSuccess(res, preview, 200, 'Prompt preview generated');
+  } catch (error: any) {
+    sendError(res, error.message || 'Failed to build prompt preview', 500, error.message);
+  }
+});
+
+// Generate AI content (executive summary / overview)
+router.post('/ai/generate', async (req: Request, res: Response) => {
+  try {
+    const { customerName, companyName, customerEmail, assessmentType, referenceArchitecture,
+            assessmentTypeDescription, assessmentTypeCategory, scopeContext, methodologyContext,
+            prompt, additionalNotes, technicalResources, maxTokens, temperature } = req.body;
+
+    if (!assessmentType || !referenceArchitecture) {
+      sendError(res, 'assessmentType and referenceArchitecture are required', 400);
+      return;
+    }
+
+    const result = await AzureOpenAIService.generateExecutiveSummary(
+      customerName || '',
+      companyName || customerName || '',
+      assessmentType,
+      referenceArchitecture,
+      prompt,
+      additionalNotes,
+      { customerEmail, assessmentTypeDescription, assessmentTypeCategory, scopeContext, methodologyContext, technicalResources }
+    );
+
+    sendSuccess(res, result, 200, 'AI content generated successfully');
+  } catch (error: any) {
+    sendError(res, error.message || 'Failed to generate AI content', 500, error.message);
+  }
+});
+
+// Generate AI findings
+router.post('/ai/generate/findings', async (req: Request, res: Response) => {
+  try {
+    const { customerName, companyName, customerEmail, assessmentType, referenceArchitecture,
+            assessmentTypeDescription, assessmentTypeCategory, scopeContext, methodologyContext,
+            prompt, additionalNotes, technicalResources } = req.body;
+
+    if (!assessmentType || !referenceArchitecture) {
+      sendError(res, 'assessmentType and referenceArchitecture are required', 400);
+      return;
+    }
+
+    const result = await AzureOpenAIService.generateFindings(
+      customerName || '',
+      companyName || customerName || '',
+      assessmentType,
+      referenceArchitecture,
+      prompt,
+      additionalNotes,
+      { customerEmail, assessmentTypeDescription, assessmentTypeCategory, scopeContext, methodologyContext, technicalResources }
+    );
+
+    sendSuccess(res, result, 200, 'AI findings generated successfully');
+  } catch (error: any) {
+    sendError(res, error.message || 'Failed to generate AI findings', 500, error.message);
+  }
+});
+
+// Generate AI recommendations
+router.post('/ai/generate/recommendations', async (req: Request, res: Response) => {
+  try {
+    const { customerName, companyName, customerEmail, assessmentType, referenceArchitecture,
+            assessmentTypeDescription, assessmentTypeCategory, scopeContext, methodologyContext,
+            prompt, additionalNotes, technicalResources } = req.body;
+
+    if (!assessmentType || !referenceArchitecture) {
+      sendError(res, 'assessmentType and referenceArchitecture are required', 400);
+      return;
+    }
+
+    const result = await AzureOpenAIService.generateRecommendations(
+      customerName || '',
+      companyName || customerName || '',
+      assessmentType,
+      referenceArchitecture,
+      prompt,
+      additionalNotes,
+      { customerEmail, assessmentTypeDescription, assessmentTypeCategory, scopeContext, methodologyContext, technicalResources }
+    );
+
+    sendSuccess(res, result, 200, 'AI recommendations generated successfully');
+  } catch (error: any) {
+    sendError(res, error.message || 'Failed to generate AI recommendations', 500, error.message);
+  }
+});
+
+// Generate AI scope
+router.post('/ai/generate/scope', async (req: Request, res: Response) => {
+  try {
+    const { customerName, companyName, customerEmail, assessmentType, referenceArchitecture,
+            assessmentTypeDescription, assessmentTypeCategory, scopeContext, methodologyContext,
+            prompt, additionalNotes, technicalResources } = req.body;
+
+    if (!assessmentType || !referenceArchitecture) {
+      sendError(res, 'assessmentType and referenceArchitecture are required', 400);
+      return;
+    }
+
+    const result = await AzureOpenAIService.generateScope(
+      customerName || '',
+      companyName || customerName || '',
+      assessmentType,
+      referenceArchitecture,
+      prompt,
+      additionalNotes,
+      { customerEmail, assessmentTypeDescription, assessmentTypeCategory, scopeContext, methodologyContext, technicalResources }
+    );
+
+    sendSuccess(res, result, 200, 'AI scope generated successfully');
+  } catch (error: any) {
+    sendError(res, error.message || 'Failed to generate AI scope', 500, error.message);
+  }
+});
+
+// Professional review of completed document
+router.post('/ai/review', async (req: Request, res: Response) => {
+  try {
+    const { documentContent, assessmentType, customerName } = req.body;
+
+    if (!documentContent) {
+      sendError(res, 'documentContent is required', 400);
+      return;
+    }
+
+    const result = await AzureOpenAIService.reviewDocument(
+      documentContent,
+      assessmentType || 'Assessment',
+      customerName || 'Client'
+    );
+
+    sendSuccess(res, result, 200, 'Document review completed successfully');
+  } catch (error: any) {
+    sendError(res, error.message || 'Failed to review document', 500, error.message);
+  }
+});
+
+// ===== DASHBOARD STATS =====
+
+router.get('/dashboard/stats', async (req: Request, res: Response) => {
+  try {
+    // Counts
+    const customerCount = await executeQuery<{ cnt: number }>('SELECT COUNT(*) as cnt FROM dbo.Customers', {});
+    const quoteCount = await executeQuery<{ cnt: number }>('SELECT COUNT(*) as cnt FROM dbo.Quotes', {});
+
+    let sowCount = [{ cnt: 0 }];
+    try {
+      sowCount = await executeQuery<{ cnt: number }>('SELECT COUNT(*) as cnt FROM dbo.SOWDocuments', {});
+    } catch { /* table may not exist */ }
+
+    // Quotes by day (last 30 days)
+    const quotesByDay = await executeQuery<{ day: string; count: number }>(
+      `SELECT FORMAT(CreatedAt, 'yyyy-MM-dd') as day, COUNT(*) as count
+       FROM dbo.Quotes
+       WHERE CreatedAt >= DATEADD(day, -30, GETUTCDATE())
+       GROUP BY FORMAT(CreatedAt, 'yyyy-MM-dd')
+       ORDER BY day`,
+      {}
+    );
+
+    // Assessments by day (last 30 days)
+    let assessmentsByDay: { day: string; count: number }[] = [];
+    try {
+      assessmentsByDay = await executeQuery<{ day: string; count: number }>(
+        `SELECT FORMAT(CreatedAt, 'yyyy-MM-dd') as day, COUNT(*) as count
+         FROM dbo.GeneratedAssessments
+         WHERE CreatedAt >= DATEADD(day, -30, GETUTCDATE())
+         GROUP BY FORMAT(CreatedAt, 'yyyy-MM-dd')
+         ORDER BY day`,
+        {}
+      );
+    } catch { /* table may not exist */ }
+
+    // Quotes by month (current year) – count + total cost
+    const quotesByMonth = await executeQuery<{ month: number; count: number; totalCost: number }>(
+      `SELECT MONTH(CreatedAt) as month, COUNT(*) as count, ISNULL(SUM(TotalPrice), 0) as totalCost
+       FROM dbo.Quotes
+       WHERE YEAR(CreatedAt) = YEAR(GETUTCDATE())
+       GROUP BY MONTH(CreatedAt)
+       ORDER BY month`,
+      {}
+    );
+
+    // Assessments by month (current year)
+    let assessmentsByMonth: { month: number; count: number }[] = [];
+    try {
+      assessmentsByMonth = await executeQuery<{ month: number; count: number }>(
+        `SELECT MONTH(CreatedAt) as month, COUNT(*) as count
+         FROM dbo.GeneratedAssessments
+         WHERE YEAR(CreatedAt) = YEAR(GETUTCDATE())
+         GROUP BY MONTH(CreatedAt)
+         ORDER BY month`,
+        {}
+      );
+    } catch { /* table may not exist */ }
+
+    sendSuccess(res, {
+      customers: customerCount[0]?.cnt || 0,
+      quotes: quoteCount[0]?.cnt || 0,
+      sowDocuments: sowCount[0]?.cnt || 0,
+      quotesByDay,
+      assessmentsByDay,
+      quotesByMonth,
+      assessmentsByMonth
+    }, 200, 'Dashboard stats retrieved');
+  } catch (error: any) {
+    sendError(res, 'Failed to retrieve dashboard stats', 500, error.message);
   }
 });
 

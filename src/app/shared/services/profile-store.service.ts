@@ -1,5 +1,6 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
+import { AuthService, CurrentUser } from './auth.service';
 
 export type ProfileSocial = {
   facebook: string;
@@ -31,25 +32,25 @@ export type ProfileData = {
 const STORAGE_KEY = 'tailadmin.profile';
 
 const defaultProfile: ProfileData = {
-  firstName: 'Kevin',
-  lastName: 'Heide',
-  role: 'Team Manager',
-  location: 'Arizona, United States',
-  avatar: '/images/user/owner.jpg',
-  email: 'randomuser@pimjo.com',
-  phone: '+09 363 398 46',
-  bio: 'Team Manager',
+  firstName: '',
+  lastName: '',
+  role: '',
+  location: '',
+  avatar: '',
+  email: '',
+  phone: '',
+  bio: '',
   social: {
-    facebook: 'https://www.facebook.com/PimjoHQ',
-    x: 'https://x.com/PimjoHQ',
-    linkedin: 'https://www.linkedin.com/company/pimjo',
-    instagram: 'https://instagram.com/PimjoHQ'
+    facebook: '',
+    x: '',
+    linkedin: '',
+    instagram: ''
   },
   address: {
-    country: 'United States.',
-    cityState: 'Phoenix, Arizona, United States.',
-    postalCode: 'ERT 2489',
-    taxId: 'AS4568384'
+    country: '',
+    cityState: '',
+    postalCode: '',
+    taxId: ''
   }
 };
 
@@ -59,6 +60,40 @@ const defaultProfile: ProfileData = {
 export class ProfileStoreService {
   private readonly profileSubject = new BehaviorSubject<ProfileData>(this.load());
   readonly profile$ = this.profileSubject.asObservable();
+  
+  private authService = inject(AuthService);
+
+  constructor() {
+    // Sync profile when auth user changes
+    this.authService.currentUser$.subscribe(user => {
+      if (user) {
+        this.syncFromAuthUser(user);
+      }
+    });
+  }
+
+  /**
+   * Sync profile data from the authenticated user (M365)
+   */
+  syncFromAuthUser(user: CurrentUser): void {
+    const current = this.profileSubject.value;
+    const nameParts = user.name.split(' ');
+    const firstName = user.profile?.firstName || nameParts[0] || '';
+    const lastName = user.profile?.lastName || nameParts.slice(1).join(' ') || '';
+    
+    const updated: ProfileData = {
+      ...current,
+      firstName,
+      lastName,
+      email: user.email,
+      role: user.profile?.jobTitle || user.role || '',
+      location: user.profile?.location || current.location,
+      phone: user.profile?.phone || current.phone,
+    };
+    
+    this.profileSubject.next(updated);
+    this.save(updated);
+  }
 
   getProfile(): ProfileData {
     return this.profileSubject.value;

@@ -204,7 +204,7 @@
           placeholder="e.g., Assessment-Template.docx"
           class="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white">
         <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-          Template file must be in /public/templates/. Available placeholders: &#123;customerName&#125;, &#123;assessmentTitle&#125;, &#123;practiceArea&#125;, &#123;assessmentType&#125;, &#123;currentDate&#125;, &#123;executiveSummary&#125;, &#123;scope&#125;, &#123;methodology&#125;, &#123;recommendations&#125;, &#123;estimatedHours&#125;, &#123;hourlyRate&#125;, &#123;totalPrice&#125;
+          Template file must be in /public/templates/. Available placeholders: &#123;companyName&#125;, &#123;customerName&#125;, &#123;assessmentTitle&#125;, &#123;practiceArea&#125;, &#123;assessmentType&#125;, &#123;currentDate&#125;, &#123;executiveSummary&#125;, &#123;scope&#125;, &#123;methodology&#125;, &#123;recommendations&#125;, &#123;estimatedHours&#125;, &#123;hourlyRate&#125;, &#123;totalPrice&#125;, &#123;AI_Summary&#125;, &#123;AI_Findings&#125;, &#123;AI_Recommendations&#125;
         </p>
       </div>
 
@@ -212,7 +212,7 @@
       <div class="rounded-lg border border-gray-200 dark:border-gray-700">
         <div class="border-b border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-800/50">
           <h4 class="font-medium text-gray-800 dark:text-white/90">Document Templates</h4>
-          <p class="text-xs text-gray-500 dark:text-gray-400">Use &#123;customerName&#125; and &#123;referenceArchitecture&#125; as placeholders</p>
+          <p class="text-xs text-gray-500 dark:text-gray-400">Use &#123;companyName&#125;, &#123;customerName&#125;, &#123;referenceArchitecture&#125;, &#123;AI_Summary&#125;, &#123;AI_Findings&#125;, and &#123;AI_Recommendations&#125; as placeholders</p>
         </div>
         <div class="space-y-4 p-4">
           <div>
@@ -288,6 +288,25 @@
               rows="2"
               placeholder="Generate prioritized recommendations with..."
               class="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white"></textarea>
+          </div>
+          <div>
+            <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Proposed Assessment Scope Prompt</label>
+            <textarea
+              [(ngModel)]="formData.AIPromptScope"
+              rows="2"
+              placeholder="Generate a detailed proposed assessment scope covering systems, boundaries, stakeholders..."
+              class="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white"></textarea>
+          </div>
+          <div>
+            <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Technical Resources Folder</label>
+            <input
+              type="text"
+              [(ngModel)]="formData.ResourceFolder"
+              placeholder="e.g., Enterpise_Networking/Cisco_Wireless_Assessment"
+              class="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white">
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              Folder path within /public/technical_references/. Documents in this folder (PDF, TXT, MD) will be extracted and included as context for AI content generation when "Include Technical Resources" is checked.
+            </p>
           </div>
         </div>
       </div>

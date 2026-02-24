@@ -2,7 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
-import { UserManagementService, User } from '../../shared/services/user-management.service';
+import { UserManagementService, User, RoleType } from '../../shared/services/user-management.service';
 
 @Component({
   selector: 'app-user-management',
@@ -13,7 +13,7 @@ import { UserManagementService, User } from '../../shared/services/user-manageme
 })
 export class UserManagementComponent implements OnInit {
   users: User[] = [];
-  activeFilter: 'all' | 'admin' | 'manager' | 'user' = 'all';
+  activeFilter: 'all' | RoleType = 'all';
   statusFilter: 'all' | 'active' | 'inactive' = 'all';
   searchTerm: string = '';
 
@@ -23,6 +23,10 @@ export class UserManagementComponent implements OnInit {
     this.userService.users$.subscribe(users => {
       this.users = users;
     });
+  }
+
+  refreshUsers(): void {
+    this.userService.refreshUsers();
   }
 
   getFilteredUsers(): User[] {
@@ -51,7 +55,7 @@ export class UserManagementComponent implements OnInit {
     return filtered;
   }
 
-  setRoleFilter(role: 'all' | 'admin' | 'manager' | 'user'): void {
+  setRoleFilter(role: 'all' | RoleType): void {
     this.activeFilter = role;
   }
 
@@ -67,8 +71,25 @@ export class UserManagementComponent implements OnInit {
         return 'text-blue-600 bg-blue-100 dark:bg-blue-900 dark:text-blue-200';
       case 'user':
         return 'text-gray-600 bg-gray-100 dark:bg-gray-700 dark:text-gray-200';
+      case 'readonly':
+        return 'text-yellow-600 bg-yellow-100 dark:bg-yellow-900 dark:text-yellow-200';
       default:
         return 'text-gray-600 bg-gray-100';
+    }
+  }
+
+  getRoleDisplayName(role: RoleType): string {
+    switch (role) {
+      case 'admin':
+        return 'Super Admin';
+      case 'manager':
+        return 'Manager';
+      case 'user':
+        return 'User';
+      case 'readonly':
+        return 'Read-Only';
+      default:
+        return role;
     }
   }
 
@@ -83,16 +104,8 @@ export class UserManagementComponent implements OnInit {
     }
   }
 
-  deleteUser(userId: string): void {
-    if (confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
-      this.userService.deleteUser(userId);
-      alert('User deleted successfully!');
-    }
-  }
-
-  toggleUserStatus(user: User): void {
-    const newStatus = user.status === 'active' ? 'inactive' : 'active';
-    this.userService.updateUser(user.id, { status: newStatus });
+  getModuleCount(user: User): number {
+    return user.modulePermissions?.length || 0;
   }
 
   getTotalUsers(): number {

@@ -44,6 +44,34 @@ export class QuoteManagementComponent implements OnInit, OnDestroy {
     return (quote.id || quote.Id) || '';
   }
 
+  getCreatedDateDisplay(quote: Quote): string {
+    const raw = (quote as any).createdDate ?? (quote as any).CreatedDate ?? (quote as any).CreatedAt;
+    if (!raw) return '';
+    if (raw instanceof Date) return raw.toLocaleDateString();
+    if (typeof raw === 'string' && raw.includes('T')) {
+      return new Date(raw).toLocaleDateString();
+    }
+    return String(raw);
+  }
+
+  getCreatedTimeDisplay(quote: Quote): string {
+    const raw = (quote as any).createdTime ?? (quote as any).CreatedTime ?? (quote as any).CreatedAt;
+    if (!raw) return '';
+    if (raw instanceof Date) return raw.toLocaleTimeString();
+    if (typeof raw === 'string' && raw.includes('T')) {
+      return new Date(raw).toLocaleTimeString();
+    }
+    return String(raw);
+  }
+
+  getCreatedByDisplay(quote: Quote): string {
+    return (quote as any).createdBy ?? (quote as any).CreatedBy ?? '';
+  }
+
+  getCreatedByEmailDisplay(quote: Quote): string {
+    return (quote as any).createdByEmail ?? (quote as any).CreatedByEmail ?? '';
+  }
+
   ngOnInit(): void {
     this.quoteService.quotes$.subscribe(quotes => {
       this.quotes = quotes;
@@ -375,6 +403,30 @@ export class QuoteManagementComponent implements OnInit, OnDestroy {
       return items;
     }
     return items.filter(item => item.section === filter);
+  }
+
+  getWorkItemGroupNames(quote: Quote): string[] {
+    const items = quote.workItems || [];
+    const groups = new Set<string>();
+    items.forEach(item => groups.add(item.groupName || 'Default'));
+    return Array.from(groups);
+  }
+
+  getWorkItemsByGroup(quote: Quote, groupName: string): Quote['workItems'] {
+    const items = quote.workItems || [];
+    return items
+      .filter(item => (item.groupName || 'Default') === groupName)
+      .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+  }
+
+  getGroupHoursTotal(quote: Quote, groupName: string): number {
+    return (this.getWorkItemsByGroup(quote, groupName) || [])
+      .reduce((sum, item) => sum + (item.lineHours || 0), 0);
+  }
+
+  getGroupCostTotal(quote: Quote, groupName: string): number {
+    return (this.getWorkItemsByGroup(quote, groupName) || [])
+      .reduce((sum, item) => sum + (item.lineTotal || 0), 0);
   }
 
   approveQuote(quoteId: string): void {

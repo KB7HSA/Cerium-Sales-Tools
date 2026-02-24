@@ -106,14 +106,14 @@
             <h3 class="mb-4 font-medium text-gray-800 dark:text-white/90">Customer Information</h3>
             <div class="space-y-4">
               <div>
-                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Customer *</label>
+                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Company *</label>
                 <select
                   [(ngModel)]="selectedCustomerId"
                   (ngModelChange)="onCustomerChange()"
                   class="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white">
-                  <option value="">Select a customer...</option>
+                  <option value="">Select a company...</option>
                   <option *ngFor="let customer of customers" [value]="customer.id || customer.Id">
-                    {{ customer.name || customer.Name }}
+                    {{ customer.company || customer.Company || customer.name || customer.Name }}
                   </option>
                 </select>
               </div>
@@ -179,7 +179,7 @@
                 </div>
 
                 <div *ngIf="customerName" class="mb-4">
-                  <span class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Customer</span>
+                  <span class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Customer Contact</span>
                   <p class="mt-1 font-medium text-gray-800 dark:text-white/90">{{ customerName }}</p>
                 </div>
 
@@ -197,11 +197,74 @@
 
                 <!-- AI Content Generation -->
                 <div *ngIf="customerName && selectedArchitecture" class="mb-4 border-t border-gray-200 pt-4 dark:border-gray-700">
-                  <div class="flex items-center justify-between mb-2">
-                    <span class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">AI-Powered Content</span>
+                  <div class="flex items-center justify-between mb-3">
+                    <div class="flex items-center gap-2">
+                      <span class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">AI-Powered Content</span>
+                      <span *ngIf="aiConfigured" class="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                        <span class="h-1.5 w-1.5 rounded-full bg-green-500"></span>
+                        Azure OpenAI
+                      </span>
+                      <span *ngIf="!aiConfigured" class="inline-flex items-center gap-1 rounded-full bg-yellow-100 px-2 py-0.5 text-[10px] font-medium text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400">
+                        <span class="h-1.5 w-1.5 rounded-full bg-yellow-500"></span>
+                        Template Mode
+                      </span>
+                    </div>
+                  </div>
+
+                  <!-- AI Content Section Checkboxes -->
+                  <div class="mb-3 flex flex-wrap items-center gap-4 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 dark:border-gray-700 dark:bg-gray-800/50">
+                    <span class="text-[11px] font-medium text-gray-500 dark:text-gray-400 mr-1">Generate:</span>
+                    <label class="flex items-center gap-1.5 cursor-pointer group">
+                      <input type="checkbox" [(ngModel)]="enableAIOverview" class="h-3.5 w-3.5 rounded border-gray-300 text-purple-600 focus:ring-purple-500 dark:border-gray-600 dark:bg-gray-700">
+                      <span class="text-xs font-medium group-hover:text-purple-600 dark:group-hover:text-purple-400" [class.text-purple-700]="enableAIOverview" [class.text-gray-400]="!enableAIOverview" [class.dark:text-purple-400]="enableAIOverview" [class.dark:text-gray-500]="!enableAIOverview">
+                        Overview
+                      </span>
+                      <span *ngIf="selectedType && selectedType.AIPromptOverview" class="h-1.5 w-1.5 rounded-full bg-purple-400" title="AI prompt configured"></span>
+                    </label>
+                    <label class="flex items-center gap-1.5 cursor-pointer group">
+                      <input type="checkbox" [(ngModel)]="enableAIFindings" class="h-3.5 w-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700">
+                      <span class="text-xs font-medium group-hover:text-blue-600 dark:group-hover:text-blue-400" [class.text-blue-700]="enableAIFindings" [class.text-gray-400]="!enableAIFindings" [class.dark:text-blue-400]="enableAIFindings" [class.dark:text-gray-500]="!enableAIFindings">
+                        Findings
+                      </span>
+                      <span *ngIf="selectedType && selectedType.AIPromptFindings" class="h-1.5 w-1.5 rounded-full bg-blue-400" title="AI prompt configured"></span>
+                    </label>
+                    <label class="flex items-center gap-1.5 cursor-pointer group">
+                      <input type="checkbox" [(ngModel)]="enableAIRecommendations" class="h-3.5 w-3.5 rounded border-gray-300 text-green-600 focus:ring-green-500 dark:border-gray-600 dark:bg-gray-700">
+                      <span class="text-xs font-medium group-hover:text-green-600 dark:group-hover:text-green-400" [class.text-green-700]="enableAIRecommendations" [class.text-gray-400]="!enableAIRecommendations" [class.dark:text-green-400]="enableAIRecommendations" [class.dark:text-gray-500]="!enableAIRecommendations">
+                        Recommendations
+                      </span>
+                      <span *ngIf="selectedType && selectedType.AIPromptRecommendations" class="h-1.5 w-1.5 rounded-full bg-green-400" title="AI prompt configured"></span>
+                    </label>
+                    <label class="flex items-center gap-1.5 cursor-pointer group">
+                      <input type="checkbox" [(ngModel)]="enableAIScope" class="h-3.5 w-3.5 rounded border-gray-300 text-cyan-600 focus:ring-cyan-500 dark:border-gray-600 dark:bg-gray-700">
+                      <span class="text-xs font-medium group-hover:text-cyan-600 dark:group-hover:text-cyan-400" [class.text-cyan-700]="enableAIScope" [class.text-gray-400]="!enableAIScope" [class.dark:text-cyan-400]="enableAIScope" [class.dark:text-gray-500]="!enableAIScope">
+                        Proposed Scope
+                      </span>
+                      <span *ngIf="selectedType && selectedType.AIPromptScope" class="h-1.5 w-1.5 rounded-full bg-cyan-400" title="AI prompt configured"></span>
+                    </label>
+                    <span class="mx-1 h-4 w-px bg-gray-300 dark:bg-gray-600"></span>
+                    <label *ngIf="selectedType && selectedType.ResourceFolder" class="flex items-center gap-1.5 cursor-pointer group">
+                      <input type="checkbox" [(ngModel)]="enableTechnicalResources" class="h-3.5 w-3.5 rounded border-gray-300 text-orange-600 focus:ring-orange-500 dark:border-gray-600 dark:bg-gray-700">
+                      <span class="text-xs font-medium group-hover:text-orange-600 dark:group-hover:text-orange-400" [class.text-orange-700]="enableTechnicalResources" [class.text-gray-400]="!enableTechnicalResources" [class.dark:text-orange-400]="enableTechnicalResources" [class.dark:text-gray-500]="!enableTechnicalResources">
+                        Technical Resources
+                      </span>
+                      <span class="h-1.5 w-1.5 rounded-full bg-orange-400" title="Resource folder configured"></span>
+                    </label>
+                    <span class="mx-1 h-4 w-px bg-gray-300 dark:bg-gray-600"></span>
+                    <label class="flex items-center gap-1.5 cursor-pointer group">
+                      <input type="checkbox" [(ngModel)]="enableProfessionalReview" class="h-3.5 w-3.5 rounded border-gray-300 text-amber-600 focus:ring-amber-500 dark:border-gray-600 dark:bg-gray-700">
+                      <span class="text-xs font-medium group-hover:text-amber-600 dark:group-hover:text-amber-400" [class.text-amber-700]="enableProfessionalReview" [class.text-gray-400]="!enableProfessionalReview" [class.dark:text-amber-400]="enableProfessionalReview" [class.dark:text-gray-500]="!enableProfessionalReview">
+                        Professional Review
+                      </span>
+                      <span *ngIf="enableProfessionalReview" class="h-1.5 w-1.5 rounded-full bg-amber-400" title="Will review document after generation"></span>
+                    </label>
+                  </div>
+
+                  <!-- Buttons -->
+                  <div class="flex items-center gap-2">
                     <button
                       (click)="generateAIContent()"
-                      [disabled]="isGeneratingAI"
+                      [disabled]="isGeneratingAI || (!enableAIOverview && !enableAIFindings && !enableAIRecommendations && !enableAIScope)"
                       class="inline-flex items-center gap-1.5 rounded-lg bg-purple-500 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-purple-600 disabled:opacity-50">
                       <svg *ngIf="!isGeneratingAI" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
@@ -210,23 +273,217 @@
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
                       </svg>
-                      {{ isGeneratingAI ? 'Generating...' : 'Generate with AI' }}
+                      {{ isGeneratingAI ? (isLoadingResources ? 'Loading Resources...' : 'Generating...') : 'Generate with AI' }}
                     </button>
+                    <button
+                      (click)="showPromptDebug()"
+                      class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+                      title="View the prompt that will be sent to Azure OpenAI">
+                      <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                      </svg>
+                      Debug Prompt
+                    </button>
+                  </div>
+
+                  <!-- Technical Resources Info -->
+                  <div *ngIf="enableTechnicalResources && selectedType?.ResourceFolder" class="mt-2 rounded-lg border border-orange-200 bg-orange-50 px-3 py-2 dark:border-orange-800 dark:bg-orange-900/20">
+                    <div class="flex items-center gap-2">
+                      <svg class="h-4 w-4 text-orange-600 dark:text-orange-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                      </svg>
+                      <span class="text-xs font-medium text-orange-700 dark:text-orange-300">
+                        Technical Resources: <span class="font-mono">{{ selectedType?.ResourceFolder }}</span>
+                      </span>
+                      <span *ngIf="resourcesLoaded" class="inline-flex items-center gap-1 rounded-full bg-orange-100 px-1.5 py-0.5 text-[10px] font-medium text-orange-700 dark:bg-orange-900/40 dark:text-orange-300">
+                        {{ technicalResourcesFiles.length }} file{{ technicalResourcesFiles.length !== 1 ? 's' : '' }} loaded
+                      </span>
+                      <span *ngIf="!resourcesLoaded" class="text-[10px] text-orange-500 dark:text-orange-400">Will load on generate</span>
+                    </div>
+                    <div *ngIf="resourcesLoaded && technicalResourcesFiles.length > 0" class="mt-1.5 flex flex-wrap gap-1">
+                      <span *ngFor="let file of technicalResourcesFiles" class="inline-flex items-center rounded bg-orange-100 px-1.5 py-0.5 text-[10px] text-orange-800 dark:bg-orange-900/30 dark:text-orange-200" [title]="file">
+                        {{ file.length > 30 ? '...' + file.slice(-27) : file }}
+                      </span>
+                    </div>
+                  </div>
+
+                  <!-- Debug Prompt Modal -->
+                  <div *ngIf="showDebugPrompt" class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-4" (click)="showDebugPrompt = false">
+                    <div class="max-h-[85vh] w-full max-w-4xl overflow-y-auto rounded-xl bg-white shadow-2xl dark:bg-gray-800" (click)="$event.stopPropagation()">
+                      <div class="sticky top-0 z-10 flex items-center justify-between border-b border-gray-200 bg-white px-6 py-4 dark:border-gray-700 dark:bg-gray-800">
+                        <div>
+                          <h3 class="text-lg font-semibold text-gray-900 dark:text-white">AI Prompt Debug</h3>
+                          <p class="text-xs text-gray-500">Model: <span class="font-mono font-semibold">{{ debugModel }}</span> | Configured: <span [class]="debugConfigured ? 'text-green-600' : 'text-red-600'">{{ debugConfigured }}</span></p>
+                        </div>
+                        <button (click)="showDebugPrompt = false" class="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-700">
+                          <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                      </div>
+                      <div class="space-y-4 p-6">
+                        <div>
+                          <h4 class="mb-2 text-sm font-semibold text-blue-700 dark:text-blue-400">System Prompt</h4>
+                          <pre class="max-h-48 overflow-y-auto rounded-lg bg-blue-50 p-3 text-xs leading-relaxed text-blue-900 dark:bg-blue-900/20 dark:text-blue-200">{{ debugSystemPrompt }}</pre>
+                        </div>
+                        <div>
+                          <h4 class="mb-2 text-sm font-semibold text-purple-700 dark:text-purple-400">User Prompt (sent to Azure OpenAI)</h4>
+                          <pre class="max-h-[40vh] overflow-y-auto rounded-lg bg-purple-50 p-3 text-xs leading-relaxed text-purple-900 dark:bg-purple-900/20 dark:text-purple-200">{{ debugUserPrompt }}</pre>
+                        </div>
+                      </div>
+                      <div class="border-t border-gray-200 px-6 py-3 text-right dark:border-gray-700">
+                        <button (click)="showDebugPrompt = false" class="rounded-lg bg-gray-600 px-4 py-2 text-sm text-white hover:bg-gray-700">Close</button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Professional Review Results Modal -->
+                  <div *ngIf="showReviewResults" class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-4" (click)="dismissReview()">
+                    <div class="max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-xl bg-white shadow-2xl dark:bg-gray-800" (click)="$event.stopPropagation()">
+                      <div class="sticky top-0 z-10 flex items-center justify-between border-b border-gray-200 bg-white px-6 py-4 dark:border-gray-700 dark:bg-gray-800">
+                        <div>
+                          <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Professional Review</h3>
+                          <p class="text-xs text-gray-500 dark:text-gray-400">AI-powered document quality assessment</p>
+                        </div>
+                        <button (click)="dismissReview()" class="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-700">
+                          <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                      </div>
+                      <div class="p-6">
+                        <!-- Loading state -->
+                        <div *ngIf="isReviewing" class="flex flex-col items-center justify-center py-12">
+                          <svg class="h-10 w-10 animate-spin text-amber-500 mb-4" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                          </svg>
+                          <p class="text-sm font-medium text-gray-600 dark:text-gray-300">Reviewing document for professionalism and completeness...</p>
+                          <p class="mt-1 text-xs text-gray-400">This may take a moment</p>
+                        </div>
+
+                        <!-- Results -->
+                        <div *ngIf="!isReviewing">
+                          <!-- Rating Display -->
+                          <div class="mb-6 text-center">
+                            <div class="inline-flex items-center justify-center rounded-full border-4 h-24 w-24 mb-3"
+                              [ngClass]="{
+                                'border-red-300 bg-red-50 dark:border-red-700 dark:bg-red-900/20': reviewRating <= 3,
+                                'border-yellow-300 bg-yellow-50 dark:border-yellow-700 dark:bg-yellow-900/20': reviewRating > 3 && reviewRating <= 5,
+                                'border-blue-300 bg-blue-50 dark:border-blue-700 dark:bg-blue-900/20': reviewRating > 5 && reviewRating <= 7,
+                                'border-green-300 bg-green-50 dark:border-green-700 dark:bg-green-900/20': reviewRating > 7
+                              }">
+                              <span class="text-3xl font-bold"
+                                [ngClass]="{
+                                  'text-red-600 dark:text-red-400': reviewRating <= 3,
+                                  'text-yellow-600 dark:text-yellow-400': reviewRating > 3 && reviewRating <= 5,
+                                  'text-blue-600 dark:text-blue-400': reviewRating > 5 && reviewRating <= 7,
+                                  'text-green-600 dark:text-green-400': reviewRating > 7
+                                }">{{ reviewRating }}</span>
+                            </div>
+                            <p class="text-xs font-medium uppercase tracking-wider"
+                              [ngClass]="{
+                                'text-red-600 dark:text-red-400': reviewRating <= 3,
+                                'text-yellow-600 dark:text-yellow-400': reviewRating > 3 && reviewRating <= 5,
+                                'text-blue-600 dark:text-blue-400': reviewRating > 5 && reviewRating <= 7,
+                                'text-green-600 dark:text-green-400': reviewRating > 7
+                              }">
+                              {{ reviewRating <= 3 ? 'Needs Significant Work' : reviewRating <= 5 ? 'Below Average' : reviewRating <= 7 ? 'Acceptable' : reviewRating <= 9 ? 'Professional' : 'Excellent' }}
+                            </p>
+                            <!-- Rating bar -->
+                            <div class="mt-3 mx-auto max-w-xs">
+                              <div class="h-2 w-full rounded-full bg-gray-200 dark:bg-gray-700">
+                                <div class="h-2 rounded-full transition-all duration-500"
+                                  [style.width.%]="reviewRating * 10"
+                                  [ngClass]="{
+                                    'bg-red-500': reviewRating <= 3,
+                                    'bg-yellow-500': reviewRating > 3 && reviewRating <= 5,
+                                    'bg-blue-500': reviewRating > 5 && reviewRating <= 7,
+                                    'bg-green-500': reviewRating > 7
+                                  }"></div>
+                              </div>
+                              <div class="flex justify-between mt-1">
+                                <span class="text-[10px] text-gray-400">1</span>
+                                <span class="text-[10px] text-gray-400">10</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <!-- Summary -->
+                          <div class="mb-4 rounded-lg bg-amber-50 border border-amber-200 p-3 dark:bg-amber-900/20 dark:border-amber-800">
+                            <p class="text-sm text-amber-800 dark:text-amber-200">{{ reviewSummary }}</p>
+                          </div>
+
+                          <!-- Suggestions -->
+                          <div *ngIf="reviewSuggestions.length > 0">
+                            <h4 class="mb-3 text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                              <svg class="h-4 w-4 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                              </svg>
+                              Improvement Suggestions ({{ reviewSuggestions.length }})
+                            </h4>
+                            <ul class="space-y-2">
+                              <li *ngFor="let suggestion of reviewSuggestions; let i = index" class="flex items-start gap-3 rounded-lg bg-gray-50 p-3 dark:bg-gray-700/50">
+                                <span class="flex-shrink-0 flex items-center justify-center h-5 w-5 rounded-full bg-amber-100 text-amber-700 text-[10px] font-bold dark:bg-amber-900/40 dark:text-amber-300">{{ i + 1 }}</span>
+                                <p class="text-sm text-gray-700 dark:text-gray-300">{{ suggestion }}</p>
+                              </li>
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
+                      <div *ngIf="!isReviewing" class="border-t border-gray-200 px-6 py-3 text-right dark:border-gray-700">
+                        <button (click)="dismissReview()" class="rounded-lg bg-amber-600 px-4 py-2 text-sm text-white hover:bg-amber-700">Done</button>
+                      </div>
+                    </div>
                   </div>
                   
                   <!-- AI Generated Content Preview -->
-                  <div *ngIf="showAIPreview && aiGeneratedOverview" class="mt-3 rounded-lg border border-purple-200 bg-purple-50 p-3 dark:border-purple-800 dark:bg-purple-900/20">
-                    <div class="flex items-center gap-2 mb-2">
-                      <svg class="h-4 w-4 text-purple-600 dark:text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                      </svg>
-                      <span class="text-xs font-medium text-purple-700 dark:text-purple-300">AI Generated Overview</span>
+                  <div *ngIf="showAIPreview && (aiGeneratedOverview || aiGeneratedFindings || aiGeneratedRecommendations || aiGeneratedScope)" class="mt-3 space-y-3">
+                    
+                    <!-- AI Overview -->
+                    <div *ngIf="aiGeneratedOverview" class="rounded-lg border border-purple-200 bg-purple-50 p-3 dark:border-purple-800 dark:bg-purple-900/20">
+                      <div class="flex items-center gap-2 mb-2">
+                        <svg class="h-4 w-4 text-purple-600 dark:text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                        </svg>
+                        <span class="text-xs font-medium text-purple-700 dark:text-purple-300">AI Executive Summary <span class="text-[10px] opacity-70">&#123;AI_Summary&#125;</span></span>
+                      </div>
+                      <p class="text-sm text-purple-800 dark:text-purple-200 whitespace-pre-line">{{ aiGeneratedOverview }}</p>
                     </div>
-                    <p class="text-sm text-purple-800 dark:text-purple-200 whitespace-pre-line">{{ aiGeneratedOverview }}</p>
+
+                    <!-- AI Findings -->
+                    <div *ngIf="aiGeneratedFindings" class="rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-900/20">
+                      <div class="flex items-center gap-2 mb-2">
+                        <svg class="h-4 w-4 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                        </svg>
+                        <span class="text-xs font-medium text-blue-700 dark:text-blue-300">AI Findings <span class="text-[10px] opacity-70">&#123;AI_Findings&#125;</span></span>
+                      </div>
+                      <p class="text-sm text-blue-800 dark:text-blue-200 whitespace-pre-line">{{ aiGeneratedFindings }}</p>
+                    </div>
+
+                    <!-- AI Recommendations -->
+                    <div *ngIf="aiGeneratedRecommendations" class="rounded-lg border border-green-200 bg-green-50 p-3 dark:border-green-800 dark:bg-green-900/20">
+                      <div class="flex items-center gap-2 mb-2">
+                        <svg class="h-4 w-4 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span class="text-xs font-medium text-green-700 dark:text-green-300">AI Recommendations <span class="text-[10px] opacity-70">&#123;AI_Recommendations&#125;</span></span>
+                      </div>
+                      <p class="text-sm text-green-800 dark:text-green-200 whitespace-pre-line">{{ aiGeneratedRecommendations }}</p>
+                    </div>
+
+                    <!-- AI Proposed Scope -->
+                    <div *ngIf="aiGeneratedScope" class="rounded-lg border border-cyan-200 bg-cyan-50 p-3 dark:border-cyan-800 dark:bg-cyan-900/20">
+                      <div class="flex items-center gap-2 mb-2">
+                        <svg class="h-4 w-4 text-cyan-600 dark:text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                        </svg>
+                        <span class="text-xs font-medium text-cyan-700 dark:text-cyan-300">AI Proposed Assessment Scope <span class="text-[10px] opacity-70">&#123;AI_Scope&#125;</span></span>
+                      </div>
+                      <p class="text-sm text-cyan-800 dark:text-cyan-200 whitespace-pre-line">{{ aiGeneratedScope }}</p>
+                    </div>
+
                     <button
                       (click)="useAIContent()"
-                      class="mt-3 w-full rounded-lg bg-purple-600 py-2 text-xs font-medium text-white transition-colors hover:bg-purple-700">
-                      Use This Content
+                      class="w-full rounded-lg bg-purple-600 py-2 text-xs font-medium text-white transition-colors hover:bg-purple-700">
+                      Use AI Content
                     </button>
                   </div>
                 </div>
@@ -324,10 +581,16 @@
               </span>
             </div>
             <div class="flex flex-wrap items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
-              <span>{{ assessment.CustomerName }}</span>
+              <span title="Customer Contact">{{ assessment.CustomerName }}</span>
               <span>{{ assessment.AssessmentTypeName }}</span>
               <span>{{ assessment.ReferenceArchitectureName }}</span>
               <span>{{ formatDate(assessment.CreatedAt) }}</span>
+              <span *ngIf="assessment.GeneratedBy" class="inline-flex items-center gap-1">
+                <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+                {{ assessment.GeneratedBy }}
+              </span>
             </div>
             <div *ngIf="assessment.TotalPrice" class="mt-1 text-sm font-medium text-gray-700 dark:text-gray-300">
               {{ formatCurrency(assessment.TotalPrice) }}

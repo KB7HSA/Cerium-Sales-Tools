@@ -31,6 +31,8 @@ export interface AssessmentType {
   AIPromptOverview?: string;
   AIPromptFindings?: string;
   AIPromptRecommendations?: string;
+  AIPromptScope?: string;
+  ResourceFolder?: string;
   DefaultHours?: number;
   DefaultRate?: number;
   IsActive: boolean;
@@ -217,7 +219,8 @@ export class AssessmentTypeService {
     let query = `
       SELECT Id, Name, Description, Category, TemplateFileName,
              OverviewTemplate, ScopeTemplate, MethodologyTemplate, DeliverablesTemplate, RecommendationsTemplate,
-             AIPromptOverview, AIPromptFindings, AIPromptRecommendations,
+             AIPromptOverview, AIPromptFindings, AIPromptRecommendations, AIPromptScope,
+             ResourceFolder,
              DefaultHours, DefaultRate, IsActive, SortOrder, CreatedAt, UpdatedAt
       FROM dbo.AssessmentTypes
     `;
@@ -248,7 +251,8 @@ export class AssessmentTypeService {
     const query = `
       SELECT Id, Name, Description, Category, TemplateFileName,
              OverviewTemplate, ScopeTemplate, MethodologyTemplate, DeliverablesTemplate, RecommendationsTemplate,
-             AIPromptOverview, AIPromptFindings, AIPromptRecommendations,
+             AIPromptOverview, AIPromptFindings, AIPromptRecommendations, AIPromptScope,
+             ResourceFolder,
              DefaultHours, DefaultRate, IsActive, SortOrder, CreatedAt, UpdatedAt
       FROM dbo.AssessmentTypes
       WHERE Id = @id
@@ -297,19 +301,22 @@ export class AssessmentTypeService {
       INSERT INTO dbo.AssessmentTypes (
         Id, Name, Description, Category, TemplateFileName,
         OverviewTemplate, ScopeTemplate, MethodologyTemplate, DeliverablesTemplate, RecommendationsTemplate,
-        AIPromptOverview, AIPromptFindings, AIPromptRecommendations,
+        AIPromptOverview, AIPromptFindings, AIPromptRecommendations, AIPromptScope,
+        ResourceFolder,
         DefaultHours, DefaultRate, IsActive, SortOrder, CreatedAt, UpdatedAt
       )
       VALUES (
         @id, @name, @description, @category, @templateFileName,
         @overviewTemplate, @scopeTemplate, @methodologyTemplate, @deliverablesTemplate, @recommendationsTemplate,
-        @aiPromptOverview, @aiPromptFindings, @aiPromptRecommendations,
+        @aiPromptOverview, @aiPromptFindings, @aiPromptRecommendations, @aiPromptScope,
+        @resourceFolder,
         @defaultHours, @defaultRate, @isActive, @sortOrder, GETUTCDATE(), GETUTCDATE()
       );
       
       SELECT Id, Name, Description, Category, TemplateFileName,
              OverviewTemplate, ScopeTemplate, MethodologyTemplate, DeliverablesTemplate, RecommendationsTemplate,
-             AIPromptOverview, AIPromptFindings, AIPromptRecommendations,
+             AIPromptOverview, AIPromptFindings, AIPromptRecommendations, AIPromptScope,
+             ResourceFolder,
              DefaultHours, DefaultRate, IsActive, SortOrder, CreatedAt, UpdatedAt
       FROM dbo.AssessmentTypes WHERE Id = @id;
     `;
@@ -320,6 +327,7 @@ export class AssessmentTypeService {
         name: assessmentType.Name,
         description: assessmentType.Description || null,
         category: assessmentType.Category || null,
+        templateFileName: assessmentType.TemplateFileName || 'Assessment-Template.docx',
         overviewTemplate: assessmentType.OverviewTemplate || null,
         scopeTemplate: assessmentType.ScopeTemplate || null,
         methodologyTemplate: assessmentType.MethodologyTemplate || null,
@@ -328,6 +336,8 @@ export class AssessmentTypeService {
         aiPromptOverview: assessmentType.AIPromptOverview || null,
         aiPromptFindings: assessmentType.AIPromptFindings || null,
         aiPromptRecommendations: assessmentType.AIPromptRecommendations || null,
+        aiPromptScope: assessmentType.AIPromptScope || null,
+        resourceFolder: assessmentType.ResourceFolder || null,
         defaultHours: assessmentType.DefaultHours ?? 0,
         defaultRate: assessmentType.DefaultRate ?? 175.00,
         isActive: assessmentType.IsActive ?? true,
@@ -367,6 +377,8 @@ export class AssessmentTypeService {
           AIPromptOverview = @aiPromptOverview,
           AIPromptFindings = @aiPromptFindings,
           AIPromptRecommendations = @aiPromptRecommendations,
+          AIPromptScope = @aiPromptScope,
+          ResourceFolder = @resourceFolder,
           DefaultHours = @defaultHours,
           DefaultRate = @defaultRate,
           IsActive = @isActive,
@@ -376,7 +388,8 @@ export class AssessmentTypeService {
       
       SELECT Id, Name, Description, Category, TemplateFileName,
              OverviewTemplate, ScopeTemplate, MethodologyTemplate, DeliverablesTemplate, RecommendationsTemplate,
-             AIPromptOverview, AIPromptFindings, AIPromptRecommendations,
+             AIPromptOverview, AIPromptFindings, AIPromptRecommendations, AIPromptScope,
+             ResourceFolder,
              DefaultHours, DefaultRate, IsActive, SortOrder, CreatedAt, UpdatedAt
       FROM dbo.AssessmentTypes WHERE Id = @id;
     `;
@@ -396,6 +409,8 @@ export class AssessmentTypeService {
         aiPromptOverview: assessmentType.AIPromptOverview || null,
         aiPromptFindings: assessmentType.AIPromptFindings || null,
         aiPromptRecommendations: assessmentType.AIPromptRecommendations || null,
+        aiPromptScope: assessmentType.AIPromptScope || null,
+        resourceFolder: assessmentType.ResourceFolder || null,
         defaultHours: assessmentType.DefaultHours ?? 0,
         defaultRate: assessmentType.DefaultRate ?? 175.00,
         isActive: assessmentType.IsActive ?? true,

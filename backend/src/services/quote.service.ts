@@ -50,6 +50,8 @@ export interface Quote {
   AcceptedAt?: Date;
   CreatedDate?: string;
   CreatedTime?: string;
+  CreatedBy?: string;
+  CreatedByEmail?: string;
   CreatedAt: Date;
   UpdatedAt: Date;
   // Related items (for retrieval)
@@ -60,7 +62,7 @@ export class QuoteService {
   /**
    * Get all quotes
    */
-  static async getAllQuotes(status?: string): Promise<Quote[]> {
+  static async getAllQuotes(status?: string): Promise<any[]> {
     let query = `SELECT * FROM dbo.Quotes`;
     const params: Record<string, any> = {};
 
@@ -72,12 +74,45 @@ export class QuoteService {
     query += ` ORDER BY CreatedAt DESC`;
     const quotes = await executeQuery<Quote>(query, params);
     
-    // Fetch selected options for each quote
+    const enrichedQuotes: any[] = [];
     for (const quote of quotes) {
       quote.selectedOptions = await this.getQuoteSelectedOptions(quote.Id);
+
+      // Fetch work items and labor groups for labor quotes
+      if ((quote.QuoteType || '').toLowerCase() === 'labor') {
+        const workItemsQuery = `SELECT * FROM dbo.QuoteWorkItems WHERE QuoteId = @quoteId ORDER BY CreatedAt`;
+        const laborGroupsQuery = `SELECT * FROM dbo.QuoteLaborGroups WHERE QuoteId = @quoteId ORDER BY Section`;
+        const [workItems, laborGroups] = await Promise.all([
+          executeQuery(workItemsQuery, { quoteId: quote.Id }),
+          executeQuery(laborGroupsQuery, { quoteId: quote.Id })
+        ]);
+        enrichedQuotes.push({
+          ...quote,
+          workItems: workItems.map((wi: any) => ({
+            name: wi.Name,
+            referenceArchitecture: wi.ReferenceArchitecture,
+            section: wi.Section,
+            unitOfMeasure: wi.UnitOfMeasure,
+            closetCount: wi.ClosetCount,
+            switchCount: wi.SwitchCount,
+            hoursPerSwitch: wi.HoursPerUnit,
+            ratePerHour: wi.RatePerHour,
+            lineHours: wi.LineHours,
+            lineTotal: wi.LineTotal,
+            solutionName: wi.SolutionName
+          })),
+          laborGroups: laborGroups.map((lg: any) => ({
+            section: lg.Section,
+            total: lg.Total,
+            items: lg.ItemCount
+          }))
+        });
+      } else {
+        enrichedQuotes.push(quote);
+      }
     }
     
-    return quotes;
+    return enrichedQuotes;
   }
 
   /**
@@ -147,6 +182,8 @@ export class QuoteService {
     const annualDiscountApplied = quote.AnnualDiscountApplied ?? (quote as any).annualDiscountApplied ?? false;
     const createdDate = quote.CreatedDate || (quote as any).createdDate || now.toLocaleDateString();
     const createdTime = quote.CreatedTime || (quote as any).createdTime || now.toLocaleTimeString();
+    const createdBy = quote.CreatedBy || (quote as any).createdBy || null;
+    const createdByEmail = quote.CreatedByEmail || (quote as any).createdByEmail || null;
     const serviceName = quote.ServiceName || (quote as any).service || null;
     const monthlyPrice = quote.MonthlyPrice ?? (quote as any).monthlyPrice ?? 0;
     const totalPrice = quote.TotalPrice ?? (quote as any).totalPrice ?? 0;
@@ -161,13 +198,13 @@ export class QuoteService {
        BasePricePerUnit, ProfessionalServicesPrice, ProfessionalServicesTotal, PerUnitTotal,
        AddOnMonthlyTotal, AddOnOneTimeTotal, AddOnPerUnitTotal, NumberOfUsers, DurationMonths,
        MonthlyPrice, TotalPrice, SetupFee, DiscountAmount, AnnualDiscountApplied, TotalHours,
-       Status, CreatedDate, CreatedTime, CreatedAt, UpdatedAt)
+       Status, CreatedDate, CreatedTime, CreatedBy, CreatedByEmail, CreatedAt, UpdatedAt)
       VALUES 
       (@id, @quoteType, @customerId, @customerName, @notes, @serviceName, @serviceLevelName, @pricingUnitLabel,
        @basePricePerUnit, @professionalServicesPrice, @professionalServicesTotal, @perUnitTotal,
        @addOnMonthlyTotal, @addOnOneTimeTotal, @addOnPerUnitTotal, @numberOfUsers, @durationMonths,
        @monthlyPrice, @totalPrice, @setupFee, @discountAmount, @annualDiscountApplied, @totalHours,
-       @status, @createdDate, @createdTime, @createdAt, @updatedAt);
+       @status, @createdDate, @createdTime, @createdBy, @createdByEmail, @createdAt, @updatedAt);
       
       SELECT * FROM dbo.Quotes WHERE Id = @id
     `;
@@ -199,6 +236,8 @@ export class QuoteService {
       status,
       createdDate,
       createdTime,
+      createdBy,
+      createdByEmail,
       createdAt: now,
       updatedAt: now,
     };
@@ -414,10 +453,10 @@ export class QuoteService {
     const query = `
       INSERT INTO dbo.QuoteWorkItems 
       (QuoteId, Name, ReferenceArchitecture, Section, UnitOfMeasure, ClosetCount, SwitchCount,
-       HoursPerUnit, RatePerHour, LineHours, LineTotal, SolutionName, CreatedAt)
+       HoursPerUnit, RatePerHour, LineHours, LineTotal, SolutionName, GroupName, SortOrder, CreatedAt)
       VALUES 
       (@quoteId, @name, @refArch, @section, @unitOfMeasure, @closetCount, @switchCount,
-       @hours, @rate, @lineHours, @lineTotal, @solutionName, @createdAt);
+       @hours, @rate, @lineHours, @lineTotal, @solutionName, @groupName, @sortOrder, @createdAt);
       
       SELECT * FROM dbo.QuoteWorkItems WHERE QuoteId = @quoteId ORDER BY CreatedAt DESC
     `;
@@ -435,6 +474,8 @@ export class QuoteService {
       lineHours: item.LineHours ?? item.lineHours ?? 0,
       lineTotal: item.LineTotal ?? item.lineTotal ?? 0,
       solutionName: item.SolutionName || item.solutionName || null,
+      groupName: item.GroupName || item.groupName || 'Default',
+      sortOrder: item.SortOrder ?? item.sortOrder ?? 0,
       createdAt: now,
     };
 

@@ -1,8 +1,11 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { HttpClient } from '@angular/common/http';
 import { Subscription } from 'rxjs';
 import { ERateService, Form470Record, RefreshHistory } from '../../shared/services/erate.service';
+import { AuthService } from '../../shared/services/auth.service';
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-e-rate',
@@ -727,10 +730,20 @@ export class ERateComponent implements OnInit, OnDestroy {
   private subscriptions: Subscription[] = [];
   private resizeMoveListener: ((e: MouseEvent) => void) | null = null;
   private resizeEndListener: ((e: MouseEvent) => void) | null = null;
+  private saveTimeout: any = null;
+  private currentUserEmail: string | null = null;
+  private readonly TABLE_NAME = 'erate-form470';
 
-  constructor(private erateService: ERateService) {}
+  constructor(
+    private erateService: ERateService,
+    private authService: AuthService,
+    private http: HttpClient
+  ) {}
 
   ngOnInit(): void {
+    // Load saved column widths for current user
+    this.loadColumnWidths();
+
     // Subscribe to service state
     this.subscriptions.push(
       this.erateService.records$.subscribe(records => {
@@ -1022,11 +1035,63 @@ export class ERateComponent implements OnInit, OnDestroy {
     this.resizeEndListener = null;
     document.body.style.cursor = '';
     document.body.style.userSelect = '';
+
+    // Debounced save of column widths
+    this.saveColumnWidthsDebounced();
   }
 
   getColumnWidth(column: string): string {
     const width = this.columnWidths[column];
     return width ? `${width}px` : 'auto';
+  }
+
+  // ---- Column width persistence ----
+
+  private loadColumnWidths(): void {
+    this.subscriptions.push(
+      this.authService.currentUser$.subscribe(currentUser => {
+        if (!currentUser?.email) return;
+        this.currentUserEmail = currentUser.email;
+        const apiUrl = environment.apiUrl || 'http://localhost:3000/api';
+        this.http.get<{ success: boolean; data: any }>(
+          `${apiUrl}/user-preferences/table/${this.TABLE_NAME}?userEmail=${encodeURIComponent(currentUser.email)}`
+        ).subscribe({
+          next: (response) => {
+            if (response?.data?.columnWidths) {
+              this.columnWidths = { ...this.columnWidths, ...response.data.columnWidths };
+            }
+          },
+          error: (err) => {
+            console.warn('[E-Rate] Could not load column width preferences:', err.message);
+          }
+        });
+      })
+    );
+  }
+
+  private saveColumnWidthsDebounced(): void {
+    if (this.saveTimeout) {
+      clearTimeout(this.saveTimeout);
+    }
+    this.saveTimeout = setTimeout(() => this.saveColumnWidths(), 500);
+  }
+
+  private saveColumnWidths(): void {
+    if (!this.currentUserEmail) return;
+
+    const apiUrl = environment.apiUrl || 'http://localhost:3000/api';
+    this.http.put(
+      `${apiUrl}/user-preferences/table/${this.TABLE_NAME}`,
+      {
+        userEmail: this.currentUserEmail,
+        preferences: { columnWidths: this.columnWidths }
+      }
+    ).subscribe({
+      next: () => {},
+      error: (err) => {
+        console.warn('[E-Rate] Could not save column width preferences:', err.message);
+      }
+    });
   }
 }
 

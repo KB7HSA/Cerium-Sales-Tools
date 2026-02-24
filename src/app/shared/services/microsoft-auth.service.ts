@@ -1,7 +1,22 @@
 import { Injectable, inject } from '@angular/core';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { MsalService, MsalBroadcastService } from '@azure/msal-angular';
 import { InteractionStatus, AuthenticationResult, PopupRequest, RedirectRequest, EndSessionRequest } from '@azure/msal-browser';
-import { Observable, Subject, filter, takeUntil } from 'rxjs';
+import { Observable, Subject, filter, takeUntil, switchMap, of, catchError } from 'rxjs';
+
+export interface MicrosoftUserProfile {
+  id: string;
+  displayName: string;
+  givenName: string;
+  surname: string;
+  mail: string;
+  userPrincipalName: string;
+  jobTitle?: string;
+  officeLocation?: string;
+  mobilePhone?: string;
+  businessPhones?: string[];
+  department?: string;
+}
 
 @Injectable({
   providedIn: 'root'
@@ -10,6 +25,9 @@ export class MicrosoftAuthService {
   private readonly _destroying$ = new Subject<void>();
   private authService = inject(MsalService);
   private msalBroadcastService = inject(MsalBroadcastService);
+  private http = inject(HttpClient);
+  
+  private readonly graphUrl = 'https://graph.microsoft.com/v1.0/me';
 
   isAuthenticated = false;
   username: string | null = null;
@@ -75,24 +93,45 @@ export class MicrosoftAuthService {
   }
 
   /**
-   * Logout the user
+   * Logout the user using popup
    */
-  logout(): void {
+  logout(): Observable<void> {
     const logoutRequest: EndSessionRequest = {
       account: this.authService.instance.getActiveAccount()
     };
 
-    this.authService.logoutPopup(logoutRequest).subscribe(() => {
-      this.isAuthenticated = false;
-      this.username = null;
+    return new Observable(observer => {
+      this.authService.logoutPopup(logoutRequest).subscribe({
+        next: () => {
+          this.isAuthenticated = false;
+          this.username = null;
+          observer.next();
+          observer.complete();
+        },
+        error: (error) => {
+          console.error('Microsoft logout error:', error);
+          // Still reset local state
+          this.isAuthenticated = false;
+          this.username = null;
+          observer.next();
+          observer.complete();
+        }
+      });
     });
   }
 
   /**
    * Logout using redirect
    */
-  logoutRedirect(): void {
-    this.authService.logoutRedirect();
+  logoutRedirect(postLogoutRedirectUri?: string): void {
+    const logoutRequest: EndSessionRequest = {
+      account: this.authService.instance.getActiveAccount(),
+      postLogoutRedirectUri: postLogoutRedirectUri || window.location.origin
+    };
+    
+    this.isAuthenticated = false;
+    this.username = null;
+    this.authService.logoutRedirect(logoutRequest);
   }
 
   /**
@@ -125,6 +164,41 @@ export class MicrosoftAuthService {
     };
 
     return this.authService.acquireTokenSilent(request);
+  }
+
+  /**
+   * Get user profile from Microsoft Graph API
+   */
+  getUserProfile(): Observable<MicrosoftUserProfile | null> {
+    return this.acquireTokenSilent(['User.Read']).pipe(
+      switchMap((tokenResult: AuthenticationResult) => {
+        const headers = new HttpHeaders({
+          'Authorization': `Bearer ${tokenResult.accessToken}`
+        });
+
+        return this.http.get<MicrosoftUserProfile>(this.graphUrl, { headers });
+      }),
+      catchError((error) => {
+        console.error('Failed to get user profile:', error);
+        return of(null);
+      })
+    );
+  }
+
+  /**
+   * Get the current user's account info from MSAL cache
+   */
+  getCurrentUserInfo(): { id: string; email: string; name: string } | null {
+    const account = this.authService.instance.getActiveAccount();
+    if (!account) {
+      return null;
+    }
+    
+    return {
+      id: account.localAccountId,
+      email: account.username,
+      name: account.name || account.username
+    };
   }
 
   ngOnDestroy(): void {

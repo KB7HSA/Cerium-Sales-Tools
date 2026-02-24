@@ -32,6 +32,8 @@ export interface Quote {
     section?: string;
     unitOfMeasure?: string;
     solutionName?: string;
+    groupName?: string;
+    sortOrder?: number;
     closetCount: number;
     switchCount: number;
     hoursPerSwitch: number;
@@ -55,9 +57,13 @@ export interface Quote {
   status: 'pending' | 'approved' | 'denied' | 'draft' | 'sent' | 'accepted' | 'rejected' | 'expired';
   createdDate?: string;
   createdTime?: string;
+  createdBy?: string;
+  createdByEmail?: string;
   CustomerId?: string;
   QuoteType?: string;
   Status?: 'pending' | 'approved' | 'denied' | 'draft' | 'sent' | 'accepted' | 'rejected' | 'expired';
+  CreatedBy?: string;
+  CreatedByEmail?: string;
   CreatedAt?: Date;
   UpdatedAt?: Date;
 }
@@ -132,8 +138,26 @@ export class QuoteService {
       addOnMonthlyTotal: quote.addOnMonthlyTotal ?? quote.AddOnMonthlyTotal,
       addOnOneTimeTotal: quote.addOnOneTimeTotal ?? quote.AddOnOneTimeTotal,
       addOnPerUnitTotal: quote.addOnPerUnitTotal ?? quote.AddOnPerUnitTotal,
-      workItems: quote.workItems || [],
-      laborGroups: quote.laborGroups || [],
+      workItems: (quote.workItems || []).map((wi: any) => ({
+        name: wi.name || wi.Name || '',
+        referenceArchitecture: wi.referenceArchitecture || wi.ReferenceArchitecture || null,
+        section: wi.section || wi.Section || null,
+        unitOfMeasure: wi.unitOfMeasure || wi.UnitOfMeasure || null,
+        solutionName: wi.solutionName || wi.SolutionName || null,
+        closetCount: wi.closetCount ?? wi.ClosetCount ?? 0,
+        switchCount: wi.switchCount ?? wi.SwitchCount ?? 0,
+        hoursPerSwitch: wi.hoursPerSwitch ?? wi.HoursPerUnit ?? 0,
+        ratePerHour: wi.ratePerHour ?? wi.RatePerHour ?? 0,
+        lineHours: wi.lineHours ?? wi.LineHours ?? 0,
+        lineTotal: wi.lineTotal ?? wi.LineTotal ?? 0,
+        groupName: wi.groupName || wi.GroupName || 'Default',
+        sortOrder: wi.sortOrder ?? wi.SortOrder ?? 0
+      })),
+      laborGroups: (quote.laborGroups || []).map((lg: any) => ({
+        section: lg.section || lg.Section || '',
+        total: lg.total ?? lg.Total ?? 0,
+        items: lg.items ?? lg.ItemCount ?? 0
+      })),
       totalHours: quote.totalHours ?? quote.TotalHours,
       numberOfUsers: quote.numberOfUsers || quote.NumberOfUsers || 1,
       durationMonths: quote.durationMonths || quote.DurationMonths || 1,
@@ -144,7 +168,9 @@ export class QuoteService {
       annualDiscountApplied: quote.annualDiscountApplied ?? quote.AnnualDiscountApplied ?? false,
       status: ((quote.status || quote.Status || 'pending') as any),
       createdDate: quote.createdDate || quote.CreatedDate,
-      createdTime: quote.createdTime || quote.CreatedTime
+      createdTime: quote.createdTime || quote.CreatedTime,
+      createdBy: quote.createdBy || quote.CreatedBy,
+      createdByEmail: quote.createdByEmail || quote.CreatedByEmail
     };
   }
 
@@ -191,6 +217,8 @@ export class QuoteService {
       Status: quote.status || 'pending',
       CreatedDate: quote.createdDate || new Date().toLocaleDateString(),
       CreatedTime: quote.createdTime || new Date().toLocaleTimeString(),
+      CreatedBy: quote.createdBy,
+      CreatedByEmail: quote.createdByEmail,
       selectedOptions: quote.selectedOptions || [],
       workItems: quote.workItems || [],
       laborGroups: quote.laborGroups || []

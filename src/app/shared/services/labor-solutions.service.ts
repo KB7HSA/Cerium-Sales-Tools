@@ -7,6 +7,8 @@ export interface LaborSolutionItem {
   quantity: number;
   hoursPerUnit: number;
   ratePerHour: number;
+  groupName?: string;
+  sortOrder?: number;
 }
 
 export interface LaborSolution {
@@ -53,12 +55,14 @@ export class LaborSolutionsService {
       description: solution.description || '',
       overheadPercent: Number(solution.overheadPercent ?? 10),
       contingencyPercent: Number(solution.contingencyPercent ?? 5),
-      items: (solution.items || []).map(item => ({
+      items: (solution.items || []).map((item, index) => ({
         id: item.id || `item-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         catalogItemId: item.catalogItemId || '',
         quantity: Number(item.quantity ?? 1),
         hoursPerUnit: Number(item.hoursPerUnit ?? 0),
-        ratePerHour: Number(item.ratePerHour ?? 0)
+        ratePerHour: Number(item.ratePerHour ?? 0),
+        groupName: item.groupName || 'Default',
+        sortOrder: Number(item.sortOrder ?? index)
       })),
       createdDate: solution.createdDate || new Date().toLocaleDateString(),
       lastModified: solution.lastModified || new Date().toLocaleDateString()
