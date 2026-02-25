@@ -1,7 +1,7 @@
 import { Component, OnInit, OnDestroy, ElementRef, ViewChild, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterModule } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { QuoteService, Quote } from '../../shared/services/quote.service';
@@ -37,7 +37,8 @@ export class QuoteManagementComponent implements OnInit, OnDestroy {
   constructor(
     public quoteService: QuoteService,
     private exportSchemaService: ExportSchemaService,
-    private sowGeneratorService: SowGeneratorService
+    private sowGeneratorService: SowGeneratorService,
+    private router: Router
   ) {}
 
   getQuoteId(quote: Quote): string {
@@ -501,32 +502,70 @@ export class QuoteManagementComponent implements OnInit, OnDestroy {
 
   /**
    * Generate Statement of Work (SOW) document for approved quote
-   * Uses the Word template and saves to database
+   * Navigates to the SOW Generator page with pre-filled labor budget data
    */
-  async generateSOW(quote: Quote): Promise<void> {
-    console.log('[QuoteManagement] Generating SOW for quote:', quote.id || quote.Id);
+  generateSOW(quote: Quote): void {
+    console.log('[QuoteManagement] Navigating to SOW Generator with quote:', quote.id || quote.Id);
     
-    if (this.sowGenerating) {
-      alert('SOW generation already in progress. Please wait.');
-      return;
+    const quoteId = quote.id || quote.Id || '';
+    const customerName = quote.customerName || '';
+    const service = quote.service || '';
+    const totalHours = quote.totalHours || 0;
+    const totalPrice = quote.totalPrice || 0;
+    const notes = quote.notes || '';
+    const createdBy = (quote as any).createdBy ?? (quote as any).CreatedBy ?? '';
+    const createdByEmail = (quote as any).createdByEmail ?? (quote as any).CreatedByEmail ?? '';
+
+    // Extract reference architecture from work items (use the first one found)
+    const workItems = quote.workItems || [];
+    const referenceArchitecture = workItems.find(wi => wi.referenceArchitecture)?.referenceArchitecture || '';
+
+    // Compute average hourly rate from work items
+    const ratesWithHours = workItems.filter(wi => wi.lineHours > 0 && wi.ratePerHour > 0);
+    const avgRate = ratesWithHours.length > 0
+      ? ratesWithHours.reduce((sum, wi) => sum + wi.ratePerHour * wi.lineHours, 0) /
+        ratesWithHours.reduce((sum, wi) => sum + wi.lineHours, 0)
+      : 0;
+
+    // Build a labor summary from work items for the notes field
+    const laborLines: string[] = [];
+    if (workItems.length > 0) {
+      laborLines.push('=== Labor Budget from Quote ===');
+      const groups = new Map<string, typeof workItems>();
+      workItems.forEach(wi => {
+        const group = wi.groupName || wi.section || 'General';
+        if (!groups.has(group)) groups.set(group, []);
+        groups.get(group)!.push(wi);
+      });
+      groups.forEach((items, groupName) => {
+        laborLines.push(`\n[${groupName}]`);
+        items.forEach(wi => {
+          laborLines.push(`  • ${wi.name}: ${wi.lineHours}h @ $${wi.ratePerHour}/hr = $${wi.lineTotal.toFixed(2)}`);
+        });
+      });
+      laborLines.push(`\nTotal Hours: ${totalHours}`);
+      laborLines.push(`Total Price: $${totalPrice.toFixed(2)}`);
+      if (avgRate > 0) laborLines.push(`Weighted Avg Rate: $${avgRate.toFixed(2)}/hr`);
     }
-    
-    this.sowGenerating = true;
-    
-    try {
-      // Generate and save to database
-      const savedDoc = await this.sowGeneratorService.generateAndSaveSOW(quote);
-      
-      // Also download the file
-      await this.sowGeneratorService.downloadSOW(quote);
-      
-      alert(`SOW document generated successfully!\n\nFile: ${savedDoc.FileName}\n\nThe document has been downloaded and saved to the SOW Documents list.`);
-    } catch (error: any) {
-      console.error('[QuoteManagement] SOW generation error:', error);
-      alert(`Failed to generate SOW: ${error.message || 'Unknown error'}\n\nPlease ensure the Word template file exists at templates/Template-Druva M365 MSP Agreement.docx`);
-    } finally {
-      this.sowGenerating = false;
-    }
+    const laborSummary = laborLines.join('\n');
+    const combinedNotes = [notes, laborSummary].filter(Boolean).join('\n\n');
+
+    // Navigate to SOW Generator with query params
+    this.router.navigate(['/sow-generator'], {
+      queryParams: {
+        quoteId,
+        customerName,
+        customerContact: createdBy,
+        customerEmail: createdByEmail,
+        service,
+        referenceArchitecture,
+        totalHours: totalHours.toString(),
+        hourlyRate: avgRate > 0 ? avgRate.toFixed(2) : '',
+        totalPrice: totalPrice.toString(),
+        notes: combinedNotes,
+        fromQuote: 'true'
+      }
+    });
   }
 
   getStatusBadgeColor(status: string): string {

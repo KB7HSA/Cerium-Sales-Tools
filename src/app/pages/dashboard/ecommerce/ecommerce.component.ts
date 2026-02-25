@@ -4,6 +4,7 @@ import { MonthlySalesChartComponent } from '../../../shared/components/ecommerce
 import { MonthlyTargetComponent } from '../../../shared/components/ecommerce/monthly-target/monthly-target.component';
 import { StatisticsChartComponent } from '../../../shared/components/ecommerce/statics-chart/statics-chart.component';
 import { AssessmentsChartComponent } from '../../../shared/components/ecommerce/assessments-chart/assessments-chart.component';
+import { SowChartComponent } from '../../../shared/components/ecommerce/sow-chart/sow-chart.component';
 
 @Component({
   selector: 'app-ecommerce',
@@ -13,6 +14,7 @@ import { AssessmentsChartComponent } from '../../../shared/components/ecommerce/
     MonthlyTargetComponent,
     StatisticsChartComponent,
     AssessmentsChartComponent,
+    SowChartComponent,
   ],
   templateUrl: './ecommerce.component.html',
 })

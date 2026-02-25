@@ -39,6 +39,7 @@
     "docxtemplater": "^3.68.2",
     "file-saver": "^2.0.5",
     "flatpickr": "^4.6.13",
+    "marked": "^17.0.3",
     "ng-apexcharts": "^2.0.4",
     "ng-otp-input": "^2.0.9",
     "ngx-drag-drop": "^20.0.1",

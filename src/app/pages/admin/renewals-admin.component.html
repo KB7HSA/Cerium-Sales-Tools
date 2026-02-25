@@ -1,0 +1,182 @@
+<!-- Page Header -->
+<div class="mb-6">
+  <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+    <div>
+      <h2 class="text-xl font-semibold text-gray-800 dark:text-white/90">Renewals AI Admin</h2>
+      <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Configure the AI prompt used to generate customer renewal analysis summaries</p>
+    </div>
+    <div class="flex items-center gap-2">
+      <!-- AI Status Badge -->
+      <span class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium"
+        [ngClass]="{
+          'bg-green-100 text-green-700 dark:bg-green-500/10 dark:text-green-400': aiConfigured,
+          'bg-red-100 text-red-700 dark:bg-red-500/10 dark:text-red-400': !aiConfigured
+        }">
+        <span class="h-1.5 w-1.5 rounded-full" [ngClass]="{'bg-green-500': aiConfigured, 'bg-red-500': !aiConfigured}"></span>
+        {{ aiConfigured ? 'AI Connected' : 'AI Not Configured' }}
+      </span>
+      <span *ngIf="aiModel" class="inline-flex items-center rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-700 dark:bg-blue-500/10 dark:text-blue-400">
+        {{ aiModel }}
+      </span>
+    </div>
+  </div>
+</div>
+
+<!-- Loading State -->
+<div *ngIf="loading" class="flex items-center justify-center py-20">
+  <div class="flex flex-col items-center gap-3">
+    <svg class="h-8 w-8 animate-spin text-brand-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+    </svg>
+    <span class="text-sm text-gray-500 dark:text-gray-400">Loading prompt configuration...</span>
+  </div>
+</div>
+
+<div *ngIf="!loading" class="space-y-6">
+  <!-- Status & Info Bar -->
+  <div class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div class="flex items-center gap-4">
+        <div class="flex items-center gap-2">
+          <span class="text-xs font-medium text-gray-500 dark:text-gray-400">Status:</span>
+          <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
+            [ngClass]="{
+              'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400': isDefault,
+              'bg-brand-100 text-brand-700 dark:bg-brand-500/10 dark:text-brand-400': !isDefault
+            }">
+            {{ isDefault ? 'Using Default Prompt' : 'Custom Prompt Active' }}
+          </span>
+        </div>
+        <div *ngIf="updatedAt && !isDefault" class="flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500">
+          <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          Last saved: {{ formatDate(updatedAt) }}
+          <span *ngIf="updatedBy">by {{ updatedBy }}</span>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="text-xs text-gray-400 dark:text-gray-500">{{ promptCharCount }} chars · {{ promptLineCount }} lines</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Success Message -->
+  <div *ngIf="saved" class="rounded-xl border border-green-200 bg-green-50 p-4 dark:border-green-800 dark:bg-green-900/20">
+    <div class="flex items-center gap-2">
+      <svg class="h-5 w-5 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+      <span class="text-sm font-medium text-green-700 dark:text-green-400">Prompt saved successfully!</span>
+    </div>
+  </div>
+
+  <!-- Error Message -->
+  <div *ngIf="error" class="rounded-xl border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-900/20">
+    <div class="flex items-center gap-2">
+      <svg class="h-5 w-5 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      <span class="text-sm font-medium text-red-700 dark:text-red-400">{{ error }}</span>
+    </div>
+  </div>
+
+  <!-- Prompt Editor -->
+  <div class="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
+    <div class="border-b border-gray-200 px-5 py-4 dark:border-gray-700">
+      <h3 class="flex items-center gap-2 text-sm font-semibold text-gray-800 dark:text-white/90">
+        <svg class="h-4 w-4 text-brand-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+        System Prompt
+      </h3>
+      <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+        This prompt instructs the AI on how to analyze customer renewal data and structure the output.
+        Use markdown formatting instructions (##, -, etc.) to control the output structure.
+      </p>
+    </div>
+    <div class="p-5">
+      <textarea
+        [(ngModel)]="promptText"
+        rows="28"
+        class="w-full rounded-lg border border-gray-200 bg-gray-50 p-4 font-mono text-sm text-gray-800 focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:focus:border-brand-500 dark:focus:bg-gray-900"
+        placeholder="Enter the system prompt for renewals AI analysis..."
+        spellcheck="false"></textarea>
+    </div>
+  </div>
+
+  <!-- AI Parameters -->
+  <div class="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
+    <div class="border-b border-gray-200 px-5 py-4 dark:border-gray-700">
+      <h3 class="flex items-center gap-2 text-sm font-semibold text-gray-800 dark:text-white/90">
+        <svg class="h-4 w-4 text-brand-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        AI Parameters
+      </h3>
+    </div>
+    <div class="grid grid-cols-1 gap-6 p-5 sm:grid-cols-2">
+      <!-- Temperature -->
+      <div>
+        <label class="mb-2 block text-xs font-medium text-gray-700 dark:text-gray-300">
+          Temperature
+          <span class="ml-1 text-gray-400">({{ temperature }})</span>
+        </label>
+        <input type="range" [(ngModel)]="temperature" min="0" max="1" step="0.1"
+          class="w-full accent-brand-500" />
+        <div class="mt-1 flex justify-between text-[10px] text-gray-400">
+          <span>0.0 - More focused</span>
+          <span>1.0 - More creative</span>
+        </div>
+        <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">
+          Lower values produce more deterministic, focused responses. Higher values produce more varied, creative output.
+          Note: Reasoning models (o1, o3, o4-mini) ignore this setting.
+        </p>
+      </div>
+
+      <!-- Max Tokens -->
+      <div>
+        <label class="mb-2 block text-xs font-medium text-gray-700 dark:text-gray-300">Max Output Tokens</label>
+        <input type="number" [(ngModel)]="maxTokens" min="500" max="16000" step="500"
+          class="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300" />
+        <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">
+          Maximum number of tokens in the AI response. Higher values allow longer, more detailed analysis.
+          Recommended: 4000-8000 for comprehensive renewal summaries.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Prompt Tips -->
+  <div class="rounded-2xl border border-blue-200 bg-blue-50 p-5 dark:border-blue-800 dark:bg-blue-900/20">
+    <h3 class="mb-3 flex items-center gap-2 text-sm font-semibold text-blue-800 dark:text-blue-300">
+      <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      Prompt Tips
+    </h3>
+    <ul class="space-y-1 text-xs text-blue-700 dark:text-blue-400">
+      <li>• Use <strong>## Section Headers</strong> to define the output structure — the AI will follow them</li>
+      <li>• Be specific about what product recommendations you want (e.g., "recommend Cisco Catalyst 9000 series for ISR replacements")</li>
+      <li>• Include instructions for timeline prioritization to help sales teams act on the most urgent items first</li>
+      <li>• The AI receives the customer's full hardware/software inventory, architecture breakdown, and timeline data automatically</li>
+      <li>• Mention specific Cisco programs or promotions you want the AI to reference</li>
+      <li>• Ask for ROI justification or business case language if needed for customer presentations</li>
+    </ul>
+  </div>
+
+  <!-- Action Buttons -->
+  <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div class="flex items-center gap-3">
+      <button (click)="savePrompt()" [disabled]="saving || !isDirty"
+        class="flex items-center gap-2 rounded-lg bg-brand-500 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-50">
+        <svg *ngIf="!saving" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+        <svg *ngIf="saving" class="h-4 w-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        {{ saving ? 'Saving...' : 'Save Prompt' }}
+      </button>
+
+      <button *ngIf="!isDefault" (click)="resetToDefault()" [disabled]="resetting"
+        class="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-white/[0.03] dark:text-gray-300 dark:hover:bg-gray-800">
+        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+        {{ resetting ? 'Resetting...' : 'Reset to Default' }}
+      </button>
+    </div>
+
+    <div *ngIf="isDirty" class="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
+      <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>
+      You have unsaved changes
+    </div>
+  </div>
+</div>

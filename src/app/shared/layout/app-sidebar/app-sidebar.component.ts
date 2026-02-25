@@ -80,6 +80,7 @@ export class AppSidebarComponent {
       menuKey: "cisco-renewals",
       icon: `<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M4 4a2 2 0 012-2h12a2 2 0 012 2v16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2-.5h12a.5.5 0 01.5.5v16a.5.5 0 01-.5.5H6a.5.5 0 01-.5-.5V4a.5.5 0 01.5-.5z" fill="currentColor"/><path d="M8 7h8v1.5H8V7zm0 3h8v1.5H8V10zm0 3h5v1.5H8V13z" fill="currentColor"/><circle cx="16" cy="16" r="3" fill="currentColor" opacity=".5"/><path d="M15.2 16l.5-.5.8.8 1.7-1.7.5.5-2.2 2.2-.5-.5-.8-.8z" fill="white"/></svg>`,
       subItems: [
+        { name: "Renewals Summary", path: "/cisco-renewals/summary", pro: false, menuKey: "cisco-renewals-summary" },
         { name: "Hardware Renewals", path: "/cisco-renewals/hardware", pro: false, menuKey: "cisco-renewals-hardware" },
         { name: "Software Renewals", path: "/cisco-renewals/software", pro: false, menuKey: "cisco-renewals-software" },
       ],
@@ -118,6 +119,7 @@ export class AppSidebarComponent {
         { name: "Settings", path: "/admin/settings", pro: false, menuKey: "admin-settings" },
         { name: "Menu Admin", path: "/admin/menu-admin", pro: false, menuKey: "admin-menu-admin" },
         { name: "Renewal Statuses", path: "/admin/renewal-statuses", pro: false, menuKey: "admin-renewal-statuses" },
+        { name: "Renewals AI Admin", path: "/admin/renewals-ai", pro: false, menuKey: "admin-renewals-ai" },
       ],
     },
     {

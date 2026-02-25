@@ -86,6 +86,13 @@ export class SowGeneratorComponent implements OnInit, OnDestroy {
   selectedType: SOWType | null = null;
   selectedArchitecture: ReferenceArchitecture | null = null;
 
+  // Pending auto-fill from quote navigation
+  private pendingQuoteParams: Record<string, string> | null = null;
+  fromQuote: boolean = false;
+  quoteEstimatedHours: number = 0;
+  quoteHourlyRate: number = 0;
+  quoteTotalPrice: number = 0;
+
   private subscription: Subscription = new Subscription();
 
   constructor(
@@ -101,12 +108,14 @@ export class SowGeneratorComponent implements OnInit, OnDestroy {
     this.subscription.add(
       this.sowService.sowTypes$.subscribe(types => {
         this.sowTypes = types.filter(t => t.IsActive);
+        this.tryAutoFillFromQuote();
       })
     );
 
     this.subscription.add(
       this.sowService.referenceArchitectures$.subscribe(archs => {
         this.referenceArchitectures = archs.filter(a => a.IsActive);
+        this.tryAutoFillFromQuote();
       })
     );
 
@@ -121,6 +130,7 @@ export class SowGeneratorComponent implements OnInit, OnDestroy {
     this.subscription.add(
       this.customerService.customers$.subscribe(customers => {
         this.customers = customers.filter(c => c.status === 'active' || c.Status === 'active');
+        this.tryAutoFillFromQuote();
       })
     );
 
@@ -132,16 +142,89 @@ export class SowGeneratorComponent implements OnInit, OnDestroy {
       this.aiModel = status.model || '';
     });
 
-    // Check for quoteId query param (coming from Quote Management)
+    // Check for query params (coming from Quote Management)
     this.route.queryParams.subscribe(params => {
-      if (params['quoteId']) {
-        this.quoteId = params['quoteId'];
-      }
-      if (params['customerName']) {
-        this.customerName = params['customerName'];
-        this.updateTitle();
+      if (params['fromQuote'] === 'true') {
+        // Store params and wait for data to load before auto-filling
+        this.pendingQuoteParams = { ...params };
+        this.fromQuote = true;
+        // Set immediate fields that don't need data lookups
+        this.quoteId = params['quoteId'] || '';
+        this.customerName = params['customerName'] || '';
+        this.customerContact = params['customerContact'] || '';
+        this.customerEmail = params['customerEmail'] || '';
+        this.customNotes = params['notes'] || '';
+        this.quoteEstimatedHours = parseFloat(params['totalHours']) || 0;
+        this.quoteHourlyRate = parseFloat(params['hourlyRate']) || 0;
+        this.quoteTotalPrice = parseFloat(params['totalPrice']) || 0;
+        this.activeTab = 'generate';
+        this.tryAutoFillFromQuote();
+      } else {
+        if (params['quoteId']) {
+          this.quoteId = params['quoteId'];
+        }
+        if (params['customerName']) {
+          this.customerName = params['customerName'];
+          this.updateTitle();
+        }
       }
     });
+  }
+
+  /**
+   * Attempt to auto-fill form fields from quote query params once data is loaded.
+   * Called whenever reference architectures, SOW types, or customers finish loading.
+   */
+  private tryAutoFillFromQuote(): void {
+    if (!this.pendingQuoteParams) return;
+    const params = this.pendingQuoteParams;
+
+    // Auto-match practice area by name from work items' referenceArchitecture
+    if (!this.selectedArchitectureId && params['referenceArchitecture'] && this.referenceArchitectures.length > 0) {
+      const archName = params['referenceArchitecture'].toLowerCase();
+      const matched = this.referenceArchitectures.find(a =>
+        (a.Name || '').toLowerCase() === archName ||
+        (a.Name || '').toLowerCase().includes(archName) ||
+        archName.includes((a.Name || '').toLowerCase())
+      );
+      if (matched && matched.Id) {
+        this.selectedArchitectureId = matched.Id;
+        this.selectedArchitecture = matched;
+      }
+    }
+
+    // Auto-select first available SOW type if we have a practice area selected
+    if (this.selectedArchitectureId && !this.selectedTypeId && this.sowTypes.length > 0) {
+      const available = this.getAvailableSOWTypes();
+      if (available.length > 0) {
+        this.selectedTypeId = available[0].Id!;
+        this.onTypeChange();
+      }
+    }
+
+    // Auto-match customer by name
+    if (!this.selectedCustomerId && params['customerName'] && this.customers.length > 0) {
+      const name = params['customerName'].toLowerCase();
+      const matched = this.customers.find(c => {
+        const company = (c.company || c.Company || '').toLowerCase();
+        const cName = (c.name || c.Name || '').toLowerCase();
+        return company === name || cName === name || company.includes(name) || name.includes(company);
+      });
+      if (matched) {
+        this.selectedCustomerId = (matched.id || matched.Id)!;
+        // Keep quote-provided values (don't override with customer record values)
+      }
+    }
+
+    this.updateTitle();
+
+    // Clear pending params once everything is filled (or best effort complete)
+    if (this.referenceArchitectures.length > 0 && this.sowTypes.length > 0 && this.customers.length > 0) {
+      this.pendingQuoteParams = null;
+      if (this.fromQuote) {
+        this.successMessage = `Pre-filled from Quote ${this.quoteId ? '(' + this.quoteId.substring(0, 8) + '...)' : ''}. Review the details and generate your SOW.`;
+      }
+    }
   }
 
   ngOnDestroy(): void {
@@ -213,7 +296,8 @@ export class SowGeneratorComponent implements OnInit, OnDestroy {
   }
 
   canGenerate(): boolean {
-    return !!(this.selectedTypeId && this.selectedArchitectureId && this.selectedCustomerId && this.customerName && this.sowTitle);
+    const hasCustomer = !!(this.selectedCustomerId || (this.fromQuote && this.customerName));
+    return !!(this.selectedTypeId && this.selectedArchitectureId && hasCustomer && this.customerName && this.sowTitle);
   }
 
   async generateSOW(): Promise<void> {
@@ -246,12 +330,15 @@ export class SowGeneratorComponent implements OnInit, OnDestroy {
         Findings: this.aiGeneratedFindings || '',
         Recommendations: processedRecommendations,
         NextSteps: processedDeliverables,
-        EstimatedHours: this.selectedType.DefaultHours || 40,
-        HourlyRate: this.selectedType.DefaultRate || 175,
+        EstimatedHours: (this.fromQuote && this.quoteEstimatedHours) ? this.quoteEstimatedHours : (this.selectedType.DefaultHours || 40),
+        HourlyRate: (this.fromQuote && this.quoteHourlyRate) ? this.quoteHourlyRate : (this.selectedType.DefaultRate || 175),
         Status: 'draft',
         GeneratedBy: this.authService.getCurrentUser()?.name || this.authService.getCurrentUser()?.email || undefined,
         Notes: this.customNotes || undefined
       };
+
+      const estHours = (this.fromQuote && this.quoteEstimatedHours) ? this.quoteEstimatedHours : (this.selectedType.DefaultHours || 40);
+      const estRate = (this.fromQuote && this.quoteHourlyRate) ? this.quoteHourlyRate : (this.selectedType.DefaultRate || 175);
 
       const documentData: SOWDocumentData = {
         customerName: this.customerName,
@@ -263,9 +350,9 @@ export class SowGeneratorComponent implements OnInit, OnDestroy {
         scope: processedScope,
         methodology: processedMethodology,
         recommendations: processedRecommendations,
-        estimatedHours: this.selectedType.DefaultHours || 40,
-        hourlyRate: this.selectedType.DefaultRate || 175,
-        totalPrice: (this.selectedType.DefaultHours || 40) * (this.selectedType.DefaultRate || 175),
+        estimatedHours: estHours,
+        hourlyRate: estRate,
+        totalPrice: (this.fromQuote && this.quoteTotalPrice) ? this.quoteTotalPrice : (estHours * estRate),
         templateFileName: this.selectedType.TemplateFileName || 'SOW-Template.docx',
         aiSummary: this.aiGeneratedOverview || '',
         aiFindings: this.aiGeneratedFindings || '',
@@ -380,6 +467,11 @@ export class SowGeneratorComponent implements OnInit, OnDestroy {
     this.technicalResourcesFiles = [];
     this.resourcesLoaded = false;
     this.enableTechnicalResources = false;
+    this.fromQuote = false;
+    this.quoteEstimatedHours = 0;
+    this.quoteHourlyRate = 0;
+    this.quoteTotalPrice = 0;
+    this.pendingQuoteParams = null;
   }
 
   // AI Content Generation

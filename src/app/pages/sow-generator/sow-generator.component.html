@@ -185,14 +185,39 @@
 
                 <div class="mb-4">
                   <span class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Estimated Pricing</span>
-                  <p class="mt-1">
+                  <p class="mt-1" *ngIf="fromQuote && quoteTotalPrice; else defaultPricing">
                     <span class="text-lg font-semibold text-gray-800 dark:text-white/90">
-                      {{ formatCurrency((selectedType.DefaultHours || 0) * (selectedType.DefaultRate || 175)) }}
+                      {{ formatCurrency(quoteTotalPrice) }}
                     </span>
                     <span class="text-sm text-gray-500 dark:text-gray-400">
-                      ({{ selectedType.DefaultHours }} hrs &#64; {{ formatCurrency(selectedType.DefaultRate) }}/hr)
+                      ({{ quoteEstimatedHours }} hrs @ {{ formatCurrency(quoteHourlyRate) }}/hr)
+                    </span>
+                    <span class="ml-2 inline-flex items-center rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-medium text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400">
+                      From Quote
                     </span>
                   </p>
+                  <ng-template #defaultPricing>
+                    <p class="mt-1">
+                      <span class="text-lg font-semibold text-gray-800 dark:text-white/90">
+                        {{ formatCurrency((selectedType.DefaultHours || 0) * (selectedType.DefaultRate || 175)) }}
+                      </span>
+                      <span class="text-sm text-gray-500 dark:text-gray-400">
+                        ({{ selectedType.DefaultHours }} hrs &#64; {{ formatCurrency(selectedType.DefaultRate) }}/hr)
+                      </span>
+                    </p>
+                  </ng-template>
+                </div>
+
+                <!-- Quote Link Badge -->
+                <div *ngIf="fromQuote && quoteId" class="mb-4">
+                  <div class="inline-flex items-center gap-2 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 dark:border-indigo-800 dark:bg-indigo-900/20">
+                    <svg class="h-4 w-4 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                    </svg>
+                    <span class="text-xs font-medium text-indigo-700 dark:text-indigo-300">
+                      Linked to Quote: <span class="font-mono">{{ quoteId.length > 12 ? quoteId.substring(0, 12) + '...' : quoteId }}</span>
+                    </span>
+                  </div>
                 </div>
 
                 <!-- AI Content Generation -->

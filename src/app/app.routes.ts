@@ -106,7 +106,9 @@ import { ERateSettingsComponent } from './pages/admin/erate-settings.component';
 import { MenuAdminComponent } from './pages/admin/menu-admin.component';
 import { HardwareRenewalsComponent } from './pages/cisco-renewals/hardware-renewals.component';
 import { SoftwareRenewalsComponent } from './pages/cisco-renewals/software-renewals.component';
+import { CiscoRenewalsSummaryComponent } from './pages/cisco-renewals/cisco-renewals-summary.component';
 import { RenewalStatusAdminComponent } from './pages/admin/renewal-status-admin.component';
+import { RenewalsAdminComponent } from './pages/admin/renewals-admin.component';
 import { AuthCallbackComponent } from './pages/auth-pages/auth-callback/auth-callback.component';
 
 export const routes: Routes = [
@@ -426,6 +428,11 @@ export const routes: Routes = [
       },
       // Cisco Renewals
       {
+        path:'cisco-renewals/summary',
+        component:CiscoRenewalsSummaryComponent,
+        title:'Cisco Renewals Summary | Cerium Sales Tools'
+      },
+      {
         path:'cisco-renewals/hardware',
         component:HardwareRenewalsComponent,
         title:'Hardware Renewals | Cerium Sales Tools'
@@ -440,6 +447,12 @@ export const routes: Routes = [
         component:RenewalStatusAdminComponent,
         canActivate: [superAdminGuard],
         title:'Renewal Statuses | Cerium Sales Tools'
+      },
+      {
+        path:'admin/renewals-ai',
+        component:RenewalsAdminComponent,
+        canActivate: [superAdminGuard],
+        title:'Renewals AI Admin | Cerium Sales Tools'
       },
       {
         path:'blank',
@@ -651,28 +664,28 @@ export const routes: Routes = [
   {
     path:'signin',
     component:SignInComponent,
-    title:'Angular Sign In Dashboard | Cerium Sales Tools'
+    title:'Cerium Sales Sign In Dashboard | Cerium Sales Tools'
   },
   {
     path:'signup',
     component:SignUpComponent,
-    title:'Angular Sign Up Dashboard | Cerium Sales Tools'
+    title:'Cerium Sales Sign Up Dashboard | Cerium Sales Tools'
   },
   {
     path:'reset-password',
     component:ResetPasswordComponent,
-    title:'Angular Reset Password Dashboard | Cerium Sales Tools'
+    title:'Cerium Sales Reset Password Dashboard | Cerium Sales Tools'
   },
   {
     path:'two-step-verification',
     component:TwoStepVerificationComponent,
-    title:'Angular Two Step Verification Dashboard | Cerium Sales Tools'
+    title:'Cerium Sales Two Step Verification Dashboard | Cerium Sales Tools'
   },
   // error pages
   {
     path:'error-500',
     component:Error500Component,
-    title:'Angular Error 500 Dashboard | Cerium Sales Tools'
+    title:'Cerium Sales Error 500 Dashboard | Cerium Sales Tools'
   },
   {
     path:'error-503',

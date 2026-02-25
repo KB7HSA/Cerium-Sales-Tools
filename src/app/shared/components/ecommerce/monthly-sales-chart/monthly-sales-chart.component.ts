@@ -27,21 +27,13 @@ export class MonthlySalesChartComponent implements OnInit {
       next: (res) => {
         if (res.success && res.data) {
           const quotesByMonth: { month: number; count: number; totalCost: number }[] = res.data.quotesByMonth || [];
-          const assessmentsByMonth: { month: number; count: number }[] = res.data.assessmentsByMonth || [];
 
-          // Build a set of months that have ANY data
-          const activeMonths = new Set<number>();
-          quotesByMonth.forEach(q => activeMonths.add(q.month));
-          assessmentsByMonth.forEach(a => activeMonths.add(a.month));
+          if (quotesByMonth.length === 0) return;
 
           // Sort months chronologically
-          const sortedMonths = Array.from(activeMonths).sort((a, b) => a - b);
+          const sortedMonths = quotesByMonth.map(q => q.month).sort((a, b) => a - b);
 
-          if (sortedMonths.length === 0) return;
-
-          // Build maps for quick lookup
           const quoteMap = new Map(quotesByMonth.map(q => [q.month, q]));
-          const assessmentMap = new Map(assessmentsByMonth.map(a => [a.month, a]));
 
           const costData: number[] = [];
           const countData: number[] = [];
@@ -51,7 +43,7 @@ export class MonthlySalesChartComponent implements OnInit {
             categories.push(MONTH_LABELS[m - 1]);
             const q = quoteMap.get(m);
             costData.push(q ? Number(q.totalCost) : 0);
-            countData.push((q?.count || 0) + (assessmentMap.get(m)?.count || 0));
+            countData.push(q?.count || 0);
           });
 
           this.xaxis = { ...this.xaxis, categories };

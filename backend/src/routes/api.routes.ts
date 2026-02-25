@@ -1881,6 +1881,302 @@ router.post('/ai/review', async (req: Request, res: Response) => {
   }
 });
 
+// ===== RENEWALS AI PROMPT MANAGEMENT =====
+
+// Get the current renewals AI prompt (with default fallback)
+router.get('/admin/renewals-prompt', async (req: Request, res: Response) => {
+  try {
+    // Ensure table exists
+    await executeQuery(`
+      IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'RenewalsAIPrompt' AND TABLE_SCHEMA = 'dbo')
+      BEGIN
+        CREATE TABLE dbo.RenewalsAIPrompt (
+          Id INT IDENTITY(1,1) PRIMARY KEY,
+          PromptKey NVARCHAR(50) NOT NULL UNIQUE,
+          PromptText NVARCHAR(MAX) NOT NULL,
+          Temperature FLOAT NOT NULL DEFAULT 0.7,
+          MaxTokens INT NOT NULL DEFAULT 4000,
+          UpdatedAt DATETIME2 DEFAULT GETUTCDATE(),
+          UpdatedBy NVARCHAR(255) NULL
+        )
+      END
+    `, {});
+
+    const rows = await executeQuery<{ PromptKey: string; PromptText: string; Temperature: number; MaxTokens: number; UpdatedAt: string; UpdatedBy: string }>(
+      `SELECT PromptKey, PromptText, Temperature, MaxTokens, UpdatedAt, UpdatedBy FROM dbo.RenewalsAIPrompt WHERE PromptKey = 'renewals-summary'`, {}
+    );
+
+    if (rows.length > 0) {
+      sendSuccess(res, {
+        promptKey: rows[0].PromptKey,
+        promptText: rows[0].PromptText,
+        temperature: rows[0].Temperature,
+        maxTokens: rows[0].MaxTokens,
+        updatedAt: rows[0].UpdatedAt,
+        updatedBy: rows[0].UpdatedBy,
+      }, 200, 'Renewals AI prompt retrieved');
+    } else {
+      // Return default prompt
+      sendSuccess(res, {
+        promptKey: 'renewals-summary',
+        promptText: getDefaultRenewalsPrompt(),
+        temperature: 0.7,
+        maxTokens: 4000,
+        updatedAt: null,
+        updatedBy: null,
+        isDefault: true,
+      }, 200, 'Default renewals AI prompt');
+    }
+  } catch (error: any) {
+    sendError(res, 'Failed to retrieve renewals prompt', 500, error.message);
+  }
+});
+
+// Update the renewals AI prompt
+router.put('/admin/renewals-prompt', async (req: Request, res: Response) => {
+  try {
+    const { promptText, temperature, maxTokens, updatedBy } = req.body;
+    if (!promptText || typeof promptText !== 'string') {
+      sendError(res, 'promptText is required', 400);
+      return;
+    }
+
+    // Ensure table exists
+    await executeQuery(`
+      IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'RenewalsAIPrompt' AND TABLE_SCHEMA = 'dbo')
+      BEGIN
+        CREATE TABLE dbo.RenewalsAIPrompt (
+          Id INT IDENTITY(1,1) PRIMARY KEY,
+          PromptKey NVARCHAR(50) NOT NULL UNIQUE,
+          PromptText NVARCHAR(MAX) NOT NULL,
+          Temperature FLOAT NOT NULL DEFAULT 0.7,
+          MaxTokens INT NOT NULL DEFAULT 4000,
+          UpdatedAt DATETIME2 DEFAULT GETUTCDATE(),
+          UpdatedBy NVARCHAR(255) NULL
+        )
+      END
+    `, {});
+
+    // Upsert
+    await executeQuery(`
+      MERGE dbo.RenewalsAIPrompt AS target
+      USING (SELECT 'renewals-summary' AS PromptKey) AS source
+      ON target.PromptKey = source.PromptKey
+      WHEN MATCHED THEN
+        UPDATE SET PromptText = @param0, Temperature = @param1, MaxTokens = @param2, UpdatedAt = GETUTCDATE(), UpdatedBy = @param3
+      WHEN NOT MATCHED THEN
+        INSERT (PromptKey, PromptText, Temperature, MaxTokens, UpdatedBy)
+        VALUES ('renewals-summary', @param0, @param1, @param2, @param3);
+    `, [promptText, temperature ?? 0.7, maxTokens ?? 4000, updatedBy || null]);
+
+    sendSuccess(res, { saved: true }, 200, 'Renewals AI prompt updated');
+  } catch (error: any) {
+    sendError(res, 'Failed to update renewals prompt', 500, error.message);
+  }
+});
+
+// Reset renewals prompt to default
+router.post('/admin/renewals-prompt/reset', async (req: Request, res: Response) => {
+  try {
+    await executeQuery(`DELETE FROM dbo.RenewalsAIPrompt WHERE PromptKey = 'renewals-summary'`, {});
+    sendSuccess(res, {
+      promptKey: 'renewals-summary',
+      promptText: getDefaultRenewalsPrompt(),
+      temperature: 0.7,
+      maxTokens: 4000,
+      isDefault: true,
+    }, 200, 'Renewals AI prompt reset to default');
+  } catch (error: any) {
+    sendError(res, 'Failed to reset renewals prompt', 500, error.message);
+  }
+});
+
+// Generate AI renewals analysis for a customer
+router.post('/ai/renewals-analysis', async (req: Request, res: Response) => {
+  try {
+    const { customerName, hardwareItems, softwareItems, hwSummary, swSummary, hwByArchitecture, swByArchitecture, hwEolTimeline, swEndingSoon } = req.body;
+
+    if (!customerName) {
+      sendError(res, 'customerName is required', 400);
+      return;
+    }
+
+    // Load custom prompt if available
+    let systemPrompt = getDefaultRenewalsPrompt();
+    let temperature = 0.7;
+    let maxTokens = 4000;
+
+    try {
+      const rows = await executeQuery<{ PromptText: string; Temperature: number; MaxTokens: number }>(
+        `SELECT PromptText, Temperature, MaxTokens FROM dbo.RenewalsAIPrompt WHERE PromptKey = 'renewals-summary'`, {}
+      );
+      if (rows.length > 0) {
+        systemPrompt = rows[0].PromptText;
+        temperature = rows[0].Temperature;
+        maxTokens = rows[0].MaxTokens;
+      }
+    } catch { /* table may not exist yet — use default */ }
+
+    // Build the user prompt with all renewal data context
+    const userPrompt = buildRenewalsUserPrompt(customerName, {
+      hardwareItems, softwareItems, hwSummary, swSummary,
+      hwByArchitecture, swByArchitecture, hwEolTimeline, swEndingSoon
+    });
+
+    const result = await AzureOpenAIService.generateContent({
+      prompt: '',
+      customerName,
+      referenceArchitecture: 'Cisco Renewals',
+      assessmentType: 'Renewal Analysis',
+      systemPrompt,
+      maxTokens,
+      temperature,
+      additionalNotes: userPrompt,
+    });
+
+    sendSuccess(res, result, 200, 'Renewals AI analysis generated');
+  } catch (error: any) {
+    sendError(res, error.message || 'Failed to generate renewals analysis', 500, error.message);
+  }
+});
+
+/** Default system prompt for renewals AI analysis */
+function getDefaultRenewalsPrompt(): string {
+  return `You are a senior Cisco Solutions Architect and renewal strategist at Cerium Networks, a managed services provider and Cisco Gold Partner.
+
+Your task is to analyze a customer's Cisco hardware and software renewal portfolio and produce a comprehensive renewal strategy document.
+
+Structure your response with these sections:
+
+## Executive Summary
+Provide a brief overview of the customer's renewal landscape, total opportunity value, and key priorities.
+
+## Critical Renewals (Immediate Action Required)
+List any products that are already past End-of-Life, Last Day of Support, or have expired software contracts. Explain the risk of running unsupported equipment and the urgency of addressing these items.
+
+## Upcoming Renewals (Next 12 Months)
+Summarize hardware approaching LDOS and software contracts ending within the next year. Prioritize by business impact and opportunity value.
+
+## Hardware Upgrade Recommendations
+For each hardware product family or architecture nearing end of life:
+- Identify the current product and its EOL/LDOS status
+- Recommend the specific modern Cisco replacement product or product line
+- Explain the benefits of upgrading (performance, security, support, features)
+- Note any migration considerations
+
+## Software & Subscription Recommendations
+For expiring or renewable software subscriptions:
+- Recommend whether to renew, upgrade to a higher tier, or consolidate licenses
+- Suggest new Cisco software offerings that complement existing infrastructure (e.g., ThousandEyes, Splunk, Cisco Spaces, Meraki cloud management)
+- Highlight any EA (Enterprise Agreement) consolidation opportunities
+
+## Architecture Modernization Opportunities
+Based on the customer's current architecture mix, suggest strategic technology initiatives:
+- SD-WAN migration for legacy routing infrastructure
+- SASE/SSE for security modernization  
+- Wi-Fi 6E/7 upgrades for wireless infrastructure
+- Cisco Nexus Dashboard / ACI for data center automation
+- Full-stack observability with Cisco AppDynamics or ThousandEyes
+
+## Renewal Timeline & Prioritization
+Provide a prioritized timeline with recommended actions:
+- Immediate (0-30 days): Critical expired items
+- Short-term (1-3 months): Items expiring soon
+- Medium-term (3-6 months): Planned renewals and upgrades
+- Long-term (6-12 months): Strategic modernization
+
+## Estimated Investment Summary
+Provide a high-level summary of the total renewal opportunity broken down by:
+- Must-renew (support contracts and active subscriptions)
+- Recommended upgrades
+- Strategic net-new opportunities
+
+Be specific with product recommendations. Use actual Cisco product names and SKUs where possible. Focus on business outcomes and ROI justification.
+Do NOT use generic placeholders — tailor every recommendation to the actual products and architectures in the customer's data.`;
+}
+
+/** Build the user prompt with all renewal data for a customer */
+function buildRenewalsUserPrompt(customerName: string, data: any): string {
+  const parts: string[] = [];
+  parts.push(`Customer: ${customerName}`);
+  parts.push(`Analysis Date: ${new Date().toISOString().split('T')[0]}`);
+  parts.push('');
+
+  if (data.hwSummary) {
+    parts.push(`=== HARDWARE RENEWAL SUMMARY ===`);
+    parts.push(`Total Hardware Items: ${data.hwSummary.items}`);
+    parts.push(`Total Hardware Units: ${data.hwSummary.quantity}`);
+    parts.push(`Total Hardware Opportunity: $${(data.hwSummary.opportunity || 0).toLocaleString()}`);
+    if (data.hwSummary.architectures?.length) parts.push(`Architectures: ${data.hwSummary.architectures.join(', ')}`);
+    if (data.hwSummary.productFamilies?.length) parts.push(`Product Families: ${data.hwSummary.productFamilies.join(', ')}`);
+    parts.push('');
+  }
+
+  if (data.swSummary) {
+    parts.push(`=== SOFTWARE RENEWAL SUMMARY ===`);
+    parts.push(`Total Software Items: ${data.swSummary.items}`);
+    parts.push(`Total Software Units: ${data.swSummary.quantity}`);
+    parts.push(`Total Software Opportunity: $${(data.swSummary.opportunity || 0).toLocaleString()}`);
+    parts.push(`Total Software List Price: $${(data.swSummary.listPrice || 0).toLocaleString()}`);
+    if (data.swSummary.architectures?.length) parts.push(`Architectures: ${data.swSummary.architectures.join(', ')}`);
+    if (data.swSummary.offerTypes?.length) parts.push(`Offer Types: ${data.swSummary.offerTypes.join(', ')}`);
+    parts.push('');
+  }
+
+  if (data.hwByArchitecture?.length) {
+    parts.push(`=== HARDWARE BY ARCHITECTURE ===`);
+    for (const a of data.hwByArchitecture) {
+      parts.push(`- ${a.architecture}: ${a.itemCount} items, ${a.quantity} units, $${(a.opportunity || 0).toLocaleString()} opportunity`);
+    }
+    parts.push('');
+  }
+
+  if (data.swByArchitecture?.length) {
+    parts.push(`=== SOFTWARE BY ARCHITECTURE ===`);
+    for (const a of data.swByArchitecture) {
+      parts.push(`- ${a.architecture}: ${a.itemCount} items, ${a.quantity} units, $${(a.opportunity || 0).toLocaleString()} opportunity`);
+    }
+    parts.push('');
+  }
+
+  if (data.hwEolTimeline?.length) {
+    parts.push(`=== HARDWARE LDOS TIMELINE ===`);
+    for (const t of data.hwEolTimeline) {
+      parts.push(`- ${t.period}: ${t.count} items, $${(t.opportunity || 0).toLocaleString()} opportunity`);
+    }
+    parts.push('');
+  }
+
+  if (data.swEndingSoon?.length) {
+    parts.push(`=== SOFTWARE END DATE TIMELINE ===`);
+    for (const t of data.swEndingSoon) {
+      parts.push(`- ${t.period}: ${t.count} items, $${(t.opportunity || 0).toLocaleString()} opportunity`);
+    }
+    parts.push('');
+  }
+
+  // Include detailed item data (up to 200 items to avoid token issues)
+  if (data.hardwareItems?.length) {
+    const items = data.hardwareItems.slice(0, 100);
+    parts.push(`=== HARDWARE ITEM DETAILS (${items.length} of ${data.hardwareItems.length}) ===`);
+    for (const item of items) {
+      parts.push(`- [${item.architecture}] ${item.productFamily} | ${item.productId}: ${item.productDescription} | Qty: ${item.itemQuantity} | EOL: ${item.eolDate || 'N/A'} | LDOS: ${item.ldos || 'N/A'} | Opportunity: $${(item.opportunity || 0).toLocaleString()}`);
+    }
+    parts.push('');
+  }
+
+  if (data.softwareItems?.length) {
+    const items = data.softwareItems.slice(0, 100);
+    parts.push(`=== SOFTWARE ITEM DETAILS (${items.length} of ${data.softwareItems.length}) ===`);
+    for (const item of items) {
+      parts.push(`- [${item.architecture}] ${item.subscriptionOfferType} | Contract: ${item.contractNumber} | Status: ${item.contractStatus} | Qty: ${item.itemQuantity} | End: ${item.endDate || 'N/A'} | List: $${(item.fullTermListPrice || 0).toLocaleString()} | Opportunity: $${(item.opportunity || 0).toLocaleString()}`);
+    }
+    parts.push('');
+  }
+
+  return parts.join('\n');
+}
+
 // ===== DASHBOARD STATS =====
 
 router.get('/dashboard/stats', async (req: Request, res: Response) => {
@@ -1940,6 +2236,32 @@ router.get('/dashboard/stats', async (req: Request, res: Response) => {
       );
     } catch { /* table may not exist */ }
 
+    // SOW documents by day (last 30 days)
+    let sowsByDay: { day: string; count: number }[] = [];
+    try {
+      sowsByDay = await executeQuery<{ day: string; count: number }>(
+        `SELECT FORMAT(CreatedAt, 'yyyy-MM-dd') as day, COUNT(*) as count
+         FROM dbo.GeneratedSOWs
+         WHERE CreatedAt >= DATEADD(day, -30, GETUTCDATE())
+         GROUP BY FORMAT(CreatedAt, 'yyyy-MM-dd')
+         ORDER BY day`,
+        {}
+      );
+    } catch { /* table may not exist */ }
+
+    // SOW documents by month (current year)
+    let sowsByMonth: { month: number; count: number }[] = [];
+    try {
+      sowsByMonth = await executeQuery<{ month: number; count: number }>(
+        `SELECT MONTH(CreatedAt) as month, COUNT(*) as count
+         FROM dbo.GeneratedSOWs
+         WHERE YEAR(CreatedAt) = YEAR(GETUTCDATE())
+         GROUP BY MONTH(CreatedAt)
+         ORDER BY month`,
+        {}
+      );
+    } catch { /* table may not exist */ }
+
     sendSuccess(res, {
       customers: customerCount[0]?.cnt || 0,
       quotes: quoteCount[0]?.cnt || 0,
@@ -1947,7 +2269,9 @@ router.get('/dashboard/stats', async (req: Request, res: Response) => {
       quotesByDay,
       assessmentsByDay,
       quotesByMonth,
-      assessmentsByMonth
+      assessmentsByMonth,
+      sowsByDay,
+      sowsByMonth
     }, 200, 'Dashboard stats retrieved');
   } catch (error: any) {
     sendError(res, 'Failed to retrieve dashboard stats', 500, error.message);
@@ -2018,7 +2342,9 @@ router.post('/menu-config/migrate', async (req: Request, res: Response) => {
         ('admin-settings', 'Settings', 'admin', 1, 0, 9),
         ('admin-menu-admin', 'Menu Admin', 'admin', 1, 1, 10),
         ('admin-renewal-statuses', 'Renewal Statuses', 'admin', 1, 0, 11),
+        ('admin-renewals-ai', 'Renewals AI Admin', 'admin', 1, 0, 12),
         ('cisco-renewals', 'Cisco Renewals', NULL, 1, 0, 8),
+        ('cisco-renewals-summary', 'Renewals Summary', 'cisco-renewals', 1, 0, 0),
         ('cisco-renewals-hardware', 'Hardware Renewals', 'cisco-renewals', 1, 0, 1),
         ('cisco-renewals-software', 'Software Renewals', 'cisco-renewals', 1, 0, 2),
         ('user-profile', 'User Profile', NULL, 1, 0, 10)
@@ -2031,9 +2357,11 @@ router.post('/menu-config/migrate', async (req: Request, res: Response) => {
         { key: 'admin-menu-admin', name: 'Menu Admin', parent: 'admin', isProtected: 1, sort: 10 },
         { key: 'admin-renewal-statuses', name: 'Renewal Statuses', parent: 'admin', isProtected: 0, sort: 11 },
         { key: 'cisco-renewals', name: 'Cisco Renewals', parent: null, isProtected: 0, sort: 8 },
+        { key: 'cisco-renewals-summary', name: 'Renewals Summary', parent: 'cisco-renewals', isProtected: 0, sort: 0 },
         { key: 'cisco-renewals-hardware', name: 'Hardware Renewals', parent: 'cisco-renewals', isProtected: 0, sort: 1 },
         { key: 'cisco-renewals-software', name: 'Software Renewals', parent: 'cisco-renewals', isProtected: 0, sort: 2 },
         { key: 'admin-sow-types', name: 'SOW Types', parent: 'admin', isProtected: 0, sort: 6 },
+        { key: 'admin-renewals-ai', name: 'Renewals AI Admin', parent: 'admin', isProtected: 0, sort: 12 },
       ];
 
       for (const item of ensureItems) {

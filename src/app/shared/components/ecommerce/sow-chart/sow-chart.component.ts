@@ -1,4 +1,3 @@
-
 import { AfterViewInit, Component, ElementRef, OnInit, ViewChild } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import flatpickr from 'flatpickr';
@@ -19,14 +18,13 @@ import {
   ApexXAxis,
   ApexYAxis,
 } from 'ng-apexcharts';
-import { ChartTabComponent } from '../../common/chart-tab/chart-tab.component';
 
 @Component({
-  selector: 'app-statics-chart',
-  imports: [NgApexchartsModule, ChartTabComponent],
-  templateUrl: './statics-chart.component.html',
+  selector: 'app-sow-chart',
+  imports: [NgApexchartsModule],
+  templateUrl: './sow-chart.component.html',
 })
-export class StatisticsChartComponent implements AfterViewInit, OnInit {
+export class SowChartComponent implements AfterViewInit, OnInit {
   @ViewChild('datepicker') datepicker!: ElementRef<HTMLInputElement>;
 
   constructor(private http: HttpClient) {}
@@ -35,15 +33,14 @@ export class StatisticsChartComponent implements AfterViewInit, OnInit {
     this.http.get<any>(`${environment.apiUrl}/dashboard/stats`).subscribe({
       next: (res) => {
         if (res.success && res.data) {
-          this.updateChartData(res.data.quotesByDay || []);
+          this.updateChartData(res.data.sowsByDay || []);
         }
       },
       error: () => { /* silently fail */ }
     });
   }
 
-  private updateChartData(quotesByDay: { day: string; count: number }[]) {
-    // Build full 30-day date range
+  private updateChartData(sowsByDay: { day: string; count: number }[]) {
     const days: string[] = [];
     const now = new Date();
     for (let i = 29; i >= 0; i--) {
@@ -52,17 +49,16 @@ export class StatisticsChartComponent implements AfterViewInit, OnInit {
       days.push(d.toISOString().split('T')[0]);
     }
 
-    const quotesMap = new Map(quotesByDay.map(q => [q.day, q.count]));
-    const quotesData = days.map(d => quotesMap.get(d) || 0);
+    const sowsMap = new Map(sowsByDay.map(s => [s.day, s.count]));
+    const sowsData = days.map(d => sowsMap.get(d) || 0);
 
-    // Format labels as "MMM d"
     const labels = days.map(d => {
       const dt = new Date(d + 'T00:00:00');
       return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     });
 
     this.series = [
-      { name: 'Quotes', data: quotesData },
+      { name: 'SOW Documents', data: sowsData },
     ];
     this.xaxis = { ...this.xaxis, categories: labels };
   }
@@ -73,7 +69,7 @@ export class StatisticsChartComponent implements AfterViewInit, OnInit {
       static: true,
       monthSelectorType: 'static',
       dateFormat: 'M j, Y',
-      defaultDate: [new Date(Date.now() - 6 * 24 * 60 * 60 * 1000), new Date()],
+      defaultDate: [new Date(Date.now() - 29 * 24 * 60 * 60 * 1000), new Date()],
       onReady: (selectedDates: Date[], dateStr: string, instance: Instance) => {
         (instance.element as HTMLInputElement).value = dateStr.replace('to', '-');
         const customClass = instance.element.getAttribute('data-class');
@@ -84,9 +80,10 @@ export class StatisticsChartComponent implements AfterViewInit, OnInit {
       },
     });
   }
+
   public series: ApexAxisChartSeries = [
     {
-      name: 'Quotes',
+      name: 'SOW Documents',
       data: [],
     },
   ];
@@ -98,7 +95,7 @@ export class StatisticsChartComponent implements AfterViewInit, OnInit {
     toolbar: { show: false },
   };
 
-  public colors: string[] = ['#465FFF'];
+  public colors: string[] = ['#F59E0B'];
 
   public stroke: ApexStroke = {
     curve: 'straight',

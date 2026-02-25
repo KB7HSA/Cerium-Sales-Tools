@@ -1,0 +1,428 @@
+<!-- Page Header -->
+<div class="mb-6">
+  <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+    <div>
+      <h2 class="text-xl font-semibold text-gray-800 dark:text-white/90">Cisco Renewals Summary</h2>
+      <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Combined view of Hardware and Software renewal opportunities</p>
+    </div>
+    <div class="flex items-center gap-2">
+      <!-- AI Analysis Button -->
+      <button (click)="generateAIAnalysis()" *ngIf="selectedCustomer && aiConfigured"
+        [disabled]="aiGenerating"
+        class="flex items-center gap-1.5 rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-50">
+        <svg *ngIf="!aiGenerating" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+        <svg *ngIf="aiGenerating" class="h-3.5 w-3.5 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        {{ aiGenerating ? 'Generating Analysis...' : 'Generate AI Analysis' }}
+      </button>
+      <!-- Export Button -->
+      <button (click)="exportSummaryToExcel()" *ngIf="combinedSummaries.length > 0"
+        class="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-white/[0.03] dark:text-gray-300 dark:hover:bg-gray-800">
+        <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        Export Summary
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Loading State -->
+<div *ngIf="loading" class="flex items-center justify-center py-20">
+  <div class="flex flex-col items-center gap-3">
+    <svg class="h-8 w-8 animate-spin text-brand-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+    </svg>
+    <span class="text-sm text-gray-500 dark:text-gray-400">Loading renewal data...</span>
+  </div>
+</div>
+
+<div *ngIf="!loading">
+  <!-- Customer Selector -->
+  <div class="mb-6 rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03]">
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+      <label class="text-sm font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">Select Customer:</label>
+      <div class="flex flex-1 items-center gap-2">
+        <select [(ngModel)]="selectedCustomer" (ngModelChange)="onCustomerChange()"
+          class="flex-1 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
+          <option value="">All Customers ({{ customerNames.length }})</option>
+          <option *ngFor="let name of customerNames" [value]="name">{{ name }}</option>
+        </select>
+        <button *ngIf="selectedCustomer" (click)="clearCustomer()"
+          class="flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700">
+          <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          Clear
+        </button>
+      </div>
+    </div>
+    <div *ngIf="selectedCustomer" class="mt-2">
+      <span class="inline-flex items-center gap-1 rounded-full bg-brand-50 px-3 py-1 text-xs font-medium text-brand-700 dark:bg-brand-500/10 dark:text-brand-400">
+        <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+        {{ selectedCustomer }}
+      </span>
+    </div>
+  </div>
+
+  <!-- Summary Cards -->
+  <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <!-- Total Combined Opportunity -->
+    <div class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
+      <div class="flex items-center gap-3">
+        <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 dark:bg-brand-500/10">
+          <svg class="h-5 w-5 text-brand-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        </div>
+        <div>
+          <p class="text-xs text-gray-500 dark:text-gray-400">Total Opportunity</p>
+          <h4 class="text-lg font-bold text-gray-800 dark:text-white/90">{{ formatCurrency(totalCombinedOpportunity) }}</h4>
+        </div>
+      </div>
+    </div>
+
+    <!-- Hardware Opportunity -->
+    <div class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
+      <div class="flex items-center gap-3">
+        <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 dark:bg-blue-500/10">
+          <svg class="h-5 w-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"/></svg>
+        </div>
+        <div>
+          <p class="text-xs text-gray-500 dark:text-gray-400">Hardware Opportunity</p>
+          <h4 class="text-lg font-bold text-gray-800 dark:text-white/90">{{ formatCurrency(hwSummary.opportunity) }}</h4>
+          <p class="text-xs text-gray-400 dark:text-gray-500">{{ formatNumber(hwSummary.items) }} items · {{ formatNumber(hwSummary.quantity) }} units</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Software Opportunity -->
+    <div class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
+      <div class="flex items-center gap-3">
+        <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-500/10">
+          <svg class="h-5 w-5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
+        </div>
+        <div>
+          <p class="text-xs text-gray-500 dark:text-gray-400">Software Opportunity</p>
+          <h4 class="text-lg font-bold text-gray-800 dark:text-white/90">{{ formatCurrency(swSummary.opportunity) }}</h4>
+          <p class="text-xs text-gray-400 dark:text-gray-500">{{ formatNumber(swSummary.items) }} items · {{ formatNumber(swSummary.quantity) }} units</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Unique Customers -->
+    <div class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
+      <div class="flex items-center gap-3">
+        <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 dark:bg-amber-500/10">
+          <svg class="h-5 w-5 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+        </div>
+        <div>
+          <p class="text-xs text-gray-500 dark:text-gray-400">Customers</p>
+          <h4 class="text-lg font-bold text-gray-800 dark:text-white/90">{{ selectedCustomer ? '1' : formatNumber(customerNames.length) }}</h4>
+          <p class="text-xs text-gray-400 dark:text-gray-500">{{ selectedCustomer ? selectedCustomer : 'Total unique customers' }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Breakdowns: Hardware & Software side by side -->
+  <div class="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
+    <!-- Hardware by Architecture -->
+    <div class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
+      <h3 class="mb-4 flex items-center gap-2 text-sm font-semibold text-gray-800 dark:text-white/90">
+        <svg class="h-4 w-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"/></svg>
+        Hardware by Architecture
+      </h3>
+      <div *ngIf="hwByArchitecture.length === 0" class="py-6 text-center text-sm text-gray-400 dark:text-gray-500">No hardware renewal data</div>
+      <div *ngIf="hwByArchitecture.length > 0" class="overflow-x-auto">
+        <table class="w-full text-left text-xs">
+          <thead>
+            <tr class="border-b border-gray-100 dark:border-gray-700">
+              <th class="pb-2 font-medium text-gray-500 dark:text-gray-400">Architecture</th>
+              <th class="pb-2 text-right font-medium text-gray-500 dark:text-gray-400">Items</th>
+              <th class="pb-2 text-right font-medium text-gray-500 dark:text-gray-400">Qty</th>
+              <th class="pb-2 text-right font-medium text-gray-500 dark:text-gray-400">Opportunity</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let row of hwByArchitecture" class="border-b border-gray-50 dark:border-gray-800">
+              <td class="py-2 font-medium text-gray-700 dark:text-gray-300">{{ row.architecture }}</td>
+              <td class="py-2 text-right text-gray-600 dark:text-gray-400">{{ formatNumber(row.itemCount) }}</td>
+              <td class="py-2 text-right text-gray-600 dark:text-gray-400">{{ formatNumber(row.quantity) }}</td>
+              <td class="py-2 text-right font-medium text-gray-700 dark:text-gray-300">{{ formatCurrency(row.opportunity) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Software by Architecture -->
+    <div class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
+      <h3 class="mb-4 flex items-center gap-2 text-sm font-semibold text-gray-800 dark:text-white/90">
+        <svg class="h-4 w-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
+        Software by Architecture
+      </h3>
+      <div *ngIf="swByArchitecture.length === 0" class="py-6 text-center text-sm text-gray-400 dark:text-gray-500">No software renewal data</div>
+      <div *ngIf="swByArchitecture.length > 0" class="overflow-x-auto">
+        <table class="w-full text-left text-xs">
+          <thead>
+            <tr class="border-b border-gray-100 dark:border-gray-700">
+              <th class="pb-2 font-medium text-gray-500 dark:text-gray-400">Architecture</th>
+              <th class="pb-2 text-right font-medium text-gray-500 dark:text-gray-400">Items</th>
+              <th class="pb-2 text-right font-medium text-gray-500 dark:text-gray-400">Qty</th>
+              <th class="pb-2 text-right font-medium text-gray-500 dark:text-gray-400">Opportunity</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let row of swByArchitecture" class="border-b border-gray-50 dark:border-gray-800">
+              <td class="py-2 font-medium text-gray-700 dark:text-gray-300">{{ row.architecture }}</td>
+              <td class="py-2 text-right text-gray-600 dark:text-gray-400">{{ formatNumber(row.itemCount) }}</td>
+              <td class="py-2 text-right text-gray-600 dark:text-gray-400">{{ formatNumber(row.quantity) }}</td>
+              <td class="py-2 text-right font-medium text-gray-700 dark:text-gray-300">{{ formatCurrency(row.opportunity) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Timeline Breakdowns -->
+  <div class="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
+    <!-- Hardware EOL / LDOS Timeline -->
+    <div class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
+      <h3 class="mb-4 flex items-center gap-2 text-sm font-semibold text-gray-800 dark:text-white/90">
+        <svg class="h-4 w-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        Hardware LDOS Timeline
+      </h3>
+      <div *ngIf="hwEolTimeline.length === 0" class="py-6 text-center text-sm text-gray-400 dark:text-gray-500">No timeline data</div>
+      <div *ngIf="hwEolTimeline.length > 0" class="space-y-3">
+        <div *ngFor="let bucket of hwEolTimeline" class="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-800/50">
+          <div class="flex items-center gap-2">
+            <span class="inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold"
+              [ngClass]="{
+                'bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-400': bucket.period === 'Already Expired',
+                'bg-orange-100 text-orange-600 dark:bg-orange-500/20 dark:text-orange-400': bucket.period === 'Within 6 months',
+                'bg-yellow-100 text-yellow-600 dark:bg-yellow-500/20 dark:text-yellow-400': bucket.period === '6-12 months',
+                'bg-green-100 text-green-600 dark:bg-green-500/20 dark:text-green-400': bucket.period === '1-2 years' || bucket.period === '2+ years',
+                'bg-gray-100 text-gray-600 dark:bg-gray-600/20 dark:text-gray-400': bucket.period === 'No date'
+              }">
+              {{ bucket.count }}
+            </span>
+            <span class="text-xs font-medium text-gray-700 dark:text-gray-300">{{ bucket.period }}</span>
+          </div>
+          <span class="text-xs font-semibold text-gray-700 dark:text-gray-300">{{ formatCurrency(bucket.opportunity) }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Software End Date Timeline -->
+    <div class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
+      <h3 class="mb-4 flex items-center gap-2 text-sm font-semibold text-gray-800 dark:text-white/90">
+        <svg class="h-4 w-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        Software End Date Timeline
+      </h3>
+      <div *ngIf="swEndingSoon.length === 0" class="py-6 text-center text-sm text-gray-400 dark:text-gray-500">No timeline data</div>
+      <div *ngIf="swEndingSoon.length > 0" class="space-y-3">
+        <div *ngFor="let bucket of swEndingSoon" class="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-800/50">
+          <div class="flex items-center gap-2">
+            <span class="inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold"
+              [ngClass]="{
+                'bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-400': bucket.period === 'Already Expired',
+                'bg-orange-100 text-orange-600 dark:bg-orange-500/20 dark:text-orange-400': bucket.period === 'Within 6 months',
+                'bg-yellow-100 text-yellow-600 dark:bg-yellow-500/20 dark:text-yellow-400': bucket.period === '6-12 months',
+                'bg-green-100 text-green-600 dark:bg-green-500/20 dark:text-green-400': bucket.period === '1-2 years' || bucket.period === '2+ years',
+                'bg-gray-100 text-gray-600 dark:bg-gray-600/20 dark:text-gray-400': bucket.period === 'No date'
+              }">
+              {{ bucket.count }}
+            </span>
+            <span class="text-xs font-medium text-gray-700 dark:text-gray-300">{{ bucket.period }}</span>
+          </div>
+          <span class="text-xs font-semibold text-gray-700 dark:text-gray-300">{{ formatCurrency(bucket.opportunity) }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI Analysis Error -->
+  <div *ngIf="aiError" class="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-900/20">
+    <div class="flex items-center gap-2">
+      <svg class="h-5 w-5 flex-shrink-0 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      <span class="text-sm text-red-700 dark:text-red-400">{{ aiError }}</span>
+    </div>
+  </div>
+
+  <!-- AI Analysis Loading -->
+  <div *ngIf="aiGenerating" class="mb-6 rounded-2xl border border-brand-200 bg-brand-50 p-8 dark:border-brand-800 dark:bg-brand-900/20">
+    <div class="flex flex-col items-center gap-4">
+      <div class="relative">
+        <svg class="h-12 w-12 animate-spin text-brand-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+      </div>
+      <div class="text-center">
+        <p class="text-sm font-medium text-brand-700 dark:text-brand-300">Generating AI Renewal Analysis for {{ selectedCustomer }}...</p>
+        <p class="mt-1 text-xs text-brand-500 dark:text-brand-400">Analyzing hardware EOL dates, software contracts, and generating upgrade recommendations. This may take 30-60 seconds.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI Analysis Results -->
+  <div *ngIf="aiRenderedHtml && !aiGenerating" class="mb-6 rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
+    <div class="flex items-center justify-between border-b border-gray-200 px-5 py-4 dark:border-gray-700">
+      <div>
+        <h3 class="flex items-center gap-2 text-sm font-semibold text-gray-800 dark:text-white/90">
+          <svg class="h-4 w-4 text-brand-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+          AI Renewal Analysis — {{ selectedCustomer }}
+        </h3>
+        <div class="mt-1 flex items-center gap-3 text-[10px] text-gray-400 dark:text-gray-500">
+          <span *ngIf="aiModel">Model: {{ aiModel }}</span>
+          <span *ngIf="aiTokens">Tokens: {{ aiTokens | number }}</span>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button (click)="copyAIAnalysis()" title="Copy to clipboard"
+          class="flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs text-gray-600 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700">
+          <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+          Copy
+        </button>
+        <button (click)="exportAIAnalysis()" title="Download as Markdown"
+          class="flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs text-gray-600 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700">
+          <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+          Export
+        </button>
+        <button (click)="generateAIAnalysis()" title="Regenerate"
+          class="flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs text-gray-600 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700">
+          <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+          Regenerate
+        </button>
+        <button (click)="clearAIAnalysis()" title="Clear"
+          class="flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs text-gray-600 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700">
+          <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          Clear
+        </button>
+      </div>
+    </div>
+    <div class="prose prose-sm max-w-none p-6 dark:prose-invert prose-headings:text-gray-800 prose-h2:mt-6 prose-h2:mb-3 prose-h2:text-base prose-h2:font-semibold prose-h3:mt-4 prose-h3:mb-2 prose-h3:text-sm prose-p:text-gray-600 prose-li:text-gray-600 prose-strong:text-gray-800 dark:prose-headings:text-white/90 dark:prose-p:text-gray-400 dark:prose-li:text-gray-400 dark:prose-strong:text-white/80"
+      [innerHTML]="aiRenderedHtml">
+    </div>
+  </div>
+
+  <!-- Customer Overview Table (shown when no customer selected) -->
+  <div *ngIf="!selectedCustomer && combinedSummaries.length > 0" class="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
+    <div class="border-b border-gray-200 px-5 py-4 dark:border-gray-700">
+      <h3 class="text-sm font-semibold text-gray-800 dark:text-white/90">Customer Overview</h3>
+      <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">Click a customer to view their detailed breakdown</p>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-xs">
+        <thead>
+          <tr class="border-b border-gray-100 bg-gray-50/50 dark:border-gray-700 dark:bg-gray-800/30">
+            <th class="px-4 py-3 font-medium text-gray-500 dark:text-gray-400">Customer</th>
+            <th class="px-4 py-3 text-right font-medium text-gray-500 dark:text-gray-400">HW Items</th>
+            <th class="px-4 py-3 text-right font-medium text-gray-500 dark:text-gray-400">HW Opportunity</th>
+            <th class="px-4 py-3 text-right font-medium text-gray-500 dark:text-gray-400">SW Items</th>
+            <th class="px-4 py-3 text-right font-medium text-gray-500 dark:text-gray-400">SW Opportunity</th>
+            <th class="px-4 py-3 text-right font-medium text-gray-500 dark:text-gray-400">Total Opportunity</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let row of combinedSummaries"
+            (click)="selectCustomerFromTable(row.customerName)"
+            class="cursor-pointer border-b border-gray-50 transition-colors hover:bg-brand-50/30 dark:border-gray-800 dark:hover:bg-brand-500/5">
+            <td class="px-4 py-3">
+              <span class="font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400 dark:hover:text-brand-300">{{ row.customerName }}</span>
+            </td>
+            <td class="px-4 py-3 text-right text-gray-600 dark:text-gray-400">{{ row.hwItemCount > 0 ? formatNumber(row.hwItemCount) : '—' }}</td>
+            <td class="px-4 py-3 text-right font-medium text-gray-700 dark:text-gray-300">{{ row.hwTotalOpportunity > 0 ? formatCurrency(row.hwTotalOpportunity) : '—' }}</td>
+            <td class="px-4 py-3 text-right text-gray-600 dark:text-gray-400">{{ row.swItemCount > 0 ? formatNumber(row.swItemCount) : '—' }}</td>
+            <td class="px-4 py-3 text-right font-medium text-gray-700 dark:text-gray-300">{{ row.swTotalOpportunity > 0 ? formatCurrency(row.swTotalOpportunity) : '—' }}</td>
+            <td class="px-4 py-3 text-right">
+              <span class="font-bold text-gray-800 dark:text-white/90">{{ formatCurrency(row.totalOpportunity) }}</span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Detailed Items (shown when customer selected) -->
+  <div *ngIf="selectedCustomer">
+    <!-- Hardware Items -->
+    <div *ngIf="customerHwItems.length > 0" class="mb-6 rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
+      <div class="border-b border-gray-200 px-5 py-4 dark:border-gray-700">
+        <h3 class="flex items-center gap-2 text-sm font-semibold text-gray-800 dark:text-white/90">
+          <svg class="h-4 w-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"/></svg>
+          Hardware Renewals ({{ customerHwItems.length }})
+        </h3>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs">
+          <thead>
+            <tr class="border-b border-gray-100 bg-gray-50/50 dark:border-gray-700 dark:bg-gray-800/30">
+              <th class="px-4 py-2 font-medium text-gray-500 dark:text-gray-400">Architecture</th>
+              <th class="px-4 py-2 font-medium text-gray-500 dark:text-gray-400">Product Family</th>
+              <th class="px-4 py-2 font-medium text-gray-500 dark:text-gray-400">Product ID</th>
+              <th class="px-4 py-2 font-medium text-gray-500 dark:text-gray-400">Description</th>
+              <th class="px-4 py-2 text-right font-medium text-gray-500 dark:text-gray-400">Qty</th>
+              <th class="px-4 py-2 font-medium text-gray-500 dark:text-gray-400">LDOS</th>
+              <th class="px-4 py-2 text-right font-medium text-gray-500 dark:text-gray-400">Opportunity</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let item of customerHwItems" class="border-b border-gray-50 dark:border-gray-800">
+              <td class="px-4 py-2 text-gray-600 dark:text-gray-400">{{ item.architecture }}</td>
+              <td class="px-4 py-2 text-gray-600 dark:text-gray-400">{{ item.productFamily }}</td>
+              <td class="px-4 py-2 font-mono text-gray-700 dark:text-gray-300">{{ item.productId }}</td>
+              <td class="max-w-xs truncate px-4 py-2 text-gray-600 dark:text-gray-400" [title]="item.productDescription">{{ item.productDescription }}</td>
+              <td class="px-4 py-2 text-right text-gray-600 dark:text-gray-400">{{ item.itemQuantity }}</td>
+              <td class="px-4 py-2 text-gray-600 dark:text-gray-400">{{ item.ldos }}</td>
+              <td class="px-4 py-2 text-right font-medium text-gray-700 dark:text-gray-300">{{ formatCurrency(item.opportunity) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Software Items -->
+    <div *ngIf="customerSwItems.length > 0" class="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
+      <div class="border-b border-gray-200 px-5 py-4 dark:border-gray-700">
+        <h3 class="flex items-center gap-2 text-sm font-semibold text-gray-800 dark:text-white/90">
+          <svg class="h-4 w-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
+          Software Renewals ({{ customerSwItems.length }})
+        </h3>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs">
+          <thead>
+            <tr class="border-b border-gray-100 bg-gray-50/50 dark:border-gray-700 dark:bg-gray-800/30">
+              <th class="px-4 py-2 font-medium text-gray-500 dark:text-gray-400">Architecture</th>
+              <th class="px-4 py-2 font-medium text-gray-500 dark:text-gray-400">Offer Type</th>
+              <th class="px-4 py-2 font-medium text-gray-500 dark:text-gray-400">Contract #</th>
+              <th class="px-4 py-2 font-medium text-gray-500 dark:text-gray-400">Status</th>
+              <th class="px-4 py-2 text-right font-medium text-gray-500 dark:text-gray-400">Qty</th>
+              <th class="px-4 py-2 font-medium text-gray-500 dark:text-gray-400">End Date</th>
+              <th class="px-4 py-2 text-right font-medium text-gray-500 dark:text-gray-400">Opportunity</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let item of customerSwItems" class="border-b border-gray-50 dark:border-gray-800">
+              <td class="px-4 py-2 text-gray-600 dark:text-gray-400">{{ item.architecture }}</td>
+              <td class="px-4 py-2 text-gray-600 dark:text-gray-400">{{ item.subscriptionOfferType }}</td>
+              <td class="px-4 py-2 font-mono text-gray-700 dark:text-gray-300">{{ item.contractNumber }}</td>
+              <td class="px-4 py-2">
+                <span class="inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium"
+                  [ngClass]="{
+                    'bg-green-100 text-green-700 dark:bg-green-500/10 dark:text-green-400': item.contractStatus === 'Active',
+                    'bg-yellow-100 text-yellow-700 dark:bg-yellow-500/10 dark:text-yellow-400': item.contractStatus === 'Pending',
+                    'bg-red-100 text-red-700 dark:bg-red-500/10 dark:text-red-400': item.contractStatus === 'Expired' || item.contractStatus === 'Cancelled',
+                    'bg-gray-100 text-gray-700 dark:bg-gray-600/10 dark:text-gray-400': item.contractStatus !== 'Active' && item.contractStatus !== 'Pending' && item.contractStatus !== 'Expired' && item.contractStatus !== 'Cancelled'
+                  }">{{ item.contractStatus }}</span>
+              </td>
+              <td class="px-4 py-2 text-right text-gray-600 dark:text-gray-400">{{ item.itemQuantity }}</td>
+              <td class="px-4 py-2 text-gray-600 dark:text-gray-400">{{ item.endDate }}</td>
+              <td class="px-4 py-2 text-right font-medium text-gray-700 dark:text-gray-300">{{ formatCurrency(item.opportunity) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
