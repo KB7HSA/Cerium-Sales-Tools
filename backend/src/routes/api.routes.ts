@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { sendSuccess, sendError } from '../middleware/error.middleware';
+import { authMiddleware, AuthenticatedRequest } from '../middleware/auth.middleware';
 import { CustomerService } from '../services/customer.service';
 import { QuoteService } from '../services/quote.service';
 import { LaborItemService } from '../services/labor-item.service';
@@ -7,20 +8,64 @@ import { MSPOfferingService } from '../services/msp-offering.service';
 import { ExportSchemaService } from '../services/export-schema.service';
 import { SOWDocumentService } from '../services/sow-document.service';
 import { ReferenceArchitectureService, AssessmentTypeService, GeneratedAssessmentService } from '../services/assessment.service';
+import { SOWTypeService, GeneratedSOWService } from '../services/sow.service';
 import { USACForm470Service } from '../services/usac470.service';
 import { USACFRNStatusService } from '../services/usac-frn.service';
 import { ERateSettingsService } from '../services/erate-settings.service';
 import { AzureOpenAIService } from '../services/openai.service';
+import { azureOpenAIConfig } from '../config/server';
 import { TechnicalResourcesService } from '../services/technical-resources.service';
 import { userService } from '../services/user.service';
 import { executeQuery } from '../config/database';
 
 const router = Router();
 
-// ===== HEALTH CHECK =====
+// ===== PUBLIC ROUTES (no authentication required) =====
+
+// Health check
 router.get('/health', (req: Request, res: Response) => {
   sendSuccess(res, { status: 'API is running', timestamp: new Date() }, 200, 'Health check passed');
 });
+
+// Microsoft auth sync - called during login before backend token is available
+router.post('/auth/microsoft/sync', async (req: Request, res: Response) => {
+  try {
+    const { profile } = req.body;
+    
+    if (!profile || (!profile.mail && !profile.userPrincipalName)) {
+      sendError(res, 'Invalid profile data - email is required', 400);
+      return;
+    }
+
+    const result = await userService.syncMicrosoftUser(profile);
+    sendSuccess(res, {
+      user: {
+        id: result.adminUser.Id,
+        name: result.adminUser.Name,
+        email: result.adminUser.Email,
+        role: result.adminUser.RoleName,
+        status: result.adminUser.Status,
+        department: result.adminUser.Department,
+        roleAssignments: result.roleAssignments
+      },
+      profile: {
+        firstName: result.userProfile.FirstName,
+        lastName: result.userProfile.LastName,
+        jobTitle: result.userProfile.RoleName,
+        location: result.userProfile.Location,
+        email: result.userProfile.Email,
+        phone: result.userProfile.Phone
+      },
+      isNewUser: result.isNewUser
+    }, 200, result.isNewUser ? 'User created successfully' : 'User synced successfully');
+  } catch (error: any) {
+    console.error('Microsoft sync error:', error);
+    sendError(res, 'Failed to sync Microsoft user', 500, error.message);
+  }
+});
+
+// ===== AUTHENTICATED ROUTES (JWT required from here on) =====
+router.use(authMiddleware);
 
 // ===== DATABASE MIGRATIONS (temporary endpoint) =====
 router.post('/run-migration/add-template-filename', async (req: Request, res: Response) => {
@@ -806,6 +851,164 @@ router.delete('/generated-assessments/:id', async (req: Request, res: Response) 
   }
 });
 
+// ===== SOW TYPES =====
+
+router.get('/sow-types', async (req: Request, res: Response) => {
+  try {
+    const activeOnly = req.query.activeOnly === 'true';
+    const types = await SOWTypeService.getAll(activeOnly);
+    sendSuccess(res, types, 200, 'SOW types retrieved');
+  } catch (error: any) {
+    sendError(res, 'Failed to fetch SOW types', 500, error.message);
+  }
+});
+
+router.get('/sow-types/:id', async (req: Request, res: Response) => {
+  try {
+    const type = await SOWTypeService.getById(req.params.id);
+    if (!type) {
+      sendError(res, 'SOW type not found', 404);
+      return;
+    }
+    sendSuccess(res, type, 200, 'SOW type retrieved');
+  } catch (error: any) {
+    sendError(res, 'Failed to fetch SOW type', 500, error.message);
+  }
+});
+
+router.post('/sow-types', async (req: Request, res: Response) => {
+  try {
+    const created = await SOWTypeService.create(req.body);
+    sendSuccess(res, created, 201, 'SOW type created');
+  } catch (error: any) {
+    sendError(res, 'Failed to create SOW type', 500, error.message);
+  }
+});
+
+router.put('/sow-types/:id', async (req: Request, res: Response) => {
+  try {
+    const updated = await SOWTypeService.update(req.params.id, req.body);
+    if (!updated) {
+      sendError(res, 'SOW type not found', 404);
+      return;
+    }
+    sendSuccess(res, updated, 200, 'SOW type updated');
+  } catch (error: any) {
+    sendError(res, 'Failed to update SOW type', 500, error.message);
+  }
+});
+
+router.delete('/sow-types/:id', async (req: Request, res: Response) => {
+  try {
+    await SOWTypeService.delete(req.params.id);
+    sendSuccess(res, { id: req.params.id }, 200, 'SOW type deleted');
+  } catch (error: any) {
+    sendError(res, 'Failed to delete SOW type', 500, error.message);
+  }
+});
+
+// ===== GENERATED SOWS =====
+
+router.get('/generated-sows', async (req: Request, res: Response) => {
+  try {
+    const sows = await GeneratedSOWService.getAll();
+    sendSuccess(res, sows, 200, 'Generated SOWs retrieved');
+  } catch (error: any) {
+    sendError(res, 'Failed to fetch generated SOWs', 500, error.message);
+  }
+});
+
+router.get('/generated-sows/:id', async (req: Request, res: Response) => {
+  try {
+    const sow = await GeneratedSOWService.getById(req.params.id);
+    if (!sow) {
+      sendError(res, 'Generated SOW not found', 404);
+      return;
+    }
+    sendSuccess(res, sow, 200, 'Generated SOW retrieved');
+  } catch (error: any) {
+    sendError(res, 'Failed to fetch generated SOW', 500, error.message);
+  }
+});
+
+router.get('/generated-sows/:id/download', async (req: Request, res: Response) => {
+  try {
+    const file = await GeneratedSOWService.getFile(req.params.id);
+    if (!file || !file.FileData) {
+      sendError(res, 'SOW document not found', 404);
+      return;
+    }
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+    res.setHeader('Content-Disposition', `attachment; filename="${file.FileName}"`);
+    res.send(file.FileData);
+  } catch (error: any) {
+    sendError(res, 'Failed to download SOW', 500, error.message);
+  }
+});
+
+router.post('/generated-sows', async (req: Request, res: Response) => {
+  try {
+    const data = req.body;
+    // Handle base64 file data
+    if (data.FileDataBase64) {
+      data.FileData = Buffer.from(data.FileDataBase64, 'base64');
+      data.FileSizeBytes = data.FileData.length;
+      delete data.FileDataBase64;
+    }
+    const created = await GeneratedSOWService.create(data);
+    sendSuccess(res, created, 201, 'Generated SOW created');
+  } catch (error: any) {
+    sendError(res, 'Failed to create generated SOW', 500, error.message);
+  }
+});
+
+router.put('/generated-sows/:id', async (req: Request, res: Response) => {
+  try {
+    const updated = await GeneratedSOWService.update(req.params.id, req.body);
+    if (!updated) {
+      sendError(res, 'Generated SOW not found', 404);
+      return;
+    }
+    sendSuccess(res, updated, 200, 'Generated SOW updated');
+  } catch (error: any) {
+    sendError(res, 'Failed to update generated SOW', 500, error.message);
+  }
+});
+
+router.put('/generated-sows/:id/document', async (req: Request, res: Response) => {
+  try {
+    const { FileName, FileDataBase64 } = req.body;
+    const fileBuffer = Buffer.from(FileDataBase64, 'base64');
+    const success = await GeneratedSOWService.updateDocument(req.params.id, FileName, fileBuffer, fileBuffer.length);
+    if (success) {
+      sendSuccess(res, { id: req.params.id }, 200, 'SOW document updated');
+    } else {
+      sendError(res, 'Failed to update SOW document', 500);
+    }
+  } catch (error: any) {
+    sendError(res, 'Failed to update SOW document', 500, error.message);
+  }
+});
+
+router.put('/generated-sows/:id/status', async (req: Request, res: Response) => {
+  try {
+    const { status } = req.body;
+    await GeneratedSOWService.updateStatus(req.params.id, status);
+    sendSuccess(res, { id: req.params.id, status }, 200, 'SOW status updated');
+  } catch (error: any) {
+    sendError(res, 'Failed to update SOW status', 500, error.message);
+  }
+});
+
+router.delete('/generated-sows/:id', async (req: Request, res: Response) => {
+  try {
+    await GeneratedSOWService.delete(req.params.id);
+    sendSuccess(res, { id: req.params.id }, 200, 'Generated SOW deleted');
+  } catch (error: any) {
+    sendError(res, 'Failed to delete generated SOW', 500, error.message);
+  }
+});
+
 // ===== E-RATE FORM 470 =====
 
 // Clear all Form 470 data (for fresh start)
@@ -1348,43 +1551,6 @@ router.put('/user-preferences/table/:tableName', async (req: Request, res: Respo
 
 // ===== USER AUTHENTICATION =====
 
-// Sync Microsoft 365 user - called after successful M365 login
-router.post('/auth/microsoft/sync', async (req: Request, res: Response) => {
-  try {
-    const { profile } = req.body;
-    
-    if (!profile || (!profile.mail && !profile.userPrincipalName)) {
-      sendError(res, 'Invalid profile data - email is required', 400);
-      return;
-    }
-
-    const result = await userService.syncMicrosoftUser(profile);
-    sendSuccess(res, {
-      user: {
-        id: result.adminUser.Id,
-        name: result.adminUser.Name,
-        email: result.adminUser.Email,
-        role: result.adminUser.RoleName,
-        status: result.adminUser.Status,
-        department: result.adminUser.Department,
-        roleAssignments: result.roleAssignments
-      },
-      profile: {
-        firstName: result.userProfile.FirstName,
-        lastName: result.userProfile.LastName,
-        jobTitle: result.userProfile.RoleName,
-        location: result.userProfile.Location,
-        email: result.userProfile.Email,
-        phone: result.userProfile.Phone
-      },
-      isNewUser: result.isNewUser
-    }, 200, result.isNewUser ? 'User created successfully' : 'User synced successfully');
-  } catch (error: any) {
-    console.error('Microsoft sync error:', error);
-    sendError(res, 'Failed to sync Microsoft user', 500, error.message);
-  }
-});
-
 // Get current user by email
 router.get('/auth/user/:email', async (req: Request, res: Response) => {
   try {
@@ -1547,6 +1713,7 @@ router.get('/ai/status', (req: Request, res: Response) => {
   const configured = AzureOpenAIService.isConfigured();
   sendSuccess(res, {
     configured,
+    model: azureOpenAIConfig.deploymentName,
     message: configured
       ? 'Azure OpenAI is configured and ready'
       : 'Azure OpenAI is not configured. Set AZURE_OPENAI_ENDPOINT and AZURE_OPENAI_API_KEY environment variables.',
@@ -1599,7 +1766,7 @@ router.post('/ai/generate', async (req: Request, res: Response) => {
       referenceArchitecture,
       prompt,
       additionalNotes,
-      { customerEmail, assessmentTypeDescription, assessmentTypeCategory, scopeContext, methodologyContext, technicalResources }
+      { customerEmail, assessmentTypeDescription, assessmentTypeCategory, scopeContext, methodologyContext, technicalResources, temperature }
     );
 
     sendSuccess(res, result, 200, 'AI content generated successfully');
@@ -1613,7 +1780,7 @@ router.post('/ai/generate/findings', async (req: Request, res: Response) => {
   try {
     const { customerName, companyName, customerEmail, assessmentType, referenceArchitecture,
             assessmentTypeDescription, assessmentTypeCategory, scopeContext, methodologyContext,
-            prompt, additionalNotes, technicalResources } = req.body;
+            prompt, additionalNotes, technicalResources, temperature } = req.body;
 
     if (!assessmentType || !referenceArchitecture) {
       sendError(res, 'assessmentType and referenceArchitecture are required', 400);
@@ -1627,7 +1794,7 @@ router.post('/ai/generate/findings', async (req: Request, res: Response) => {
       referenceArchitecture,
       prompt,
       additionalNotes,
-      { customerEmail, assessmentTypeDescription, assessmentTypeCategory, scopeContext, methodologyContext, technicalResources }
+      { customerEmail, assessmentTypeDescription, assessmentTypeCategory, scopeContext, methodologyContext, technicalResources, temperature }
     );
 
     sendSuccess(res, result, 200, 'AI findings generated successfully');
@@ -1641,7 +1808,7 @@ router.post('/ai/generate/recommendations', async (req: Request, res: Response) 
   try {
     const { customerName, companyName, customerEmail, assessmentType, referenceArchitecture,
             assessmentTypeDescription, assessmentTypeCategory, scopeContext, methodologyContext,
-            prompt, additionalNotes, technicalResources } = req.body;
+            prompt, additionalNotes, technicalResources, temperature } = req.body;
 
     if (!assessmentType || !referenceArchitecture) {
       sendError(res, 'assessmentType and referenceArchitecture are required', 400);
@@ -1655,7 +1822,7 @@ router.post('/ai/generate/recommendations', async (req: Request, res: Response) 
       referenceArchitecture,
       prompt,
       additionalNotes,
-      { customerEmail, assessmentTypeDescription, assessmentTypeCategory, scopeContext, methodologyContext, technicalResources }
+      { customerEmail, assessmentTypeDescription, assessmentTypeCategory, scopeContext, methodologyContext, technicalResources, temperature }
     );
 
     sendSuccess(res, result, 200, 'AI recommendations generated successfully');
@@ -1669,7 +1836,7 @@ router.post('/ai/generate/scope', async (req: Request, res: Response) => {
   try {
     const { customerName, companyName, customerEmail, assessmentType, referenceArchitecture,
             assessmentTypeDescription, assessmentTypeCategory, scopeContext, methodologyContext,
-            prompt, additionalNotes, technicalResources } = req.body;
+            prompt, additionalNotes, technicalResources, temperature } = req.body;
 
     if (!assessmentType || !referenceArchitecture) {
       sendError(res, 'assessmentType and referenceArchitecture are required', 400);
@@ -1683,7 +1850,7 @@ router.post('/ai/generate/scope', async (req: Request, res: Response) => {
       referenceArchitecture,
       prompt,
       additionalNotes,
-      { customerEmail, assessmentTypeDescription, assessmentTypeCategory, scopeContext, methodologyContext, technicalResources }
+      { customerEmail, assessmentTypeDescription, assessmentTypeCategory, scopeContext, methodologyContext, technicalResources, temperature }
     );
 
     sendSuccess(res, result, 200, 'AI scope generated successfully');
@@ -1838,33 +2005,51 @@ router.post('/menu-config/migrate', async (req: Request, res: Response) => {
         ('e-rate-opportunities', 'Opportunities', 'e-rate', 1, 0, 2),
         ('e-rate-frn-dashboard', 'FRN Dashboard', 'e-rate', 1, 0, 3),
         ('e-rate-frn-status', 'FRN Status', 'e-rate', 1, 0, 4),
-        ('admin', 'Admin', NULL, 1, 1, 8),
+        ('admin', 'Admin', NULL, 1, 1, 9),
         ('admin-users', 'Users', 'admin', 1, 1, 1),
         ('admin-customers', 'Customers', 'admin', 1, 0, 2),
         ('admin-create-user', 'Create User', 'admin', 1, 1, 3),
         ('admin-msp-offerings', 'MSP Offerings', 'admin', 1, 0, 4),
         ('admin-assessment-types', 'Assessment Types', 'admin', 1, 0, 5),
-        ('admin-labor-budget', 'Labor Budget Admin', 'admin', 1, 0, 6),
+        ('admin-sow-types', 'SOW Types', 'admin', 1, 0, 6),
+        ('admin-labor-budget', 'Labor Budget Admin', 'admin', 1, 0, 7),
         ('admin-export-schemas', 'Export Schemas', 'admin', 1, 0, 7),
         ('admin-erate-settings', 'E-Rate Settings', 'admin', 1, 0, 8),
         ('admin-settings', 'Settings', 'admin', 1, 0, 9),
         ('admin-menu-admin', 'Menu Admin', 'admin', 1, 1, 10),
-        ('user-profile', 'User Profile', NULL, 1, 0, 9)
+        ('admin-renewal-statuses', 'Renewal Statuses', 'admin', 1, 0, 11),
+        ('cisco-renewals', 'Cisco Renewals', NULL, 1, 0, 8),
+        ('cisco-renewals-hardware', 'Hardware Renewals', 'cisco-renewals', 1, 0, 1),
+        ('cisco-renewals-software', 'Software Renewals', 'cisco-renewals', 1, 0, 2),
+        ('user-profile', 'User Profile', NULL, 1, 0, 10)
       `);
 
       sendSuccess(res, { created: true }, 200, 'MenuConfiguration table created and seeded');
     } else {
-      // Table exists - ensure Menu Admin entry exists
-      const menuAdminCheck = await executeQuery<{ cnt: number }>(
-        `SELECT COUNT(*) as cnt FROM dbo.MenuConfiguration WHERE MenuItemKey = 'admin-menu-admin'`
-      );
-      if (menuAdminCheck[0]?.cnt === 0) {
-        await executeQuery(
-          `INSERT INTO dbo.MenuConfiguration (MenuItemKey, DisplayName, ParentKey, IsVisible, IsProtected, SortOrder)
-           VALUES ('admin-menu-admin', 'Menu Admin', 'admin', 1, 1, 10)`
+      // Table exists - ensure new entries exist
+      const ensureItems: { key: string; name: string; parent: string | null; isProtected: number; sort: number }[] = [
+        { key: 'admin-menu-admin', name: 'Menu Admin', parent: 'admin', isProtected: 1, sort: 10 },
+        { key: 'admin-renewal-statuses', name: 'Renewal Statuses', parent: 'admin', isProtected: 0, sort: 11 },
+        { key: 'cisco-renewals', name: 'Cisco Renewals', parent: null, isProtected: 0, sort: 8 },
+        { key: 'cisco-renewals-hardware', name: 'Hardware Renewals', parent: 'cisco-renewals', isProtected: 0, sort: 1 },
+        { key: 'cisco-renewals-software', name: 'Software Renewals', parent: 'cisco-renewals', isProtected: 0, sort: 2 },
+        { key: 'admin-sow-types', name: 'SOW Types', parent: 'admin', isProtected: 0, sort: 6 },
+      ];
+
+      for (const item of ensureItems) {
+        const check = await executeQuery<{ cnt: number }>(
+          `SELECT COUNT(*) as cnt FROM dbo.MenuConfiguration WHERE MenuItemKey = @param0`,
+          [item.key]
         );
+        if (check[0]?.cnt === 0) {
+          await executeQuery(
+            `INSERT INTO dbo.MenuConfiguration (MenuItemKey, DisplayName, ParentKey, IsVisible, IsProtected, SortOrder)
+             VALUES (@param0, @param1, @param2, 1, @param3, @param4)`,
+            [item.key, item.name, item.parent, item.isProtected, item.sort]
+          );
+        }
       }
-      sendSuccess(res, { created: false }, 200, 'MenuConfiguration table already exists');
+      sendSuccess(res, { created: false }, 200, 'MenuConfiguration table already exists - ensured new items');
     }
   } catch (error: any) {
     sendError(res, 'Failed to run menu configuration migration', 500, error.message);

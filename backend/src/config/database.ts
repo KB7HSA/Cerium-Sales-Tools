@@ -5,14 +5,14 @@ import sql from 'mssql';
  * Connects to Azure SQL Server via ceriumdemo.database.windows.net
  */
 export const sqlConfig = {
-  server: process.env.DB_HOST || 'ceriumdemo.database.windows.net',
+  server: process.env.DB_HOST || '',
   port: parseInt(process.env.DB_PORT || '1433', 10),
-  user: process.env.DB_USER || 'ceriumsqladmin',
-  password: process.env.DB_PASSWORD || 'q7$fbVEXk3SJghD',
-  database: process.env.DB_NAME || 'CeriumSalesTools',
+  user: process.env.DB_USER || '',
+  password: process.env.DB_PASSWORD || '',
+  database: process.env.DB_NAME || '',
   options: {
     encrypt: true, // Azure requires encryption
-    trustServerCertificate: true,
+    trustServerCertificate: process.env.DB_TRUST_CERT === 'true', // Default false for production security
     enableKeepAlive: true,
     keepAliveInitialDelaySeconds: 30,
     connectionTimeout: 60000, // Increased to 60 seconds

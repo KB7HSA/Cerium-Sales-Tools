@@ -109,6 +109,13 @@
           >
             Read-Only
           </button>
+          <button 
+            (click)="setRoleFilter('pending')"
+            [ngClass]="{'bg-orange-600 text-white': activeFilter === 'pending', 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white': activeFilter !== 'pending'}"
+            class="px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+          >
+            Pending
+          </button>
         </div>
       </div>
     </div>

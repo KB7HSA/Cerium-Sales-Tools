@@ -141,7 +141,7 @@ class UserService {
           authUserId: authUser.Id,
           name: profile.displayName || `${profile.givenName || ''} ${profile.surname || ''}`.trim() || email,
           email: email,
-          roleName: 'user',
+          roleName: 'pending',
           status: 'active',
           department: profile.department || null
         }
@@ -364,6 +364,9 @@ class UserService {
         break;
       case 'readonly':
         permissions = 'view';
+        break;
+      case 'pending':
+        permissions = '';
         break;
       default:
         permissions = 'view,create,edit';

@@ -1,5 +1,6 @@
 import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { Router, RouterModule } from '@angular/router';
+import { CommonModule } from '@angular/common';
 import { MsalModule, MsalService, MsalBroadcastService } from '@azure/msal-angular';
 import { InteractionStatus } from '@azure/msal-browser';
 import { Subject, filter, takeUntil } from 'rxjs';
@@ -11,12 +12,14 @@ import { AuthService } from './shared/services/auth.service';
   imports: [
     RouterModule,
     MsalModule,
+    CommonModule,
   ],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css',
 })
 export class AppComponent implements OnInit, OnDestroy {
   title = 'Cerium Sales Tools';
+  isProcessingLogin = false;
   
   private readonly _destroying$ = new Subject<void>();
   private msalService = inject(MsalService);
@@ -25,6 +28,12 @@ export class AppComponent implements OnInit, OnDestroy {
   private router = inject(Router);
 
   ngOnInit(): void {
+    // If a login redirect is in progress, show the loading overlay immediately
+    const loginInProgress = sessionStorage.getItem('msalLoginInProgress');
+    if (loginInProgress) {
+      this.isProcessingLogin = true;
+    }
+
     // Handle redirect observable for MSAL redirect flow
     this.msalService.handleRedirectObservable().subscribe({
       next: (result) => {
@@ -32,30 +41,35 @@ export class AppComponent implements OnInit, OnDestroy {
           console.log('MSAL redirect login successful:', result.account?.username);
           this.msalService.instance.setActiveAccount(result.account);
           
-          // Check if we came from a login redirect and sync user profile
-          const loginInProgress = sessionStorage.getItem('msalLoginInProgress');
-          if (loginInProgress) {
-            sessionStorage.removeItem('msalLoginInProgress');
-            
-            // Sync user profile to backend
-            this.authService.syncMicrosoftUser().subscribe({
-              next: (syncResult) => {
-                if (syncResult) {
-                  console.log('User profile synced after redirect:', syncResult.data?.user?.name);
-                }
-                this.router.navigate(['/']);
-              },
-              error: (error) => {
-                console.error('Profile sync failed after redirect:', error);
-                this.router.navigate(['/']);
+          // Sync user profile to backend
+          sessionStorage.removeItem('msalLoginInProgress');
+          this.authService.syncMicrosoftUser().subscribe({
+            next: (syncResult) => {
+              if (syncResult) {
+                console.log('User profile synced after redirect:', syncResult.data?.user?.name);
               }
-            });
+              this.isProcessingLogin = false;
+              this.router.navigate(['/']);
+            },
+            error: (error) => {
+              console.error('Profile sync failed after redirect:', error);
+              this.isProcessingLogin = false;
+              this.router.navigate(['/']);
+            }
+          });
+        } else {
+          // No redirect result — hide overlay if no real redirect happened
+          if (this.isProcessingLogin) {
+            // MSAL didn't find redirect data — clear the flag
+            sessionStorage.removeItem('msalLoginInProgress');
+            this.isProcessingLogin = false;
           }
         }
       },
       error: (error) => {
         console.error('MSAL redirect error:', error);
         sessionStorage.removeItem('msalLoginInProgress');
+        this.isProcessingLogin = false;
       }
     });
 

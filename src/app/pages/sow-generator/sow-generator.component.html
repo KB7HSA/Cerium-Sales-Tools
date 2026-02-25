@@ -1,220 +1,649 @@
-<div>
-  <app-page-breadcrumb pageTitle="SOW Documents" />
-  <div class="min-h-screen rounded-2xl border border-gray-200 bg-white px-5 py-7 dark:border-gray-800 dark:bg-white/[0.03] xl:px-10 xl:py-12">
-    <div class="mx-auto w-full max-w-6xl">
-      <!-- Header -->
-      <div class="mb-8">
-        <h3 class="mb-2 font-semibold text-gray-800 text-2xl dark:text-white/90">
-          Generated SOW Documents
-        </h3>
-        <p class="text-sm text-gray-500 dark:text-gray-400">
-          View and manage Statement of Work documents generated from approved quotes.
-        </p>
+<div class="space-y-6">
+  <!-- Header -->
+  <div class="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-white/[0.03]">
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <h2 class="text-xl font-semibold text-gray-800 dark:text-white/90">SOW Generator</h2>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Generate professional Statement of Work documents with AI-powered content</p>
       </div>
+      <button 
+        (click)="loadData()"
+        class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-all hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">
+        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+        </svg>
+        Refresh
+      </button>
+    </div>
+  </div>
 
-      <!-- Summary Cards -->
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-5 border border-gray-200 dark:border-gray-700">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-gray-600 dark:text-gray-400 text-sm">Total Documents</p>
-              <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ getCountByStatus('all') }}</p>
-            </div>
-            <svg class="w-10 h-10 text-blue-500 opacity-30" fill="currentColor" viewBox="0 0 20 20">
-              <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"></path>
-            </svg>
-          </div>
-        </div>
+  <!-- Messages -->
+  <div *ngIf="errorMessage" class="rounded-lg bg-red-50 p-4 text-sm text-red-700 dark:bg-red-900/20 dark:text-red-400">
+    {{ errorMessage }}
+    <button (click)="errorMessage = ''" class="ml-2 font-medium hover:underline">Dismiss</button>
+  </div>
+  <div *ngIf="successMessage" class="rounded-lg bg-green-50 p-4 text-sm text-green-700 dark:bg-green-900/20 dark:text-green-400">
+    {{ successMessage }}
+    <button (click)="successMessage = ''" class="ml-2 font-medium hover:underline">Dismiss</button>
+  </div>
 
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-5 border border-gray-200 dark:border-gray-700">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-gray-600 dark:text-gray-400 text-sm">Generated</p>
-              <p class="text-2xl font-bold text-blue-600">{{ getCountByStatus('generated') }}</p>
-            </div>
-            <svg class="w-10 h-10 text-blue-500 opacity-30" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"></path>
-              <path fill-rule="evenodd" d="M4 5a2 2 0 012-2 1 1 0 000-2 4 4 0 00-4 4v10a4 4 0 004 4h12a4 4 0 004-4V5a4 4 0 00-4-4 1 1 0 000 2 2 2 0 012 2v10a2 2 0 01-2 2H6a2 2 0 01-2-2V5z" clip-rule="evenodd"></path>
-            </svg>
-          </div>
-        </div>
-
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-5 border border-gray-200 dark:border-gray-700">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-gray-600 dark:text-gray-400 text-sm">Sent</p>
-              <p class="text-2xl font-bold text-yellow-600">{{ getCountByStatus('sent') }}</p>
-            </div>
-            <svg class="w-10 h-10 text-yellow-500 opacity-30" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"></path>
-            </svg>
-          </div>
-        </div>
-
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-5 border border-gray-200 dark:border-gray-700">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-gray-600 dark:text-gray-400 text-sm">Signed</p>
-              <p class="text-2xl font-bold text-green-600">{{ getCountByStatus('signed') }}</p>
-              <p class="text-xs text-green-500 mt-1">{{ formatCurrency(getTotalValue()) }}</p>
-            </div>
-            <svg class="w-10 h-10 text-green-500 opacity-30" fill="currentColor" viewBox="0 0 20 20">
-              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
-            </svg>
-          </div>
-        </div>
-      </div>
-
-      <!-- Filter Tabs -->
-      <div class="mb-6 flex items-center border-b border-gray-200 dark:border-gray-700">
-        <button 
-          (click)="setFilter('all')"
-          [ngClass]="{'border-b-2 border-blue-600 text-blue-600': activeFilter === 'all', 'text-gray-600 dark:text-gray-400': activeFilter !== 'all'}"
-          class="px-4 py-2 font-medium transition-colors"
-        >
-          All ({{ getCountByStatus('all') }})
-        </button>
-        <button 
-          (click)="setFilter('generated')"
-          [ngClass]="{'border-b-2 border-blue-600 text-blue-600': activeFilter === 'generated', 'text-gray-600 dark:text-gray-400': activeFilter !== 'generated'}"
-          class="px-4 py-2 font-medium transition-colors"
-        >
-          Generated ({{ getCountByStatus('generated') }})
-        </button>
-        <button 
-          (click)="setFilter('sent')"
-          [ngClass]="{'border-b-2 border-yellow-600 text-yellow-600': activeFilter === 'sent', 'text-gray-600 dark:text-gray-400': activeFilter !== 'sent'}"
-          class="px-4 py-2 font-medium transition-colors"
-        >
-          Sent ({{ getCountByStatus('sent') }})
-        </button>
-        <button 
-          (click)="setFilter('signed')"
-          [ngClass]="{'border-b-2 border-green-600 text-green-600': activeFilter === 'signed', 'text-gray-600 dark:text-gray-400': activeFilter !== 'signed'}"
-          class="px-4 py-2 font-medium transition-colors"
-        >
-          Signed ({{ getCountByStatus('signed') }})
-        </button>
-      </div>
-
-      <!-- Documents List -->
-      @if (filteredDocuments.length === 0) {
-        <div class="text-center py-12">
-          <svg class="w-16 h-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+  <!-- Tabs -->
+  <div class="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
+    <div class="flex border-b border-gray-200 dark:border-gray-800">
+      <button
+        (click)="activeTab = 'generate'"
+        class="flex-1 px-6 py-4 text-sm font-medium transition-colors"
+        [ngClass]="activeTab === 'generate' 
+          ? 'border-b-2 border-brand-500 text-brand-600 dark:text-brand-400' 
+          : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'">
+        <div class="flex items-center justify-center gap-2">
+          <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
           </svg>
-          <h4 class="text-lg font-medium text-gray-600 dark:text-gray-400 mb-2">No SOW Documents</h4>
-          <p class="text-sm text-gray-500 dark:text-gray-500">
-            SOW documents will appear here when generated from approved quotes.
-          </p>
-          <p class="text-sm text-gray-500 dark:text-gray-500 mt-2">
-            Go to <a routerLink="/quote-management" class="text-blue-600 hover:underline">Quote Management</a> to generate SOW documents.
-          </p>
+          Generate New
         </div>
-      } @else {
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden border border-gray-200 dark:border-gray-700">
-          <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead class="bg-gray-50 dark:bg-gray-700">
-              <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Customer
-                </th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Service
-                </th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Value
-                </th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Status
-                </th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Created
-                </th>
-                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-              @for (doc of filteredDocuments; track doc.Id) {
-                <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-                  <td class="px-6 py-4 whitespace-nowrap">
-                    <div class="flex items-center">
-                      <svg class="w-8 h-8 text-blue-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"></path>
-                      </svg>
-                      <div>
-                        <div class="text-sm font-medium text-gray-900 dark:text-white">{{ doc.CustomerName }}</div>
-                        <div class="text-xs text-gray-500 dark:text-gray-400">{{ doc.FileName }}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap">
-                    <div class="text-sm text-gray-900 dark:text-white">{{ doc.ServiceName }}</div>
-                    <div class="text-xs text-gray-500 dark:text-gray-400">{{ doc.DurationMonths }} months</div>
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap">
-                    <div class="text-sm font-semibold text-gray-900 dark:text-white">{{ formatCurrency(doc.TotalValue) }}</div>
-                    <div class="text-xs text-gray-500 dark:text-gray-400">{{ formatCurrency(doc.MonthlyValue) }}/mo</div>
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap">
-                    <select
-                      [value]="doc.Status"
-                      (change)="updateStatus(doc, $any($event.target).value)"
-                      [ngClass]="getStatusBadgeClass(doc.Status)"
-                      class="text-xs font-semibold rounded-full px-3 py-1 border-0 cursor-pointer"
-                    >
-                      <option value="generated">Generated</option>
-                      <option value="sent">Sent</option>
-                      <option value="signed">Signed</option>
-                      <option value="expired">Expired</option>
-                      <option value="cancelled">Cancelled</option>
-                    </select>
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                    {{ formatDate(doc.CreatedAt) }}
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button
-                      (click)="downloadDocument(doc)"
-                      class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 mr-3"
-                      title="Download"
-                    >
-                      <svg class="w-5 h-5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
-                      </svg>
-                    </button>
-                    <button
-                      (click)="deleteDocument(doc)"
-                      class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
-                      title="Delete"
-                    >
-                      <svg class="w-5 h-5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                      </svg>
-                    </button>
-                  </td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        </div>
-      }
-
-      <!-- Info Box -->
-      <div class="mt-8 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-        <div class="flex">
-          <svg class="w-5 h-5 text-blue-500 mr-3 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+      </button>
+      <button
+        (click)="activeTab = 'history'"
+        class="flex-1 px-6 py-4 text-sm font-medium transition-colors"
+        [ngClass]="activeTab === 'history' 
+          ? 'border-b-2 border-brand-500 text-brand-600 dark:text-brand-400' 
+          : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'">
+        <div class="flex items-center justify-center gap-2">
+          <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
+          SOW History
+          <span *ngIf="generatedSOWs.length" class="rounded-full bg-gray-100 px-2 py-0.5 text-xs dark:bg-gray-800">
+            {{ generatedSOWs.length }}
+          </span>
+        </div>
+      </button>
+    </div>
+
+    <!-- Generate Tab -->
+    <div *ngIf="activeTab === 'generate'" class="p-6">
+      <div class="grid gap-6 lg:grid-cols-2">
+        <!-- Left Column - Selection -->
+        <div class="space-y-6">
+          <!-- Practice Area Selection -->
           <div>
-            <h4 class="text-sm font-semibold text-blue-800 dark:text-blue-300">How to Generate SOW Documents</h4>
-            <p class="text-sm text-blue-700 dark:text-blue-400 mt-1">
-              Navigate to <strong>Quote Management</strong> and click the <strong>"Generate SOW"</strong> button on any approved quote. 
-              The document will be generated from the Word template and saved here automatically.
+            <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Practice Area *</label>
+            <select
+              [(ngModel)]="selectedArchitectureId"
+              (ngModelChange)="onArchitectureChange()"
+              class="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white">
+              <option value="">Select a practice area...</option>
+              <option *ngFor="let arch of referenceArchitectures" [value]="arch.Id">
+                {{ arch.Name }}
+              </option>
+            </select>
+            <p *ngIf="selectedArchitecture?.Description" class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+              {{ selectedArchitecture?.Description }}
             </p>
           </div>
+
+          <!-- SOW Type Selection -->
+          <div>
+            <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">SOW Type *</label>
+            <select
+              [(ngModel)]="selectedTypeId"
+              (ngModelChange)="onTypeChange()"
+              [disabled]="!selectedArchitectureId"
+              class="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white disabled:bg-gray-100 disabled:text-gray-500 dark:disabled:bg-gray-900 dark:disabled:text-gray-600">
+              <option value="">{{ selectedArchitectureId ? 'Select a SOW type...' : 'Select a practice area first...' }}</option>
+              <option *ngFor="let type of getAvailableSOWTypes()" [value]="type.Id">
+                {{ type.Name }}
+              </option>
+            </select>
+            <p *ngIf="selectedType?.Description" class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+              {{ selectedType?.Description }}
+            </p>
+          </div>
+
+          <!-- Customer Information -->
+          <div class="rounded-lg border border-gray-200 p-4 dark:border-gray-700">
+            <h3 class="mb-4 font-medium text-gray-800 dark:text-white/90">Customer Information</h3>
+            <div class="space-y-4">
+              <div>
+                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Company *</label>
+                <select
+                  [(ngModel)]="selectedCustomerId"
+                  (ngModelChange)="onCustomerChange()"
+                  class="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white">
+                  <option value="">Select a company...</option>
+                  <option *ngFor="let customer of customers" [value]="customer.id || customer.Id">
+                    {{ customer.company || customer.Company || customer.name || customer.Name }}
+                  </option>
+                </select>
+              </div>
+              <div class="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Contact Name</label>
+                  <input
+                    type="text"
+                    [(ngModel)]="customerContact"
+                    placeholder="e.g., John Smith"
+                    class="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white">
+                </div>
+                <div>
+                  <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Contact Email</label>
+                  <input
+                    type="email"
+                    [(ngModel)]="customerEmail"
+                    placeholder="e.g., john&#64;acme.com"
+                    class="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- SOW Title -->
+          <div>
+            <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">SOW Title *</label>
+            <input
+              type="text"
+              [(ngModel)]="sowTitle"
+              placeholder="Auto-generated from selections..."
+              class="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white">
+          </div>
+
+          <!-- Additional Notes -->
+          <div>
+            <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Additional Notes</label>
+            <textarea
+              [(ngModel)]="customNotes"
+              rows="3"
+              placeholder="Any specific requirements or context for this SOW..."
+              class="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white"></textarea>
+          </div>
+        </div>
+
+        <!-- Right Column - Preview -->
+        <div class="space-y-6">
+          <!-- Preview Card -->
+          <div class="rounded-lg border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800/50">
+            <div class="border-b border-gray-200 px-4 py-3 dark:border-gray-700">
+              <h3 class="font-medium text-gray-800 dark:text-white/90">SOW Preview</h3>
+            </div>
+            <div class="p-4 space-y-4">
+              <div *ngIf="selectedType; else noTypeSelected">
+                <div class="mb-4">
+                  <span class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">SOW Type</span>
+                  <p class="mt-1 font-medium text-gray-800 dark:text-white/90">{{ selectedType.Name }}</p>
+                </div>
+
+                <div *ngIf="selectedArchitecture" class="mb-4">
+                  <span class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Practice Area</span>
+                  <p class="mt-1 font-medium text-gray-800 dark:text-white/90">{{ selectedArchitecture.Name }}</p>
+                </div>
+
+                <div *ngIf="customerName" class="mb-4">
+                  <span class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Customer</span>
+                  <p class="mt-1 font-medium text-gray-800 dark:text-white/90">{{ customerName }}</p>
+                </div>
+
+                <div class="mb-4">
+                  <span class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Estimated Pricing</span>
+                  <p class="mt-1">
+                    <span class="text-lg font-semibold text-gray-800 dark:text-white/90">
+                      {{ formatCurrency((selectedType.DefaultHours || 0) * (selectedType.DefaultRate || 175)) }}
+                    </span>
+                    <span class="text-sm text-gray-500 dark:text-gray-400">
+                      ({{ selectedType.DefaultHours }} hrs &#64; {{ formatCurrency(selectedType.DefaultRate) }}/hr)
+                    </span>
+                  </p>
+                </div>
+
+                <!-- AI Content Generation -->
+                <div *ngIf="customerName && selectedArchitecture" class="mb-4 border-t border-gray-200 pt-4 dark:border-gray-700">
+                  <div class="flex items-center justify-between mb-3">
+                    <div class="flex items-center gap-2">
+                      <span class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">AI-Powered Content</span>
+                      <span *ngIf="aiConfigured" class="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                        <span class="h-1.5 w-1.5 rounded-full bg-green-500"></span>
+                        Azure OpenAI{{ aiModel ? ' (' + aiModel + ')' : '' }}
+                      </span>
+                      <span *ngIf="!aiConfigured" class="inline-flex items-center gap-1 rounded-full bg-yellow-100 px-2 py-0.5 text-[10px] font-medium text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400">
+                        <span class="h-1.5 w-1.5 rounded-full bg-yellow-500"></span>
+                        Template Mode
+                      </span>
+                    </div>
+                  </div>
+
+                  <!-- AI Content Section Checkboxes -->
+                  <div class="mb-3 flex flex-wrap items-center gap-4 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 dark:border-gray-700 dark:bg-gray-800/50">
+                    <span class="text-[11px] font-medium text-gray-500 dark:text-gray-400 mr-1">Generate:</span>
+                    <label class="flex items-center gap-1.5 cursor-pointer group">
+                      <input type="checkbox" [(ngModel)]="enableAIOverview" class="h-3.5 w-3.5 rounded border-gray-300 text-purple-600 focus:ring-purple-500 dark:border-gray-600 dark:bg-gray-700">
+                      <span class="text-xs font-medium group-hover:text-purple-600 dark:group-hover:text-purple-400" [class.text-purple-700]="enableAIOverview" [class.text-gray-400]="!enableAIOverview" [class.dark:text-purple-400]="enableAIOverview" [class.dark:text-gray-500]="!enableAIOverview">
+                        Executive Summary
+                      </span>
+                      <span *ngIf="selectedType && selectedType.AIPromptOverview" class="h-1.5 w-1.5 rounded-full bg-purple-400" title="AI prompt configured"></span>
+                    </label>
+                    <label class="flex items-center gap-1.5 cursor-pointer group">
+                      <input type="checkbox" [(ngModel)]="enableAIFindings" class="h-3.5 w-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700">
+                      <span class="text-xs font-medium group-hover:text-blue-600 dark:group-hover:text-blue-400" [class.text-blue-700]="enableAIFindings" [class.text-gray-400]="!enableAIFindings" [class.dark:text-blue-400]="enableAIFindings" [class.dark:text-gray-500]="!enableAIFindings">
+                        Findings
+                      </span>
+                      <span *ngIf="selectedType && selectedType.AIPromptFindings" class="h-1.5 w-1.5 rounded-full bg-blue-400" title="AI prompt configured"></span>
+                    </label>
+                    <label class="flex items-center gap-1.5 cursor-pointer group">
+                      <input type="checkbox" [(ngModel)]="enableAIRecommendations" class="h-3.5 w-3.5 rounded border-gray-300 text-green-600 focus:ring-green-500 dark:border-gray-600 dark:bg-gray-700">
+                      <span class="text-xs font-medium group-hover:text-green-600 dark:group-hover:text-green-400" [class.text-green-700]="enableAIRecommendations" [class.text-gray-400]="!enableAIRecommendations" [class.dark:text-green-400]="enableAIRecommendations" [class.dark:text-gray-500]="!enableAIRecommendations">
+                        Recommendations
+                      </span>
+                      <span *ngIf="selectedType && selectedType.AIPromptRecommendations" class="h-1.5 w-1.5 rounded-full bg-green-400" title="AI prompt configured"></span>
+                    </label>
+                    <label class="flex items-center gap-1.5 cursor-pointer group">
+                      <input type="checkbox" [(ngModel)]="enableAIScope" class="h-3.5 w-3.5 rounded border-gray-300 text-cyan-600 focus:ring-cyan-500 dark:border-gray-600 dark:bg-gray-700">
+                      <span class="text-xs font-medium group-hover:text-cyan-600 dark:group-hover:text-cyan-400" [class.text-cyan-700]="enableAIScope" [class.text-gray-400]="!enableAIScope" [class.dark:text-cyan-400]="enableAIScope" [class.dark:text-gray-500]="!enableAIScope">
+                        Proposed Scope
+                      </span>
+                      <span *ngIf="selectedType && selectedType.AIPromptScope" class="h-1.5 w-1.5 rounded-full bg-cyan-400" title="AI prompt configured"></span>
+                    </label>
+                    <span class="mx-1 h-4 w-px bg-gray-300 dark:bg-gray-600"></span>
+                    <label *ngIf="selectedType && selectedType.ResourceFolder" class="flex items-center gap-1.5 cursor-pointer group">
+                      <input type="checkbox" [(ngModel)]="enableTechnicalResources" class="h-3.5 w-3.5 rounded border-gray-300 text-orange-600 focus:ring-orange-500 dark:border-gray-600 dark:bg-gray-700">
+                      <span class="text-xs font-medium group-hover:text-orange-600 dark:group-hover:text-orange-400" [class.text-orange-700]="enableTechnicalResources" [class.text-gray-400]="!enableTechnicalResources" [class.dark:text-orange-400]="enableTechnicalResources" [class.dark:text-gray-500]="!enableTechnicalResources">
+                        Technical Resources
+                      </span>
+                      <span class="h-1.5 w-1.5 rounded-full bg-orange-400" title="Resource folder configured"></span>
+                    </label>
+                    <span class="mx-1 h-4 w-px bg-gray-300 dark:bg-gray-600"></span>
+                    <label class="flex items-center gap-1.5 cursor-pointer group">
+                      <input type="checkbox" [(ngModel)]="enableProfessionalReview" class="h-3.5 w-3.5 rounded border-gray-300 text-amber-600 focus:ring-amber-500 dark:border-gray-600 dark:bg-gray-700">
+                      <span class="text-xs font-medium group-hover:text-amber-600 dark:group-hover:text-amber-400" [class.text-amber-700]="enableProfessionalReview" [class.text-gray-400]="!enableProfessionalReview" [class.dark:text-amber-400]="enableProfessionalReview" [class.dark:text-gray-500]="!enableProfessionalReview">
+                        Professional Review
+                      </span>
+                      <span *ngIf="enableProfessionalReview" class="h-1.5 w-1.5 rounded-full bg-amber-400" title="Will review document after generation"></span>
+                    </label>
+                  </div>
+
+                  <!-- Buttons -->
+                  <div class="flex items-center gap-2">
+                    <button
+                      (click)="generateAIContent()"
+                      [disabled]="isGeneratingAI || (!enableAIOverview && !enableAIFindings && !enableAIRecommendations && !enableAIScope)"
+                      class="inline-flex items-center gap-1.5 rounded-lg bg-purple-500 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-purple-600 disabled:opacity-50">
+                      <svg *ngIf="!isGeneratingAI" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
+                      <svg *ngIf="isGeneratingAI" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                      </svg>
+                      {{ isGeneratingAI ? (isLoadingResources ? 'Loading Resources...' : 'Generating...') : 'Generate with AI' }}
+                    </button>
+                    <button
+                      (click)="showPromptDebug()"
+                      class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+                      title="View the prompt that will be sent to Azure OpenAI">
+                      <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                      </svg>
+                      Debug Prompt
+                    </button>
+                  </div>
+
+                  <!-- Technical Resources Info -->
+                  <div *ngIf="enableTechnicalResources && selectedType?.ResourceFolder" class="mt-2 rounded-lg border border-orange-200 bg-orange-50 px-3 py-2 dark:border-orange-800 dark:bg-orange-900/20">
+                    <div class="flex items-center gap-2">
+                      <svg class="h-4 w-4 text-orange-600 dark:text-orange-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                      </svg>
+                      <span class="text-xs font-medium text-orange-700 dark:text-orange-300">
+                        Technical Resources: <span class="font-mono">{{ selectedType?.ResourceFolder }}</span>
+                      </span>
+                      <span *ngIf="resourcesLoaded" class="inline-flex items-center gap-1 rounded-full bg-orange-100 px-1.5 py-0.5 text-[10px] font-medium text-orange-700 dark:bg-orange-900/40 dark:text-orange-300">
+                        {{ technicalResourcesFiles.length }} file{{ technicalResourcesFiles.length !== 1 ? 's' : '' }} loaded
+                      </span>
+                      <span *ngIf="!resourcesLoaded" class="text-[10px] text-orange-500 dark:text-orange-400">Will load on generate</span>
+                    </div>
+                    <div *ngIf="resourcesLoaded && technicalResourcesFiles.length > 0" class="mt-1.5 flex flex-wrap gap-1">
+                      <span *ngFor="let file of technicalResourcesFiles" class="inline-flex items-center rounded bg-orange-100 px-1.5 py-0.5 text-[10px] text-orange-800 dark:bg-orange-900/30 dark:text-orange-200" [title]="file">
+                        {{ file.length > 30 ? '...' + file.slice(-27) : file }}
+                      </span>
+                    </div>
+                  </div>
+
+                  <!-- Debug Prompt Modal -->
+                  <div *ngIf="showDebugPrompt" class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-4" (click)="showDebugPrompt = false">
+                    <div class="max-h-[85vh] w-full max-w-4xl overflow-y-auto rounded-xl bg-white shadow-2xl dark:bg-gray-800" (click)="$event.stopPropagation()">
+                      <div class="sticky top-0 z-10 flex items-center justify-between border-b border-gray-200 bg-white px-6 py-4 dark:border-gray-700 dark:bg-gray-800">
+                        <div>
+                          <h3 class="text-lg font-semibold text-gray-900 dark:text-white">AI Prompt Debug</h3>
+                          <p class="text-xs text-gray-500">Model: <span class="font-mono font-semibold">{{ debugModel }}</span> | Configured: <span [class]="debugConfigured ? 'text-green-600' : 'text-red-600'">{{ debugConfigured }}</span></p>
+                        </div>
+                        <button (click)="showDebugPrompt = false" class="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-700">
+                          <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                      </div>
+                      <div class="space-y-4 p-6">
+                        <div>
+                          <h4 class="mb-2 text-sm font-semibold text-blue-700 dark:text-blue-400">System Prompt</h4>
+                          <pre class="max-h-48 overflow-y-auto rounded-lg bg-blue-50 p-3 text-xs leading-relaxed text-blue-900 dark:bg-blue-900/20 dark:text-blue-200">{{ debugSystemPrompt }}</pre>
+                        </div>
+                        <div>
+                          <h4 class="mb-2 text-sm font-semibold text-purple-700 dark:text-purple-400">User Prompt (sent to Azure OpenAI)</h4>
+                          <pre class="max-h-[40vh] overflow-y-auto rounded-lg bg-purple-50 p-3 text-xs leading-relaxed text-purple-900 dark:bg-purple-900/20 dark:text-purple-200">{{ debugUserPrompt }}</pre>
+                        </div>
+                      </div>
+                      <div class="border-t border-gray-200 px-6 py-3 text-right dark:border-gray-700">
+                        <button (click)="showDebugPrompt = false" class="rounded-lg bg-gray-600 px-4 py-2 text-sm text-white hover:bg-gray-700">Close</button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Professional Review Results Modal -->
+                  <div *ngIf="showReviewResults" class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-4" (click)="dismissReview()">
+                    <div class="max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-xl bg-white shadow-2xl dark:bg-gray-800" (click)="$event.stopPropagation()">
+                      <div class="sticky top-0 z-10 flex items-center justify-between border-b border-gray-200 bg-white px-6 py-4 dark:border-gray-700 dark:bg-gray-800">
+                        <div>
+                          <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Professional Review</h3>
+                          <p class="text-xs text-gray-500 dark:text-gray-400">AI-powered document quality assessment</p>
+                        </div>
+                        <button (click)="dismissReview()" class="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-700">
+                          <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                      </div>
+                      <div class="p-6">
+                        <!-- Loading state -->
+                        <div *ngIf="isReviewing" class="flex flex-col items-center justify-center py-12">
+                          <svg class="h-10 w-10 animate-spin text-amber-500 mb-4" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                          </svg>
+                          <p class="text-sm font-medium text-gray-600 dark:text-gray-300">Reviewing SOW for professionalism and completeness...</p>
+                          <p class="mt-1 text-xs text-gray-400">This may take a moment</p>
+                        </div>
+
+                        <!-- Results -->
+                        <div *ngIf="!isReviewing">
+                          <!-- Rating Display -->
+                          <div class="mb-6 text-center">
+                            <div class="inline-flex items-center justify-center rounded-full border-4 h-24 w-24 mb-3"
+                              [ngClass]="{
+                                'border-red-300 bg-red-50 dark:border-red-700 dark:bg-red-900/20': reviewRating <= 3,
+                                'border-yellow-300 bg-yellow-50 dark:border-yellow-700 dark:bg-yellow-900/20': reviewRating > 3 && reviewRating <= 5,
+                                'border-blue-300 bg-blue-50 dark:border-blue-700 dark:bg-blue-900/20': reviewRating > 5 && reviewRating <= 7,
+                                'border-green-300 bg-green-50 dark:border-green-700 dark:bg-green-900/20': reviewRating > 7
+                              }">
+                              <span class="text-3xl font-bold"
+                                [ngClass]="{
+                                  'text-red-600 dark:text-red-400': reviewRating <= 3,
+                                  'text-yellow-600 dark:text-yellow-400': reviewRating > 3 && reviewRating <= 5,
+                                  'text-blue-600 dark:text-blue-400': reviewRating > 5 && reviewRating <= 7,
+                                  'text-green-600 dark:text-green-400': reviewRating > 7
+                                }">{{ reviewRating }}</span>
+                            </div>
+                            <p class="text-xs font-medium uppercase tracking-wider"
+                              [ngClass]="{
+                                'text-red-600 dark:text-red-400': reviewRating <= 3,
+                                'text-yellow-600 dark:text-yellow-400': reviewRating > 3 && reviewRating <= 5,
+                                'text-blue-600 dark:text-blue-400': reviewRating > 5 && reviewRating <= 7,
+                                'text-green-600 dark:text-green-400': reviewRating > 7
+                              }">
+                              {{ reviewRating <= 3 ? 'Needs Significant Work' : reviewRating <= 5 ? 'Below Average' : reviewRating <= 7 ? 'Acceptable' : reviewRating <= 9 ? 'Professional' : 'Excellent' }}
+                            </p>
+                            <!-- Rating bar -->
+                            <div class="mt-3 mx-auto max-w-xs">
+                              <div class="h-2 w-full rounded-full bg-gray-200 dark:bg-gray-700">
+                                <div class="h-2 rounded-full transition-all duration-500"
+                                  [style.width.%]="reviewRating * 10"
+                                  [ngClass]="{
+                                    'bg-red-500': reviewRating <= 3,
+                                    'bg-yellow-500': reviewRating > 3 && reviewRating <= 5,
+                                    'bg-blue-500': reviewRating > 5 && reviewRating <= 7,
+                                    'bg-green-500': reviewRating > 7
+                                  }"></div>
+                              </div>
+                              <div class="flex justify-between mt-1">
+                                <span class="text-[10px] text-gray-400">1</span>
+                                <span class="text-[10px] text-gray-400">10</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <!-- Summary -->
+                          <div class="mb-4 rounded-lg bg-amber-50 border border-amber-200 p-3 dark:bg-amber-900/20 dark:border-amber-800">
+                            <p class="text-sm text-amber-800 dark:text-amber-200">{{ reviewSummary }}</p>
+                          </div>
+
+                          <!-- Suggestions -->
+                          <div *ngIf="reviewSuggestions.length > 0">
+                            <h4 class="mb-3 text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                              <svg class="h-4 w-4 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                              </svg>
+                              Improvement Suggestions ({{ reviewSuggestions.length }})
+                            </h4>
+                            <ul class="space-y-2">
+                              <li *ngFor="let suggestion of reviewSuggestions; let i = index" class="flex items-start gap-3 rounded-lg bg-gray-50 p-3 dark:bg-gray-700/50">
+                                <span class="flex-shrink-0 flex items-center justify-center h-5 w-5 rounded-full bg-amber-100 text-amber-700 text-[10px] font-bold dark:bg-amber-900/40 dark:text-amber-300">{{ i + 1 }}</span>
+                                <p class="text-sm text-gray-700 dark:text-gray-300">{{ suggestion }}</p>
+                              </li>
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
+                      <div *ngIf="!isReviewing" class="border-t border-gray-200 px-6 py-3 text-right dark:border-gray-700">
+                        <button (click)="dismissReview()" class="rounded-lg bg-amber-600 px-4 py-2 text-sm text-white hover:bg-amber-700">Done</button>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <!-- AI Generated Content Preview -->
+                  <div *ngIf="showAIPreview && (aiGeneratedOverview || aiGeneratedFindings || aiGeneratedRecommendations || aiGeneratedScope)" class="mt-3 space-y-3">
+                    
+                    <!-- AI Executive Summary -->
+                    <div *ngIf="aiGeneratedOverview" class="rounded-lg border border-purple-200 bg-purple-50 p-3 dark:border-purple-800 dark:bg-purple-900/20">
+                      <div class="flex items-center gap-2 mb-2">
+                        <svg class="h-4 w-4 text-purple-600 dark:text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                        </svg>
+                        <span class="text-xs font-medium text-purple-700 dark:text-purple-300">AI Executive Summary</span>
+                      </div>
+                      <p class="text-sm text-purple-800 dark:text-purple-200 whitespace-pre-line">{{ aiGeneratedOverview }}</p>
+                    </div>
+
+                    <!-- AI Findings -->
+                    <div *ngIf="aiGeneratedFindings" class="rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-900/20">
+                      <div class="flex items-center gap-2 mb-2">
+                        <svg class="h-4 w-4 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                        </svg>
+                        <span class="text-xs font-medium text-blue-700 dark:text-blue-300">AI Findings</span>
+                      </div>
+                      <p class="text-sm text-blue-800 dark:text-blue-200 whitespace-pre-line">{{ aiGeneratedFindings }}</p>
+                    </div>
+
+                    <!-- AI Recommendations -->
+                    <div *ngIf="aiGeneratedRecommendations" class="rounded-lg border border-green-200 bg-green-50 p-3 dark:border-green-800 dark:bg-green-900/20">
+                      <div class="flex items-center gap-2 mb-2">
+                        <svg class="h-4 w-4 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span class="text-xs font-medium text-green-700 dark:text-green-300">AI Recommendations</span>
+                      </div>
+                      <p class="text-sm text-green-800 dark:text-green-200 whitespace-pre-line">{{ aiGeneratedRecommendations }}</p>
+                    </div>
+
+                    <!-- AI Proposed Scope -->
+                    <div *ngIf="aiGeneratedScope" class="rounded-lg border border-cyan-200 bg-cyan-50 p-3 dark:border-cyan-800 dark:bg-cyan-900/20">
+                      <div class="flex items-center gap-2 mb-2">
+                        <svg class="h-4 w-4 text-cyan-600 dark:text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                        </svg>
+                        <span class="text-xs font-medium text-cyan-700 dark:text-cyan-300">AI Proposed SOW Scope</span>
+                      </div>
+                      <p class="text-sm text-cyan-800 dark:text-cyan-200 whitespace-pre-line">{{ aiGeneratedScope }}</p>
+                    </div>
+
+                    <button
+                      (click)="useAIContent()"
+                      class="w-full rounded-lg bg-purple-600 py-2 text-xs font-medium text-white transition-colors hover:bg-purple-700">
+                      Use AI Content
+                    </button>
+                  </div>
+                </div>
+
+                <div *ngIf="!showAIPreview && selectedType.OverviewTemplate && customerName && selectedArchitecture" class="mt-4">
+                  <span class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Executive Summary Preview</span>
+                  <p class="mt-2 text-sm text-gray-600 dark:text-gray-300 whitespace-pre-line">
+                    {{ aiGeneratedOverview || processTemplate(selectedType.OverviewTemplate) }}
+                  </p>
+                </div>
+              </div>
+
+              <ng-template #noTypeSelected>
+                <div class="py-8 text-center">
+                  <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Select a SOW type to see preview</p>
+                </div>
+              </ng-template>
+            </div>
+          </div>
+
+          <!-- Generate Button -->
+          <button
+            (click)="generateSOW()"
+            [disabled]="!canGenerate() || isGenerating"
+            class="w-full rounded-lg bg-brand-500 py-3 text-sm font-medium text-white transition-colors hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-50">
+            <span *ngIf="!isGenerating" class="flex items-center justify-center gap-2">
+              <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              Generate SOW
+            </span>
+            <span *ngIf="isGenerating" class="flex items-center justify-center gap-2">
+              <svg class="h-5 w-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Generating...
+            </span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- History Tab -->
+    <div *ngIf="activeTab === 'history'">
+      <!-- Filters -->
+      <div class="flex flex-col gap-4 border-b border-gray-200 p-5 dark:border-gray-800 sm:flex-row sm:items-center">
+        <div class="relative flex-1">
+          <input
+            type="text"
+            [(ngModel)]="searchTerm"
+            (ngModelChange)="onSearchChange()"
+            placeholder="Search SOWs..."
+            class="w-full rounded-lg border border-gray-300 bg-white py-2 pl-10 pr-4 text-sm text-gray-700 placeholder-gray-400 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
+          <svg class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+        </div>
+        <div class="flex gap-2 flex-wrap">
+          <button
+            *ngFor="let status of ['all', 'draft', 'generated', 'sent', 'completed', 'archived']"
+            (click)="setStatusFilter(status)"
+            class="rounded-lg px-3 py-1.5 text-sm font-medium transition-colors"
+            [ngClass]="statusFilter === status 
+              ? 'bg-brand-500 text-white' 
+              : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800'">
+            {{ status === 'all' ? 'All' : (status | titlecase) }}
+          </button>
+        </div>
+      </div>
+
+      <!-- Loading -->
+      <div *ngIf="isLoading" class="flex items-center justify-center py-12">
+        <svg class="h-8 w-8 animate-spin text-brand-500" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+      </div>
+
+      <!-- SOW List -->
+      <div *ngIf="!isLoading" class="divide-y divide-gray-200 dark:divide-gray-800">
+        <div
+          *ngFor="let sow of filteredSOWs"
+          class="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-3 mb-1">
+              <h4 class="font-medium text-gray-800 dark:text-white/90 truncate">{{ sow.Title }}</h4>
+              <span 
+                class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
+                [ngClass]="getStatusBadgeClass(sow.Status)">
+                {{ sow.Status | titlecase }}
+              </span>
+            </div>
+            <div class="flex flex-wrap items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
+              <span title="Customer">{{ sow.CustomerName }}</span>
+              <span>{{ sow.SOWTypeName }}</span>
+              <span>{{ sow.ReferenceArchitectureName }}</span>
+              <span>{{ formatDate(sow.CreatedAt) }}</span>
+              <span *ngIf="sow.GeneratedBy" class="inline-flex items-center gap-1">
+                <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+                {{ sow.GeneratedBy }}
+              </span>
+            </div>
+            <div *ngIf="sow.TotalPrice" class="mt-1 text-sm font-medium text-gray-700 dark:text-gray-300">
+              {{ formatCurrency(sow.TotalPrice) }}
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <select
+              [(ngModel)]="sow.Status"
+              (ngModelChange)="updateStatus(sow, $event)"
+              class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white">
+              <option value="draft">Draft</option>
+              <option value="generated">Generated</option>
+              <option value="sent">Sent</option>
+              <option value="completed">Completed</option>
+              <option value="archived">Archived</option>
+            </select>
+            <button
+              *ngIf="sow.FileName"
+              (click)="downloadSOW(sow)"
+              class="rounded-lg border border-gray-300 p-2 text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+              title="Download">
+              <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+            </button>
+            <button
+              (click)="deleteSOW(sow)"
+              class="rounded-lg p-2 text-red-500 transition-colors hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-900/20"
+              title="Delete">
+              <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Empty State -->
+        <div *ngIf="filteredSOWs.length === 0 && !isLoading" class="py-12 text-center">
+          <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white/90">No SOWs found</h3>
+          <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            {{ statusFilter !== 'all' ? 'Try changing the filter or ' : '' }}Generate your first SOW to get started.
+          </p>
+          <button
+            (click)="activeTab = 'generate'"
+            class="mt-4 inline-flex items-center gap-2 rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-600">
+            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            Generate SOW
+          </button>
         </div>
       </div>
     </div>

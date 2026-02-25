@@ -31,7 +31,8 @@ export enum RoleType {
   SUPER_ADMIN = 'super-admin',    // Full access to everything
   MODULE_ADMIN = 'module-admin',   // Admin for specific modules
   USER = 'user',                   // Regular user access
-  READONLY = 'readonly'            // Read-only access
+  READONLY = 'readonly',           // Read-only access
+  PENDING = 'pending'              // No permissions - awaiting Super Admin approval
 }
 
 /**
@@ -105,6 +106,9 @@ export class RBACService {
           permissions: [Permission.VIEW]
         });
       });
+    } else if (user.role === 'pending') {
+      roleType = RoleType.PENDING;
+      // Pending users have no permissions - awaiting Super Admin approval
     } else {
       // Regular users get view, create, and edit
       Object.values(AppModule).forEach(module => {
@@ -240,6 +244,8 @@ export class RBACService {
         return 'Manager';
       case RoleType.READONLY:
         return 'Read Only';
+      case RoleType.PENDING:
+        return 'Pending Approval';
       default:
         return 'User';
     }

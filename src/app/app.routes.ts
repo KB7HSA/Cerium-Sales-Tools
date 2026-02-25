@@ -1,4 +1,6 @@
 import { Routes } from '@angular/router';
+import { msAuthGuard } from './shared/guards/ms-auth.guard';
+import { superAdminGuard } from './shared/guards/permission.guard';
 import { EcommerceComponent } from './pages/dashboard/ecommerce/ecommerce.component';
 import { AnalyticsComponent } from './pages/dashboard/analytics/analytics.component';
 import { DomainAnalyticsComponent } from './pages/dashboard/analytics/domain-analytics.component';
@@ -95,17 +97,28 @@ import { SowGeneratorComponent } from './pages/sow-generator/sow-generator.compo
 import { CustomerManagementComponent } from './pages/admin/customer-management.component';
 import { AssessmentGeneratorComponent } from './pages/assessments/assessment-generator.component';
 import { AssessmentTypesComponent } from './pages/admin/assessment-types.component';
+import { SOWTypesComponent } from './pages/admin/sow-types.component';
 import { ERateComponent } from './pages/e-rate/e-rate.component';
 import { ERateDashboardComponent } from './pages/e-rate/e-rate-dashboard.component';
 import { FRNStatusComponent } from './pages/e-rate/frn-status.component';
 import { FRNDashboardComponent } from './pages/e-rate/frn-dashboard.component';
 import { ERateSettingsComponent } from './pages/admin/erate-settings.component';
 import { MenuAdminComponent } from './pages/admin/menu-admin.component';
+import { HardwareRenewalsComponent } from './pages/cisco-renewals/hardware-renewals.component';
+import { SoftwareRenewalsComponent } from './pages/cisco-renewals/software-renewals.component';
+import { RenewalStatusAdminComponent } from './pages/admin/renewal-status-admin.component';
+import { AuthCallbackComponent } from './pages/auth-pages/auth-callback/auth-callback.component';
 
 export const routes: Routes = [
   {
+    path: 'auth-callback',
+    component: AuthCallbackComponent,
+    title: 'Signing In... | Cerium Sales Tools'
+  },
+  {
     path:'',
     component:AppLayoutComponent,
+    canActivate: [msAuthGuard],
     children:[
       {
         path: '',
@@ -330,67 +343,103 @@ export const routes: Routes = [
       {
         path:'admin/users',
         component:UserManagementComponent,
+        canActivate: [superAdminGuard],
         title:'User Management | Cerium Sales Tools'
       },
       {
         path:'admin/customers',
         component:CustomerManagementComponent,
+        canActivate: [superAdminGuard],
         title:'Customer Management | Cerium Sales Tools'
       },
       {
         path:'admin/create-user',
         component:UserFormComponent,
+        canActivate: [superAdminGuard],
         title:'Create User | Cerium Sales Tools'
       },
       {
         path:'admin/edit-user/:id',
         component:UserFormComponent,
+        canActivate: [superAdminGuard],
         title:'Edit User | Cerium Sales Tools'
       },
       {
         path:'admin/offerings',
         component:MSPOfferingsComponent,
+        canActivate: [superAdminGuard],
         title:'MSP Offerings | Cerium Sales Tools'
       },
       {
         path:'admin/create-offering',
         component:MSPOfferingFormComponent,
+        canActivate: [superAdminGuard],
         title:'Create Offering | Cerium Sales Tools'
       },
       {
         path:'admin/edit-offering/:id',
         component:MSPOfferingFormComponent,
+        canActivate: [superAdminGuard],
         title:'Edit Offering | Cerium Sales Tools'
       },
       {
         path:'admin/labor-budget',
         component:LaborBudgetAdminComponent,
+        canActivate: [superAdminGuard],
         title:'Labor Budget Admin | Cerium Sales Tools'
       },
       {
         path:'admin/settings',
         component:AdminSettingsComponent,
+        canActivate: [superAdminGuard],
         title:'Admin Settings | Cerium Sales Tools'
       },
       {
         path:'admin/export-schemas',
         component:ExportSchemaAdminComponent,
+        canActivate: [superAdminGuard],
         title:'Export Schema Configuration | Cerium Sales Tools'
       },
       {
         path:'admin/assessment-types',
         component:AssessmentTypesComponent,
+        canActivate: [superAdminGuard],
         title:'Assessment Types | Cerium Sales Tools'
+      },
+      {
+        path:'admin/sow-types',
+        component:SOWTypesComponent,
+        canActivate: [superAdminGuard],
+        title:'SOW Types | Cerium Sales Tools'
       },
       {
         path:'admin/erate-settings',
         component:ERateSettingsComponent,
+        canActivate: [superAdminGuard],
         title:'E-Rate Settings | Cerium Sales Tools'
       },
       {
         path:'admin/menu-admin',
         component:MenuAdminComponent,
+        canActivate: [superAdminGuard],
         title:'Menu Admin | Cerium Sales Tools'
+      },
+      // Cisco Renewals
+      {
+        path:'cisco-renewals/hardware',
+        component:HardwareRenewalsComponent,
+        title:'Hardware Renewals | Cerium Sales Tools'
+      },
+      {
+        path:'cisco-renewals/software',
+        component:SoftwareRenewalsComponent,
+        title:'Software Renewals | Cerium Sales Tools'
+      },
+      {
+        path:'admin/renewal-statuses',
+        component:RenewalStatusAdminComponent,
+        canActivate: [superAdminGuard],
+        title:'Renewal Statuses | Cerium Sales Tools'
       },
       {
         path:'blank',
@@ -558,6 +607,7 @@ export const routes: Routes = [
   {
     path:'',
     component:AlternativeLayoutComponent,
+    canActivate: [msAuthGuard],
     children:[
        // ai pages
       {

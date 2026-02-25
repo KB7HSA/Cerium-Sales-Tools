@@ -55,6 +55,19 @@ export const AVAILABLE_QUOTE_FIELDS = [
   { field: 'CreatedTime', label: 'Created Time', formatType: 'text' },
   { field: 'CreatedAt', label: 'Created At', formatType: 'datetime' },
   { field: 'UpdatedAt', label: 'Updated At', formatType: 'datetime' },
+  // Work item fields (labor quotes export one row per work item)
+  { field: 'workItem.name', label: 'Work Item Name', formatType: 'text' },
+  { field: 'workItem.referenceArchitecture', label: 'Reference Architecture', formatType: 'text' },
+  { field: 'workItem.section', label: 'Section', formatType: 'text' },
+  { field: 'workItem.unitOfMeasure', label: 'Unit of Measure', formatType: 'text' },
+  { field: 'workItem.solutionName', label: 'Solution Name', formatType: 'text' },
+  { field: 'workItem.groupName', label: 'Group Name', formatType: 'text' },
+  { field: 'workItem.closetCount', label: 'Closet Count', formatType: 'number' },
+  { field: 'workItem.switchCount', label: 'Quantity', formatType: 'number' },
+  { field: 'workItem.hoursPerSwitch', label: 'Hours Per Unit', formatType: 'number' },
+  { field: 'workItem.ratePerHour', label: 'Rate Per Hour', formatType: 'currency' },
+  { field: 'workItem.lineHours', label: 'Line Hours', formatType: 'number' },
+  { field: 'workItem.lineTotal', label: 'Line Total', formatType: 'currency' },
 ];
 
 export class ExportSchemaService {

@@ -71,6 +71,7 @@ export class AzureOpenAIService {
       }
 
       console.log(`🤖 Azure OpenAI request to ${azureOpenAIConfig.deploymentName} (reasoning=${isReasoningModel})`);
+      console.log(`🌡️ Temperature: ${requestBody.temperature !== undefined ? requestBody.temperature : 'not set (reasoning model)'}`);
       console.log(`📝 System prompt length: ${systemPrompt.length} chars`);
       console.log(`📝 User prompt length: ${userPrompt.length} chars`);
 
@@ -123,7 +124,7 @@ export class AzureOpenAIService {
     referenceArchitecture: string,
     customPrompt?: string,
     additionalNotes?: string,
-    extraContext?: { customerEmail?: string; assessmentTypeDescription?: string; assessmentTypeCategory?: string; scopeContext?: string; methodologyContext?: string; technicalResources?: string }
+    extraContext?: { customerEmail?: string; assessmentTypeDescription?: string; assessmentTypeCategory?: string; scopeContext?: string; methodologyContext?: string; technicalResources?: string; temperature?: number }
   ): Promise<AIGenerationResponse> {
     return this.generateContent({
       prompt: customPrompt || '',
@@ -138,6 +139,7 @@ export class AzureOpenAIService {
       scopeContext: extraContext?.scopeContext,
       methodologyContext: extraContext?.methodologyContext,
       technicalResources: extraContext?.technicalResources,
+      temperature: extraContext?.temperature,
       systemPrompt: `You are an expert IT consultant at Cerium Networks, a managed services provider. 
 You write professional, detailed executive summaries for assessment documents for enterprise clients.
 Your writing style is clear, authoritative, and actionable.
@@ -158,7 +160,7 @@ Do NOT include any markdown headers (# or ##) — the document template handles 
     referenceArchitecture: string,
     customPrompt?: string,
     additionalNotes?: string,
-    extraContext?: { customerEmail?: string; assessmentTypeDescription?: string; assessmentTypeCategory?: string; scopeContext?: string; methodologyContext?: string; technicalResources?: string }
+    extraContext?: { customerEmail?: string; assessmentTypeDescription?: string; assessmentTypeCategory?: string; scopeContext?: string; methodologyContext?: string; technicalResources?: string; temperature?: number }
   ): Promise<AIGenerationResponse> {
     return this.generateContent({
       prompt: customPrompt || '',
@@ -173,6 +175,7 @@ Do NOT include any markdown headers (# or ##) — the document template handles 
       scopeContext: extraContext?.scopeContext,
       methodologyContext: extraContext?.methodologyContext,
       technicalResources: extraContext?.technicalResources,
+      temperature: extraContext?.temperature,
       systemPrompt: `You are an expert IT consultant at Cerium Networks.
 Generate detailed assessment findings based on ALL the context provided.
 Categorize findings by risk level (Critical, High, Medium, Low).
@@ -193,7 +196,7 @@ Do NOT include any markdown headers (# or ##) — the document template handles 
     referenceArchitecture: string,
     customPrompt?: string,
     additionalNotes?: string,
-    extraContext?: { customerEmail?: string; assessmentTypeDescription?: string; assessmentTypeCategory?: string; scopeContext?: string; methodologyContext?: string; technicalResources?: string }
+    extraContext?: { customerEmail?: string; assessmentTypeDescription?: string; assessmentTypeCategory?: string; scopeContext?: string; methodologyContext?: string; technicalResources?: string; temperature?: number }
   ): Promise<AIGenerationResponse> {
     return this.generateContent({
       prompt: customPrompt || '',
@@ -208,6 +211,7 @@ Do NOT include any markdown headers (# or ##) — the document template handles 
       scopeContext: extraContext?.scopeContext,
       methodologyContext: extraContext?.methodologyContext,
       technicalResources: extraContext?.technicalResources,
+      temperature: extraContext?.temperature,
       systemPrompt: `You are an expert IT consultant at Cerium Networks.
 Generate prioritized recommendations based on ALL the context provided.
 Organize into Quick Wins (0-30 days), Short-term (1-3 months), and Long-term (3-12 months).
@@ -228,7 +232,7 @@ Do NOT include any markdown headers (# or ##) — the document template handles 
     referenceArchitecture: string,
     customPrompt?: string,
     additionalNotes?: string,
-    extraContext?: { customerEmail?: string; assessmentTypeDescription?: string; assessmentTypeCategory?: string; scopeContext?: string; methodologyContext?: string; technicalResources?: string }
+    extraContext?: { customerEmail?: string; assessmentTypeDescription?: string; assessmentTypeCategory?: string; scopeContext?: string; methodologyContext?: string; technicalResources?: string; temperature?: number }
   ): Promise<AIGenerationResponse> {
     return this.generateContent({
       prompt: customPrompt || '',
@@ -243,6 +247,7 @@ Do NOT include any markdown headers (# or ##) — the document template handles 
       scopeContext: extraContext?.scopeContext,
       methodologyContext: extraContext?.methodologyContext,
       technicalResources: extraContext?.technicalResources,
+      temperature: extraContext?.temperature,
       systemPrompt: `You are an expert IT consultant at Cerium Networks, a managed services provider.
 Generate a detailed Proposed Assessment Scope section for an assessment document.
 The scope should clearly define:

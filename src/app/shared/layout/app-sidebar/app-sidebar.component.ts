@@ -41,8 +41,8 @@ export class AppSidebarComponent {
         { name: "Marketing", path: "/marketing", menuKey: "dashboard-marketing" },
         { name: "CRM", path: "/crm", menuKey: "dashboard-crm" },
         { name: "Stocks", path: "/stocks", menuKey: "dashboard-stocks" },
-        { name: "SaaS", path: "/saas", new: true, menuKey: "dashboard-saas" },
-        { name: "Logistics", path: "/logistics", new: true, menuKey: "dashboard-logistics" },
+        { name: "SaaS", path: "/saas", menuKey: "dashboard-saas" },
+        { name: "Logistics", path: "/logistics", menuKey: "dashboard-logistics" },
       ],
     },
     {
@@ -76,17 +76,24 @@ export class AppSidebarComponent {
       path: "/sow-generator",
     },
     {
+      name: "Cisco Renewals",
+      menuKey: "cisco-renewals",
+      icon: `<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M4 4a2 2 0 012-2h12a2 2 0 012 2v16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2-.5h12a.5.5 0 01.5.5v16a.5.5 0 01-.5.5H6a.5.5 0 01-.5-.5V4a.5.5 0 01.5-.5z" fill="currentColor"/><path d="M8 7h8v1.5H8V7zm0 3h8v1.5H8V10zm0 3h5v1.5H8V13z" fill="currentColor"/><circle cx="16" cy="16" r="3" fill="currentColor" opacity=".5"/><path d="M15.2 16l.5-.5.8.8 1.7-1.7.5.5-2.2 2.2-.5-.5-.8-.8z" fill="white"/></svg>`,
+      subItems: [
+        { name: "Hardware Renewals", path: "/cisco-renewals/hardware", pro: false, menuKey: "cisco-renewals-hardware" },
+        { name: "Software Renewals", path: "/cisco-renewals/software", pro: false, menuKey: "cisco-renewals-software" },
+      ],
+    },
+    {
       name: "Assessments",
       menuKey: "assessments",
       icon: `<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M3.75 6.5C3.75 5.25736 4.75736 4.25 6 4.25H18C19.2426 4.25 20.25 5.25736 20.25 6.5V17.5C20.25 18.7426 19.2426 19.75 18 19.75H6C4.75736 19.75 3.75 18.7426 3.75 17.5V6.5ZM6 5.75C5.58579 5.75 5.25 6.08579 5.25 6.5V17.5C5.25 17.9142 5.58579 18.25 6 18.25H18C18.4142 18.25 18.75 17.9142 18.75 17.5V6.5C18.75 6.08579 18.4142 5.75 18 5.75H6Z" fill="currentColor"></path><path d="M7.5 8C7.5 7.58579 7.83579 7.25 8.25 7.25H15.75C16.1642 7.25 16.5 7.58579 16.5 8C16.5 8.41421 16.1642 8.75 15.75 8.75H8.25C7.83579 8.75 7.5 8.41421 7.5 8Z" fill="currentColor"></path><path d="M7.5 11C7.5 10.5858 7.83579 10.25 8.25 10.25H15.75C16.1642 10.25 16.5 10.5858 16.5 11C16.5 11.4142 16.1642 11.75 15.75 11.75H8.25C7.83579 11.75 7.5 11.4142 7.5 11Z" fill="currentColor"></path><path d="M7.5 14C7.5 13.5858 7.83579 13.25 8.25 13.25H12.75C13.1642 13.25 13.5 13.5858 13.5 14C13.5 14.4142 13.1642 14.75 12.75 14.75H8.25C7.83579 14.75 7.5 14.4142 7.5 14Z" fill="currentColor"></path></svg>`,
       path: "/assessment-generator",
-      new: true,
     },
     {
       name: "E-Rate",
       menuKey: "e-rate",
       icon: `<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2ZM12 3.5C7.30558 3.5 3.5 7.30558 3.5 12C3.5 16.6944 7.30558 20.5 12 20.5C16.6944 20.5 20.5 16.6944 20.5 12C20.5 7.30558 16.6944 3.5 12 3.5Z" fill="currentColor"></path><path d="M9 8.25C8.58579 8.25 8.25 8.58579 8.25 9V15C8.25 15.4142 8.58579 15.75 9 15.75H15C15.4142 15.75 15.75 15.4142 15.75 15C15.75 14.5858 15.4142 14.25 15 14.25H10.5V12.75H14C14.4142 12.75 14.75 12.4142 14.75 12C14.75 11.5858 14.4142 11.25 14 11.25H10.5V9.75H15C15.4142 9.75 15.75 9.41421 15.75 9C15.75 8.58579 15.4142 8.25 15 8.25H9Z" fill="currentColor"></path></svg>`,
-      new: true,
       subItems: [
         { name: "Dashboard", path: "/e-rate/dashboard", pro: false, menuKey: "e-rate-dashboard" },
         { name: "Opportunities", path: "/e-rate", pro: false, menuKey: "e-rate-opportunities" },
@@ -104,11 +111,13 @@ export class AppSidebarComponent {
         { name: "Create User", path: "/admin/create-user", pro: false, menuKey: "admin-create-user" },
         { name: "MSP Offerings", path: "/admin/offerings", pro: false, menuKey: "admin-msp-offerings" },
         { name: "Assessment Types", path: "/admin/assessment-types", pro: false, menuKey: "admin-assessment-types" },
+        { name: "SOW Types", path: "/admin/sow-types", pro: false, menuKey: "admin-sow-types" },
         { name: "Labor Budget Admin", path: "/admin/labor-budget", pro: false, menuKey: "admin-labor-budget" },
         { name: "Export Schemas", path: "/admin/export-schemas", pro: false, menuKey: "admin-export-schemas" },
         { name: "E-Rate Settings", path: "/admin/erate-settings", pro: false, menuKey: "admin-erate-settings" },
         { name: "Settings", path: "/admin/settings", pro: false, menuKey: "admin-settings" },
         { name: "Menu Admin", path: "/admin/menu-admin", pro: false, menuKey: "admin-menu-admin" },
+        { name: "Renewal Statuses", path: "/admin/renewal-statuses", pro: false, menuKey: "admin-renewal-statuses" },
       ],
     },
     {
@@ -196,7 +205,6 @@ export class AppSidebarComponent {
       icon: `<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 17.0518V12C20 7.58174 16.4183 4 12 4C7.58168 4 3.99994 7.58174 3.99994 12V17.0518M19.9998 14.041V19.75C19.9998 20.5784 19.3282 21.25 18.4998 21.25H13.9998M6.5 18.75H5.5C4.67157 18.75 4 18.0784 4 17.25V13.75C4 12.9216 4.67157 12.25 5.5 12.25H6.5C7.32843 12.25 8 12.9216 8 13.75V17.25C8 18.0784 7.32843 18.75 6.5 18.75ZM17.4999 18.75H18.4999C19.3284 18.75 19.9999 18.0784 19.9999 17.25V13.75C19.9999 12.9216 19.3284 12.25 18.4999 12.25H17.4999C16.6715 12.25 15.9999 12.9216 15.9999 13.75V17.25C15.9999 18.0784 16.6715 18.75 17.4999 18.75Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>`,
       name: "Support Tickets",
       menuKey: "tbd-support-tickets",
-      new: true,
       subItems: [
         { name: "Ticket List", path: "/support-tickets", menuKey: "tbd-support-ticket-list" },
         { name: "Ticket Reply", path: "/support-ticket-reply", menuKey: "tbd-support-ticket-reply" },
@@ -215,7 +223,6 @@ export class AppSidebarComponent {
       icon: `<svg height="1em" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="1em"><path d="M18.75 2.42969V7.70424M9.42261 13.673C10.0259 14.4307 10.9562 14.9164 12 14.9164C13.0438 14.9164 13.9742 14.4307 14.5775 13.673M20 12V18.5C20 19.3284 19.3284 20 18.5 20H5.5C4.67157 20 4 19.3284 4 18.5V12C4 7.58172 7.58172 4 12 4C16.4183 4 20 7.58172 20 12Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M18.75 2.42969V2.43969M9.50391 9.875L9.50391 9.885M14.4961 9.875V9.885" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>`,
       name: "AI Assistant",
       menuKey: "tbd-ai-assistant",
-      new: true,
       subItems: [
         { name: "Text Generator", path: "/text-generator", menuKey: "tbd-ai-text" },
         { name: "Image Generator", path: "/image-generator", menuKey: "tbd-ai-image" },
@@ -233,7 +240,6 @@ export class AppSidebarComponent {
       icon: `<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2.31641 4H3.49696C4.24468 4 4.87822 4.55068 4.98234 5.29112L5.13429 6.37161M5.13429 6.37161L6.23641 14.2089C6.34053 14.9493 6.97407 15.5 7.72179 15.5L17.0833 15.5C17.6803 15.5 18.2205 15.146 18.4587 14.5986L21.126 8.47023C21.5572 7.4795 20.8312 6.37161 19.7507 6.37161H5.13429Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M7.7832 19.5H7.7932M16.3203 19.5H16.3303" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>`,
       name: "E-Commerce",
       menuKey: "tbd-ecommerce",
-      new: true,
       subItems: [
         { name: "Products", path: "/products-list", menuKey: "tbd-ecom-products" },
         { name: "Add Product", path: "/add-product", menuKey: "tbd-ecom-add-product" },
@@ -286,8 +292,8 @@ export class AppSidebarComponent {
         { name: "File Manager", path: "/file-manager", pro: false, menuKey: "tbd-pages-file-manager" },
         { name: "Pricing Tables", path: "/pricing-tables", pro: false, menuKey: "tbd-pages-pricing" },
         { name: "Faqs", path: "/faq", pro: false, menuKey: "tbd-pages-faqs" },
-        { name: "API Keys", path: "/api-keys", new: true, menuKey: "tbd-pages-api-keys" },
-        { name: "Integrations", path: "/integrations", new: true, menuKey: "tbd-pages-integrations" },
+        { name: "API Keys", path: "/api-keys", menuKey: "tbd-pages-api-keys" },
+        { name: "Integrations", path: "/integrations", menuKey: "tbd-pages-integrations" },
         { name: "Blank Page", path: "/blank", pro: false, menuKey: "tbd-pages-blank" },
         { name: "404 Error", path: "/error-404", pro: false, menuKey: "tbd-pages-404" },
         { name: "500 Error", path: "/error-500", pro: false, menuKey: "tbd-pages-500" },
@@ -455,24 +461,41 @@ export class AppSidebarComponent {
 
   /**
    * Apply menu visibility filtering based on MenuConfiguration from DB.
-   * Super Admins always see the Admin menu and Menu Admin regardless of visibility settings.
+   * Only Super Admins can see the Admin menu section.
+   * Pending/guest users (no permissions) see no module sections.
    */
   applyMenuFilter(): void {
     const config = this.menuConfigService.getMenuConfig();
     const isSuperAdmin = this.rbacService.isSuperAdmin();
+    const permissions = this.rbacService.getUserPermissions();
+    const isPendingOrGuest = !permissions || permissions.roleType === 'pending' || permissions.moduleRoles.length === 0;
 
-    // If no config loaded yet, show all items
+    // Pending/guest users see no modules at all
+    if (isPendingOrGuest) {
+      this.filteredNavItems = [];
+      this.filteredToBeDevelopedItems = [];
+      return;
+    }
+
+    // If no config loaded yet, show all items except Admin for non-admins
     if (!config || config.length === 0) {
-      this.filteredNavItems = [...this.navItems];
+      this.filteredNavItems = this.navItems.filter(item => {
+        // Hide Admin section for non-admin users
+        if (item.menuKey === 'admin' && !isSuperAdmin) return false;
+        return true;
+      });
       this.filteredToBeDevelopedItems = [...this.toBeDevelopedItems];
       return;
     }
 
-    // Helper to filter a list of NavItems based on menu config
+    // Helper to filter a list of NavItems based on menu config and RBAC
     const filterItems = (items: NavItem[]): NavItem[] => {
       return items
         .filter(item => {
           if (!item.menuKey) return true;
+
+          // Only Super Admins can see the Admin section
+          if (item.menuKey === 'admin' && !isSuperAdmin) return false;
 
           const cfg = config.find(c => c.MenuItemKey === item.menuKey);
           if (!cfg) return true;

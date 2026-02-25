@@ -126,6 +126,7 @@ export class AssessmentGeneratorComponent implements OnInit, OnDestroy {
     // Check Azure OpenAI status
     this.aiService.checkAIStatus().subscribe(status => {
       this.aiConfigured = status.configured;
+      this.aiModel = status.model || '';
     });
   }
 
@@ -445,6 +446,7 @@ export class AssessmentGeneratorComponent implements OnInit, OnDestroy {
       methodologyContext: this.selectedType!.MethodologyTemplate || '',
       additionalNotes: this.customNotes || '',
       technicalResources: (this.enableTechnicalResources && this.technicalResourcesContent) ? this.technicalResourcesContent : undefined,
+      temperature: this.selectedType!.AITemperature,
     };
 
     // Only call enabled AI endpoints — use of('') to skip disabled ones
@@ -469,7 +471,7 @@ export class AssessmentGeneratorComponent implements OnInit, OnDestroy {
         if (this.enableAIScope) this.aiGeneratedScope = results.scope;
         this.showAIPreview = true;
         this.isGeneratingAI = false;
-        const enabled = [this.enableAIOverview && 'Overview', this.enableAIFindings && 'Findings', this.enableAIRecommendations && 'Recommendations', this.enableAIScope && 'Scope'].filter(Boolean).join(', ');
+        const enabled = [this.enableAIOverview && 'Executive Summary', this.enableAIFindings && 'Findings', this.enableAIRecommendations && 'Recommendations', this.enableAIScope && 'Scope'].filter(Boolean).join(', ');
         const resourceNote = this.enableTechnicalResources && this.technicalResourcesFiles.length > 0
           ? ` (with ${this.technicalResourcesFiles.length} technical resource${this.technicalResourcesFiles.length > 1 ? 's' : ''})`
           : '';

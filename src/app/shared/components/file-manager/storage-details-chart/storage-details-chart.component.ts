@@ -6,6 +6,7 @@ import {
   ApexDataLabels,
   ApexLegend,
   ApexPlotOptions,
+  ApexResponsive,
   ApexStroke,
   ApexTooltip,
   NgApexchartsModule

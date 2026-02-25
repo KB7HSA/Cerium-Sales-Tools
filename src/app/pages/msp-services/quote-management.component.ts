@@ -128,16 +128,31 @@ export class QuoteManagementComponent implements OnInit, OnDestroy {
       return;
     }
 
+    // Check if schema uses work item fields (labor quotes get one row per work item)
+    const hasWorkItemFields = columns.some(col => col.SourceField.startsWith('workItem.'));
+    const isLaborQuote = (quote.type || (quote as any).QuoteType || 'msp').toLowerCase() === 'labor';
+
     // Headers
     const headers = columns.map(col => this.escapeCSV(col.ExportHeader));
     const csvRows = [headers.join(',')];
 
-    // Data row for single quote
-    const row = columns.map(col => {
-      const value = this.getQuoteFieldValue(quote, col.SourceField, col.FormatType);
-      return this.escapeCSV(value);
-    });
-    csvRows.push(row.join(','));
+    if (isLaborQuote && hasWorkItemFields && quote.workItems && quote.workItems.length > 0) {
+      // One row per work item
+      for (const workItem of quote.workItems) {
+        const row = columns.map(col => {
+          const value = this.getQuoteFieldValue(quote, col.SourceField, col.FormatType, workItem);
+          return this.escapeCSV(value);
+        });
+        csvRows.push(row.join(','));
+      }
+    } else {
+      // Single row for non-labor quotes or labor quotes without work item fields
+      const row = columns.map(col => {
+        const value = this.getQuoteFieldValue(quote, col.SourceField, col.FormatType);
+        return this.escapeCSV(value);
+      });
+      csvRows.push(row.join(','));
+    }
 
     // Create and download file
     const csvContent = csvRows.join('\n');
@@ -188,17 +203,33 @@ export class QuoteManagementComponent implements OnInit, OnDestroy {
       return;
     }
 
+    // Check if schema uses work item fields (labor quotes get one row per work item)
+    const hasWorkItemFields = columns.some(col => col.SourceField.startsWith('workItem.'));
+    const isLaborSchema = schema.QuoteType.toLowerCase() === 'labor';
+
     // Headers
     const headers = columns.map(col => this.escapeCSV(col.ExportHeader));
     const csvRows = [headers.join(',')];
 
     // Data rows
     for (const quote of filteredQuotes) {
-      const row = columns.map(col => {
-        const value = this.getQuoteFieldValue(quote, col.SourceField, col.FormatType);
-        return this.escapeCSV(value);
-      });
-      csvRows.push(row.join(','));
+      if (isLaborSchema && hasWorkItemFields && quote.workItems && quote.workItems.length > 0) {
+        // One row per work item for labor quotes
+        for (const workItem of quote.workItems) {
+          const row = columns.map(col => {
+            const value = this.getQuoteFieldValue(quote, col.SourceField, col.FormatType, workItem);
+            return this.escapeCSV(value);
+          });
+          csvRows.push(row.join(','));
+        }
+      } else {
+        // Single row for non-labor quotes
+        const row = columns.map(col => {
+          const value = this.getQuoteFieldValue(quote, col.SourceField, col.FormatType);
+          return this.escapeCSV(value);
+        });
+        csvRows.push(row.join(','));
+      }
     }
 
     // Create and download file
@@ -214,9 +245,17 @@ export class QuoteManagementComponent implements OnInit, OnDestroy {
     document.body.removeChild(link);
   }
 
-  getQuoteFieldValue(quote: Quote, field: string, formatType?: string): string {
-    // Handle both camelCase and PascalCase
-    const value = (quote as any)[field] ?? (quote as any)[this.toCamelCase(field)];
+  getQuoteFieldValue(quote: Quote, field: string, formatType?: string, workItem?: any): string {
+    let value: any;
+
+    // Handle work item fields (e.g. 'workItem.name', 'workItem.lineTotal')
+    if (field.startsWith('workItem.')) {
+      const wiField = field.substring('workItem.'.length);
+      value = workItem ? (workItem[wiField] ?? workItem[this.toCamelCase(wiField)]) : undefined;
+    } else {
+      // Handle both camelCase and PascalCase for quote-level fields
+      value = (quote as any)[field] ?? (quote as any)[this.toCamelCase(field)];
+    }
     
     if (value === null || value === undefined) {
       return '';

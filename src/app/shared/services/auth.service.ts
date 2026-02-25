@@ -16,7 +16,7 @@ export interface CurrentUser {
   id: string;
   name: string;
   email: string;
-  role: 'admin' | 'manager' | 'user' | 'readonly';
+  role: 'admin' | 'manager' | 'user' | 'readonly' | 'pending';
   status: string;
   department?: string;
   roleAssignments?: UserRoleAssignment[];
@@ -147,7 +147,7 @@ export class AuthService {
             id: msalUser.id,
             name: msalUser.name,
             email: msalUser.email,
-            role: 'user',
+            role: 'pending',
             status: 'active'
           };
           this.saveUserToStorage(fallbackUser);

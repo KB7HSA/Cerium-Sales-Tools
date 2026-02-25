@@ -13,7 +13,7 @@ export const msAuthGuard: CanActivateFn = (route, state) => {
   }
 
   // User is not authenticated, redirect to sign-in page
-  router.navigate(['/sign-in'], {
+  router.navigate(['/signin'], {
     queryParams: { returnUrl: state.url }
   });
   

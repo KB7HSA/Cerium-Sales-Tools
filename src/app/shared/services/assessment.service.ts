@@ -34,6 +34,7 @@ export interface AssessmentType {
   AIPromptFindings?: string;
   AIPromptRecommendations?: string;
   AIPromptScope?: string;
+  AITemperature?: number;
   ResourceFolder?: string;
   DefaultHours?: number;
   DefaultRate?: number;

@@ -15,6 +15,7 @@ import {
   MSALGuardConfigFactory, 
   MSALInterceptorConfigFactory 
 } from './shared/config/msal.config';
+import { BackendAuthInterceptor } from './shared/interceptors/backend-auth.interceptor';
 
 import { routes } from './app.routes';
 
@@ -38,6 +39,11 @@ export const appConfig: ApplicationConfig = {
     {
       provide: HTTP_INTERCEPTORS,
       useClass: MsalInterceptor,
+      multi: true
+    },
+    {
+      provide: HTTP_INTERCEPTORS,
+      useClass: BackendAuthInterceptor,
       multi: true
     },
     MsalService,

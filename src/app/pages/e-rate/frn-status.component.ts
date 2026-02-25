@@ -120,6 +120,16 @@ import { environment } from '../../../environments/environment';
             />
           </div>
 
+          <!-- Funding Year Filter -->
+          <select
+            [(ngModel)]="fundingYearFilter"
+            (ngModelChange)="applyFilters()"
+            class="w-full lg:w-auto rounded-lg border border-gray-300 px-2 sm:px-4 py-2 text-xs sm:text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+          >
+            <option value="">All Funding Years</option>
+            <option *ngFor="let year of uniqueFundingYears" [value]="year">{{ year }}</option>
+          </select>
+
           <!-- State Filter -->
           <select
             [(ngModel)]="stateFilter"
@@ -627,6 +637,7 @@ export class FRNStatusComponent implements OnInit, OnDestroy {
 
   // Filters
   searchTerm = '';
+  fundingYearFilter = '';
   stateFilter = '';
   frnStatusFilter = '';
   userStatusFilter = '';
@@ -645,6 +656,7 @@ export class FRNStatusComponent implements OnInit, OnDestroy {
   };
 
   // Unique values for column filters
+  uniqueFundingYears: string[] = [];
   uniqueFrnStatuses: string[] = [];
   uniqueServiceTypes: string[] = [];
   uniqueProviders: string[] = [];
@@ -757,6 +769,11 @@ export class FRNStatusComponent implements OnInit, OnDestroy {
       );
     }
 
+    // Funding Year filter
+    if (this.fundingYearFilter) {
+      filtered = filtered.filter(r => r.FundingYear === this.fundingYearFilter);
+    }
+
     // State filter
     if (this.stateFilter) {
       filtered = filtered.filter(r => r.State === this.stateFilter);
@@ -839,16 +856,19 @@ export class FRNStatusComponent implements OnInit, OnDestroy {
   }
 
   extractFilterValues(): void {
+    const fundingYears = new Set<string>();
     const frnStatuses = new Set<string>();
     const serviceTypes = new Set<string>();
     const providers = new Set<string>();
 
     this.records.forEach(r => {
+      if (r.FundingYear) fundingYears.add(r.FundingYear);
       if (r.Form471FrnStatusName) frnStatuses.add(r.Form471FrnStatusName);
       if (r.Form471ServiceTypeName) serviceTypes.add(r.Form471ServiceTypeName);
       if (r.SpinName) providers.add(r.SpinName);
     });
 
+    this.uniqueFundingYears = Array.from(fundingYears).sort((a, b) => b.localeCompare(a));
     this.uniqueFrnStatuses = Array.from(frnStatuses).sort();
     this.uniqueServiceTypes = Array.from(serviceTypes).sort();
     this.uniqueProviders = Array.from(providers).sort();

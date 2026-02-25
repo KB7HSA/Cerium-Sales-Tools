@@ -16,6 +16,7 @@ export interface AIGenerationContext {
   methodologyContext?: string;
   additionalNotes?: string;
   technicalResources?: string;
+  temperature?: number;
 }
 
 export interface AIGenerationResponse {
@@ -29,6 +30,7 @@ export interface AIGenerationResponse {
 export interface AIStatusResponse {
   configured: boolean;
   message: string;
+  model?: string;
 }
 
 export interface AIDocumentReviewResponse {

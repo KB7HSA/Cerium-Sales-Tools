@@ -8,6 +8,7 @@ import { serverConfig } from './config/server';
 import { getConnectionPool, closeConnectionPool } from './config/database';
 import apiRoutes from './routes/api.routes';
 import { errorHandler, notFoundHandler, requestLogger } from './middleware/error.middleware';
+import { authMiddleware } from './middleware/auth.middleware';
 
 const app: Express = express();
 
@@ -49,6 +50,7 @@ async function initializeDatabase() {
 /**
  * Routes
  */
+// All API routes - auth middleware is applied inside api.routes.ts per-route
 app.use('/api', apiRoutes);
 
 /**

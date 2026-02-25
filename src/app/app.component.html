@@ -1,1 +1,26 @@
+<!-- Full-screen loading overlay during M365 login redirect -->
+@if (isProcessingLogin) {
+  <div class="fixed inset-0 z-[9999] flex items-center justify-center bg-white dark:bg-gray-900">
+    <div class="flex flex-col items-center space-y-8">
+      <img
+        src="/images/logo/Cerium_Large.png"
+        alt="Cerium Sales Tools"
+        class="h-16 w-auto"
+      />
+      <div class="relative">
+        <div
+          class="h-12 w-12 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600 dark:border-white/20 dark:border-t-blue-400"
+        ></div>
+      </div>
+      <div class="text-center">
+        <h2 class="text-lg font-semibold text-gray-800 dark:text-white">
+          Signing you in...
+        </h2>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          Please wait while we verify your credentials.
+        </p>
+      </div>
+    </div>
+  </div>
+}
 <router-outlet></router-outlet>

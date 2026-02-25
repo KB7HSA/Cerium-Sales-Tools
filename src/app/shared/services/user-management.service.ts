@@ -3,7 +3,7 @@ import { BehaviorSubject, Observable, tap, catchError, of } from 'rxjs';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
 
-export type RoleType = 'admin' | 'manager' | 'user' | 'readonly';
+export type RoleType = 'admin' | 'manager' | 'user' | 'readonly' | 'pending';
 export type AppModule = 'labor-budget' | 'msp-services' | 'sow-documents' | 'e-rate' | 'quote-management';
 export type Permission = 'view' | 'create' | 'edit' | 'delete' | 'admin';
 
@@ -71,9 +71,10 @@ export class UserManagementService {
       'admin': 'admin',
       'manager': 'manager',
       'user': 'user',
-      'readonly': 'readonly'
+      'readonly': 'readonly',
+      'pending': 'pending'
     };
-    return roleMap[backendRole] || 'user';
+    return roleMap[backendRole] || 'pending';
   }
 
   private mapModulePermissions(permissions: any[]): ModulePermissions[] {

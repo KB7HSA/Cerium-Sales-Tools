@@ -1,0 +1,399 @@
+Create a se<!-- Page Header -->
+<div class="mb-6">
+  <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+    <div>
+      <h2 class="text-xl font-semibold text-gray-800 dark:text-white/90">Cisco Hardware Renewals</h2>
+      <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Cisco partner renewal opportunities by customer, product, and timeline</p>
+    </div>
+    <div class="flex items-center gap-2">
+      <!-- Export Button -->
+      <button (click)="exportToExcel()" *ngIf="filteredItems.length > 0"
+        class="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-white/[0.03] dark:text-gray-300 dark:hover:bg-gray-800">
+        <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        Export
+      </button>
+      <!-- View Toggle -->
+      <div class="inline-flex rounded-lg border border-gray-200 dark:border-gray-700">
+        <button (click)="activeView = 'table'"
+          class="rounded-l-lg px-3 py-1.5 text-xs font-medium transition-colors"
+          [class.bg-brand-500]="activeView === 'table'" [class.text-white]="activeView === 'table'"
+          [class.text-gray-600]="activeView !== 'table'" [class.dark:text-gray-400]="activeView !== 'table'"
+          [class.hover:bg-gray-50]="activeView !== 'table'" [class.dark:hover:bg-gray-700]="activeView !== 'table'">
+          <svg class="mr-1 inline h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>
+          Line Items
+        </button>
+        <button (click)="activeView = 'customers'"
+          class="rounded-r-lg px-3 py-1.5 text-xs font-medium transition-colors"
+          [class.bg-brand-500]="activeView === 'customers'" [class.text-white]="activeView === 'customers'"
+          [class.text-gray-600]="activeView !== 'customers'" [class.dark:text-gray-400]="activeView !== 'customers'"
+          [class.hover:bg-gray-50]="activeView !== 'customers'" [class.dark:hover:bg-gray-700]="activeView !== 'customers'">
+          <svg class="mr-1 inline h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+          By Customer
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Loading State -->
+<div *ngIf="loading" class="flex items-center justify-center py-20">
+  <div class="flex flex-col items-center gap-3">
+    <svg class="h-8 w-8 animate-spin text-brand-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+    </svg>
+    <span class="text-sm text-gray-500 dark:text-gray-400">Loading hardware renewal data...</span>
+  </div>
+</div>
+
+<div *ngIf="!loading && allItems.length > 0">
+  <!-- Summary Cards -->
+  <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <!-- Total Customers -->
+    <div class="rounded-xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Customers</p>
+          <h3 class="mt-1 text-2xl font-bold text-gray-800 dark:text-white/90">{{ formatNumber(totalCustomers) }}</h3>
+        </div>
+        <div class="flex h-11 w-11 items-center justify-center rounded-full bg-blue-50 dark:bg-blue-900/20">
+          <svg class="h-5 w-5 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+          </svg>
+        </div>
+      </div>
+      <p class="mt-2 text-xs text-gray-400 dark:text-gray-500">Unique end customer sites</p>
+    </div>
+
+    <!-- Total Opportunity -->
+    <div class="rounded-xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Total Opportunity</p>
+          <h3 class="mt-1 text-2xl font-bold text-gray-800 dark:text-white/90">{{ formatCurrency(totalOpportunity) }}</h3>
+        </div>
+        <div class="flex h-11 w-11 items-center justify-center rounded-full bg-green-50 dark:bg-green-900/20">
+          <svg class="h-5 w-5 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+        </div>
+      </div>
+      <p class="mt-2 text-xs text-gray-400 dark:text-gray-500">Combined renewal value</p>
+    </div>
+
+    <!-- Total Line Items -->
+    <div class="rounded-xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Line Items</p>
+          <h3 class="mt-1 text-2xl font-bold text-gray-800 dark:text-white/90">{{ formatNumber(totalItems) }}</h3>
+        </div>
+        <div class="flex h-11 w-11 items-center justify-center rounded-full bg-purple-50 dark:bg-purple-900/20">
+          <svg class="h-5 w-5 text-purple-600 dark:text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+          </svg>
+        </div>
+      </div>
+      <p class="mt-2 text-xs text-gray-400 dark:text-gray-500">Renewal product entries</p>
+    </div>
+
+    <!-- Total Quantity -->
+    <div class="rounded-xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Total Units</p>
+          <h3 class="mt-1 text-2xl font-bold text-gray-800 dark:text-white/90">{{ formatNumber(totalQuantity) }}</h3>
+        </div>
+        <div class="flex h-11 w-11 items-center justify-center rounded-full bg-amber-50 dark:bg-amber-900/20">
+          <svg class="h-5 w-5 text-amber-600 dark:text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+          </svg>
+        </div>
+      </div>
+      <p class="mt-2 text-xs text-gray-400 dark:text-gray-500">Total hardware quantity</p>
+    </div>
+  </div>
+
+  <!-- Filters Bar -->
+  <div class="mb-4 rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03]">
+    <div class="flex flex-col gap-3 lg:flex-row lg:items-end">
+      <!-- Search -->
+      <div class="flex-1">
+        <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Search</label>
+        <div class="relative">
+          <svg class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+          </svg>
+          <input type="text" [(ngModel)]="searchTerm" (ngModelChange)="onSearchChange()"
+            placeholder="Search customers, products, descriptions..."
+            class="w-full rounded-lg border border-gray-200 bg-transparent py-2 pl-10 pr-3 text-sm text-gray-800 outline-none focus:border-brand-500 dark:border-gray-700 dark:text-white/90 dark:focus:border-brand-400">
+        </div>
+      </div>
+
+      <!-- Architecture Filter -->
+      <div class="w-full lg:w-44">
+        <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Architecture</label>
+        <select [(ngModel)]="architectureFilter" (ngModelChange)="onFilterChange()"
+          class="w-full rounded-lg border border-gray-200 bg-transparent py-2 pl-3 pr-8 text-sm text-gray-800 outline-none focus:border-brand-500 dark:border-gray-700 dark:text-white/90 dark:focus:border-brand-400">
+          <option value="">All Architectures</option>
+          <option *ngFor="let arch of architectures" [value]="arch">{{ arch }}</option>
+        </select>
+      </div>
+
+      <!-- Customer Filter -->
+      <div class="w-full lg:w-52">
+        <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Customer</label>
+        <select [(ngModel)]="customerFilter" (ngModelChange)="onFilterChange()"
+          class="w-full rounded-lg border border-gray-200 bg-transparent py-2 pl-3 pr-8 text-sm text-gray-800 outline-none focus:border-brand-500 dark:border-gray-700 dark:text-white/90 dark:focus:border-brand-400">
+          <option value="">All Customers</option>
+          <option *ngFor="let name of customerNames" [value]="name">{{ name }}</option>
+        </select>
+      </div>
+
+      <!-- Product Family Filter -->
+      <div class="w-full lg:w-44">
+        <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Product Family</label>
+        <select [(ngModel)]="productFamilyFilter" (ngModelChange)="onFilterChange()"
+          class="w-full rounded-lg border border-gray-200 bg-transparent py-2 pl-3 pr-8 text-sm text-gray-800 outline-none focus:border-brand-500 dark:border-gray-700 dark:text-white/90 dark:focus:border-brand-400">
+          <option value="">All Families</option>
+          <option *ngFor="let fam of productFamilies" [value]="fam">{{ fam }}</option>
+        </select>
+      </div>
+
+      <!-- LDOS Filter -->
+      <div class="w-full lg:w-40">
+        <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">LDOS Status</label>
+        <select [(ngModel)]="ldosFilter" (ngModelChange)="onFilterChange()"
+          class="w-full rounded-lg border border-gray-200 bg-transparent py-2 pl-3 pr-8 text-sm text-gray-800 outline-none focus:border-brand-500 dark:border-gray-700 dark:text-white/90 dark:focus:border-brand-400">
+          <option value="">All</option>
+          <option value="expired">Expired</option>
+          <option value="within-6m">Within 6 Months</option>
+          <option value="within-1y">Within 1 Year</option>
+          <option value="beyond-1y">Beyond 1 Year</option>
+        </select>
+      </div>
+
+      <!-- Status Filter -->
+      <div class="w-full lg:w-36">
+        <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Status</label>
+        <select [(ngModel)]="statusFilter" (ngModelChange)="onFilterChange()"
+          class="w-full rounded-lg border border-gray-200 bg-transparent py-2 pl-3 pr-8 text-sm text-gray-800 outline-none focus:border-brand-500 dark:border-gray-700 dark:text-white/90 dark:focus:border-brand-400">
+          <option value="">All Statuses</option>
+          <option *ngFor="let s of statusOptions" [value]="s">{{ s }}</option>
+        </select>
+      </div>
+
+      <!-- Clear Filters -->
+      <div>
+        <button *ngIf="activeFilterCount > 0" (click)="clearFilters()"
+          class="flex items-center gap-1 rounded-lg border border-red-200 px-3 py-2 text-xs font-medium text-red-600 transition-colors hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/20">
+          <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          Clear ({{ activeFilterCount }})
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== LINE ITEMS TABLE VIEW ========== -->
+  <div *ngIf="activeView === 'table'" class="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
+    <!-- Table Header Row -->
+    <div class="flex items-center justify-between border-b border-gray-200 px-5 py-3 dark:border-gray-700">
+      <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
+        Showing {{ filteredItems.length === allItems.length ? 'all' : filteredItems.length + ' of' }} {{ allItems.length }} items
+      </span>
+      <div class="flex items-center gap-2">
+        <label class="text-xs text-gray-500 dark:text-gray-400">Per page:</label>
+        <select [(ngModel)]="pageSize" (ngModelChange)="onPageSizeChange()"
+          class="rounded border border-gray-200 bg-transparent px-2 py-1 text-xs text-gray-700 dark:border-gray-700 dark:text-gray-300">
+          <option *ngFor="let size of pageSizeOptions" [ngValue]="size">{{ size }}</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="w-full min-w-[1350px] table-auto">
+        <thead>
+          <tr class="border-b border-gray-100 bg-gray-50/50 dark:border-gray-800 dark:bg-gray-900/30">
+            <th class="cursor-pointer px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 hover:text-brand-600 dark:text-gray-400"
+              (click)="sort('installSiteEndCustomerName')">
+              Customer <span class="ml-1 text-[10px]">{{ getSortIcon('installSiteEndCustomerName') }}</span>
+            </th>
+            <th class="cursor-pointer px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 hover:text-brand-600 dark:text-gray-400"
+              (click)="sort('architecture')">
+              Architecture <span class="ml-1 text-[10px]">{{ getSortIcon('architecture') }}</span>
+            </th>
+            <th class="cursor-pointer px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 hover:text-brand-600 dark:text-gray-400"
+              (click)="sort('productFamily')">
+              Family <span class="ml-1 text-[10px]">{{ getSortIcon('productFamily') }}</span>
+            </th>
+            <th class="cursor-pointer px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 hover:text-brand-600 dark:text-gray-400"
+              (click)="sort('productId')">
+              Product ID <span class="ml-1 text-[10px]">{{ getSortIcon('productId') }}</span>
+            </th>
+            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+              Description
+            </th>
+            <th class="cursor-pointer px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-gray-500 hover:text-brand-600 dark:text-gray-400"
+              (click)="sort('eolDate')">
+              EOL <span class="ml-1 text-[10px]">{{ getSortIcon('eolDate') }}</span>
+            </th>
+            <th class="cursor-pointer px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-gray-500 hover:text-brand-600 dark:text-gray-400"
+              (click)="sort('ldos')">
+              LDOS <span class="ml-1 text-[10px]">{{ getSortIcon('ldos') }}</span>
+            </th>
+            <th class="cursor-pointer px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500 hover:text-brand-600 dark:text-gray-400"
+              (click)="sort('itemQuantity')">
+              Qty <span class="ml-1 text-[10px]">{{ getSortIcon('itemQuantity') }}</span>
+            </th>
+            <th class="cursor-pointer px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500 hover:text-brand-600 dark:text-gray-400"
+              (click)="sort('opportunity')">
+              Opportunity <span class="ml-1 text-[10px]">{{ getSortIcon('opportunity') }}</span>
+            </th>
+            <th class="cursor-pointer px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-gray-500 hover:text-brand-600 dark:text-gray-400"
+              (click)="sort('status')">
+              Status <span class="ml-1 text-[10px]">{{ getSortIcon('status') }}</span>
+            </th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+          <tr *ngFor="let item of pagedItems; let i = index"
+            class="transition-colors hover:bg-gray-50/50 dark:hover:bg-gray-800/30"
+            [class.bg-gray-25]="i % 2 === 1">
+            <td class="px-4 py-2.5">
+              <div class="text-sm font-medium text-gray-800 dark:text-white/90">{{ item.installSiteEndCustomerName }}</div>
+              <div class="text-[11px] text-gray-400 dark:text-gray-500">{{ item.globalCustomerName }}</div>
+            </td>
+            <td class="px-4 py-2.5">
+              <span class="inline-block rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700 dark:bg-blue-900/20 dark:text-blue-400">
+                {{ item.architecture }}
+              </span>
+              <div class="mt-0.5 text-[11px] text-gray-400 dark:text-gray-500">{{ item.subArchitecture }}</div>
+            </td>
+            <td class="px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300">{{ item.productFamily }}</td>
+            <td class="px-4 py-2.5">
+              <span class="font-mono text-xs text-gray-800 dark:text-white/80">{{ item.productId }}</span>
+            </td>
+            <td class="max-w-[250px] px-4 py-2.5">
+              <span class="line-clamp-2 text-xs text-gray-600 dark:text-gray-400">{{ item.productDescription }}</span>
+            </td>
+            <td class="px-4 py-2.5 text-center text-xs text-gray-600 dark:text-gray-400">{{ formatDate(item.eolDate) }}</td>
+            <td class="px-4 py-2.5 text-center">
+              <span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium"
+                [ngClass]="getLdosStatusClass(item.ldos)">
+                {{ formatDate(item.ldos) }}
+                <span class="text-[9px] opacity-70">({{ getLdosLabel(item.ldos) }})</span>
+              </span>
+            </td>
+            <td class="px-4 py-2.5 text-right text-sm font-medium text-gray-800 dark:text-white/80">{{ formatNumber(item.itemQuantity) }}</td>
+            <td class="px-4 py-2.5 text-right text-sm font-semibold text-green-700 dark:text-green-400">{{ formatCurrency(item.opportunity) }}</td>
+            <td class="px-4 py-2.5 text-center">
+              <select [ngModel]="item.status" (change)="onStatusChange(item, $event)"
+                class="rounded-full border-0 px-2 py-0.5 text-[11px] font-medium outline-none cursor-pointer"
+                [ngClass]="getStatusBadgeClass(item.status)">
+                <option value="" class="bg-white dark:bg-gray-800">— Set —</option>
+                <option *ngFor="let s of statusOptions" [value]="s" class="bg-white dark:bg-gray-800">{{ s }}</option>
+              </select>
+            </td>
+          </tr>
+
+          <!-- Empty State -->
+          <tr *ngIf="pagedItems.length === 0">
+            <td colspan="10" class="py-12 text-center">
+              <svg class="mx-auto h-10 w-10 text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">No items match your filters</p>
+              <button (click)="clearFilters()" class="mt-2 text-xs text-brand-500 hover:underline">Clear all filters</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    <div *ngIf="totalPages > 1" class="flex items-center justify-between border-t border-gray-200 px-5 py-3 dark:border-gray-700">
+      <span class="text-xs text-gray-500 dark:text-gray-400">
+        Page {{ currentPage }} of {{ totalPages }}
+      </span>
+      <div class="flex items-center gap-1">
+        <button (click)="goToPage(1)" [disabled]="currentPage === 1"
+          class="rounded px-2 py-1 text-xs text-gray-600 hover:bg-gray-100 disabled:opacity-40 dark:text-gray-400 dark:hover:bg-gray-700">
+          ««
+        </button>
+        <button (click)="goToPage(currentPage - 1)" [disabled]="currentPage === 1"
+          class="rounded px-2 py-1 text-xs text-gray-600 hover:bg-gray-100 disabled:opacity-40 dark:text-gray-400 dark:hover:bg-gray-700">
+          «
+        </button>
+        <button *ngFor="let page of getVisiblePages()" (click)="goToPage(page)"
+          class="rounded px-2.5 py-1 text-xs font-medium transition-colors"
+          [class.bg-brand-500]="page === currentPage" [class.text-white]="page === currentPage"
+          [class.text-gray-600]="page !== currentPage" [class.hover:bg-gray-100]="page !== currentPage"
+          [class.dark:text-gray-400]="page !== currentPage" [class.dark:hover:bg-gray-700]="page !== currentPage">
+          {{ page }}
+        </button>
+        <button (click)="goToPage(currentPage + 1)" [disabled]="currentPage === totalPages"
+          class="rounded px-2 py-1 text-xs text-gray-600 hover:bg-gray-100 disabled:opacity-40 dark:text-gray-400 dark:hover:bg-gray-700">
+          »
+        </button>
+        <button (click)="goToPage(totalPages)" [disabled]="currentPage === totalPages"
+          class="rounded px-2 py-1 text-xs text-gray-600 hover:bg-gray-100 disabled:opacity-40 dark:text-gray-400 dark:hover:bg-gray-700">
+          »»
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== CUSTOMER SUMMARY VIEW ========== -->
+  <div *ngIf="activeView === 'customers'" class="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
+    <div class="flex items-center justify-between border-b border-gray-200 px-5 py-3 dark:border-gray-700">
+      <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
+        {{ customerSummaries.length }} customers — sorted by opportunity value
+      </span>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="w-full table-auto">
+        <thead>
+          <tr class="border-b border-gray-100 bg-gray-50/50 dark:border-gray-800 dark:bg-gray-900/30">
+            <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">#</th>
+            <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Customer</th>
+            <th class="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Line Items</th>
+            <th class="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Total Units</th>
+            <th class="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Total Opportunity</th>
+            <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Architectures</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+          <tr *ngFor="let cust of customerSummaries; let i = index"
+            class="cursor-pointer transition-colors hover:bg-blue-50/50 dark:hover:bg-blue-900/10"
+            (click)="customerFilter = cust.customerName; activeView = 'table'; onFilterChange()">
+            <td class="px-5 py-3 text-xs text-gray-400 dark:text-gray-500">{{ i + 1 }}</td>
+            <td class="px-5 py-3">
+              <span class="text-sm font-medium text-gray-800 dark:text-white/90">{{ cust.customerName }}</span>
+            </td>
+            <td class="px-5 py-3 text-right text-sm text-gray-700 dark:text-gray-300">{{ formatNumber(cust.itemCount) }}</td>
+            <td class="px-5 py-3 text-right text-sm text-gray-700 dark:text-gray-300">{{ formatNumber(cust.totalQuantity) }}</td>
+            <td class="px-5 py-3 text-right">
+              <span class="text-sm font-semibold text-green-700 dark:text-green-400">{{ formatCurrency(cust.totalOpportunity) }}</span>
+            </td>
+            <td class="px-5 py-3">
+              <div class="flex flex-wrap gap-1">
+                <span *ngFor="let arch of cust.architectures"
+                  class="inline-block rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-300">
+                  {{ arch }}
+                </span>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Empty State — No Data Loaded -->
+<div *ngIf="!loading && allItems.length === 0" class="py-20 text-center">
+  <svg class="mx-auto h-16 w-16 text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+  </svg>
+  <h3 class="mt-4 text-lg font-medium text-gray-600 dark:text-gray-400">No Renewal Data Available</h3>
+  <p class="mt-1 text-sm text-gray-400 dark:text-gray-500">Upload a Cisco Hardware Renewals file to get started.</p>
+</div>

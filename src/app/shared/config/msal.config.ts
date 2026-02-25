@@ -6,24 +6,22 @@ import {
   PublicClientApplication 
 } from '@azure/msal-browser';
 import { MsalGuardConfiguration, MsalInterceptorConfiguration } from '@azure/msal-angular';
+import { environment } from '../../../environments/environment';
 
 /**
- * IMPORTANT: Update these values with your Azure AD app registration details
+ * MSAL Configuration
  * 
- * To get these values:
- * 1. Go to Azure Portal (https://portal.azure.com)
- * 2. Navigate to Azure Active Directory > App registrations
- * 3. Create a new registration or select existing one
- * 4. Copy the Application (client) ID and Directory (tenant) ID
- * 5. Add redirect URIs in Authentication section
+ * Azure AD credentials are loaded from environment files:
+ *   - Development: src/environments/environment.ts
+ *   - Production:  src/environments/environment.prod.ts
  */
 
 export const msalConfig = {
   auth: {
-    clientId: '712b4eda-bfde-4a28-90d2-aa645d4c6977', // Replace with your Azure AD app client ID
-    authority: 'https://login.microsoftonline.com/aec55451-6c83-4a80-ae9f-72e78ac152c5', // Replace with your tenant ID or use 'common' for multi-tenant
-    redirectUri: 'http://localhost:4200', // Update for production
-    postLogoutRedirectUri: 'http://localhost:4200'
+    clientId: environment.azureAd.clientId,
+    authority: `https://login.microsoftonline.com/${environment.azureAd.tenantId}`,
+    redirectUri: environment.azureAd.redirectUri,
+    postLogoutRedirectUri: environment.azureAd.redirectUri
   },
   cache: {
     cacheLocation: BrowserCacheLocation.LocalStorage, // Use localStorage for persistent sessions
@@ -67,7 +65,7 @@ export function MSALGuardConfigFactory(): MsalGuardConfiguration {
   return {
     interactionType: InteractionType.Redirect,
     authRequest: loginRequest,
-    loginFailedRoute: '/sign-in'
+    loginFailedRoute: '/signin'
   };
 }
 
@@ -80,6 +78,11 @@ export function MSALInterceptorConfigFactory(): MsalInterceptorConfiguration {
   // Protect Microsoft Graph API calls
   protectedResourceMap.set('https://graph.microsoft.com/v1.0/me', ['User.Read']);
   protectedResourceMap.set('https://graph.microsoft.com/v1.0/*', ['User.Read']);
+  
+  // NOTE: Backend API auth is handled by a separate BackendAuthInterceptor
+  // that attaches the ID token. Do NOT add localhost:3000 here — the
+  // {clientId}/.default scope requires "Expose an API" in Azure AD portal
+  // which may not be configured.
 
   return {
     interactionType: InteractionType.Redirect,

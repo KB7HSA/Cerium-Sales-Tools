@@ -1,5 +1,6 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { ERateService, Form470Record } from '../../shared/services/erate.service';
@@ -13,7 +14,7 @@ interface CountItem {
 @Component({
   selector: 'app-e-rate-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink],
   template: `
     <div class="space-y-6">
       <!-- Header -->
@@ -25,15 +26,29 @@ interface CountItem {
               Overview of Form 470 opportunities
             </p>
           </div>
-          <a 
-            routerLink="/e-rate"
-            class="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700"
-          >
-            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"></path>
-            </svg>
-            View All Opportunities
-          </a>
+          <div class="flex items-center gap-3">
+            <div class="flex items-center gap-2">
+              <label for="fundingYear" class="text-sm font-medium text-gray-600 dark:text-gray-400">Funding Year:</label>
+              <select
+                id="fundingYear"
+                [(ngModel)]="selectedFundingYear"
+                (ngModelChange)="onFundingYearChange()"
+                class="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300"
+              >
+                <option value="all">All Years</option>
+                <option *ngFor="let year of fundingYears" [value]="year">{{ year }}</option>
+              </select>
+            </div>
+            <a 
+              routerLink="/e-rate"
+              class="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700"
+            >
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"></path>
+              </svg>
+              View All Opportunities
+            </a>
+          </div>
         </div>
         
         <!-- Summary Stats -->
@@ -131,7 +146,11 @@ interface CountItem {
 })
 export class ERateDashboardComponent implements OnInit, OnDestroy {
   records: Form470Record[] = [];
+  filteredRecords: Form470Record[] = [];
   loading = false;
+  
+  selectedFundingYear = 'all';
+  fundingYears: string[] = [];
   
   totalRecords = 0;
   newRecords = 0;
@@ -146,7 +165,8 @@ export class ERateDashboardComponent implements OnInit, OnDestroy {
     this.subscriptions.push(
       this.erateService.records$.subscribe(records => {
         this.records = records;
-        this.calculateStats();
+        this.buildFundingYears();
+        this.applyFilter();
       }),
       this.erateService.loading$.subscribe(loading => this.loading = loading)
     );
@@ -165,13 +185,34 @@ export class ERateDashboardComponent implements OnInit, OnDestroy {
     this.subscriptions.forEach(sub => sub.unsubscribe());
   }
 
+  onFundingYearChange(): void {
+    this.applyFilter();
+  }
+
+  private buildFundingYears(): void {
+    const years = new Set<string>();
+    this.records.forEach(r => {
+      if (r.FundingYear) {
+        years.add(r.FundingYear);
+      }
+    });
+    this.fundingYears = Array.from(years).sort((a, b) => b.localeCompare(a));
+  }
+
+  private applyFilter(): void {
+    this.filteredRecords = this.selectedFundingYear === 'all'
+      ? this.records
+      : this.records.filter(r => r.FundingYear === this.selectedFundingYear);
+    this.calculateStats();
+  }
+
   private calculateStats(): void {
-    this.totalRecords = this.records.length;
-    this.newRecords = this.records.filter(r => r.IsNew).length;
+    this.totalRecords = this.filteredRecords.length;
+    this.newRecords = this.filteredRecords.filter(r => r.IsNew).length;
     
     // Calculate state counts
     const stateMap = new Map<string, number>();
-    this.records.forEach(r => {
+    this.filteredRecords.forEach(r => {
       const state = r.BilledEntityState || 'Unknown';
       stateMap.set(state, (stateMap.get(state) || 0) + 1);
     });
@@ -186,7 +227,7 @@ export class ERateDashboardComponent implements OnInit, OnDestroy {
     
     // Calculate manufacturer counts
     const mfrMap = new Map<string, number>();
-    this.records.forEach(r => {
+    this.filteredRecords.forEach(r => {
       const mfr = r.Manufacturer || 'Not Specified';
       mfrMap.set(mfr, (mfrMap.get(mfr) || 0) + 1);
     });

@@ -32,6 +32,7 @@ export interface AssessmentType {
   AIPromptFindings?: string;
   AIPromptRecommendations?: string;
   AIPromptScope?: string;
+  AITemperature?: number;
   ResourceFolder?: string;
   DefaultHours?: number;
   DefaultRate?: number;
@@ -219,7 +220,7 @@ export class AssessmentTypeService {
     let query = `
       SELECT Id, Name, Description, Category, TemplateFileName,
              OverviewTemplate, ScopeTemplate, MethodologyTemplate, DeliverablesTemplate, RecommendationsTemplate,
-             AIPromptOverview, AIPromptFindings, AIPromptRecommendations, AIPromptScope,
+             AIPromptOverview, AIPromptFindings, AIPromptRecommendations, AIPromptScope, AITemperature,
              ResourceFolder,
              DefaultHours, DefaultRate, IsActive, SortOrder, CreatedAt, UpdatedAt
       FROM dbo.AssessmentTypes
@@ -251,7 +252,7 @@ export class AssessmentTypeService {
     const query = `
       SELECT Id, Name, Description, Category, TemplateFileName,
              OverviewTemplate, ScopeTemplate, MethodologyTemplate, DeliverablesTemplate, RecommendationsTemplate,
-             AIPromptOverview, AIPromptFindings, AIPromptRecommendations, AIPromptScope,
+             AIPromptOverview, AIPromptFindings, AIPromptRecommendations, AIPromptScope, AITemperature,
              ResourceFolder,
              DefaultHours, DefaultRate, IsActive, SortOrder, CreatedAt, UpdatedAt
       FROM dbo.AssessmentTypes
@@ -301,21 +302,21 @@ export class AssessmentTypeService {
       INSERT INTO dbo.AssessmentTypes (
         Id, Name, Description, Category, TemplateFileName,
         OverviewTemplate, ScopeTemplate, MethodologyTemplate, DeliverablesTemplate, RecommendationsTemplate,
-        AIPromptOverview, AIPromptFindings, AIPromptRecommendations, AIPromptScope,
+        AIPromptOverview, AIPromptFindings, AIPromptRecommendations, AIPromptScope, AITemperature,
         ResourceFolder,
         DefaultHours, DefaultRate, IsActive, SortOrder, CreatedAt, UpdatedAt
       )
       VALUES (
         @id, @name, @description, @category, @templateFileName,
         @overviewTemplate, @scopeTemplate, @methodologyTemplate, @deliverablesTemplate, @recommendationsTemplate,
-        @aiPromptOverview, @aiPromptFindings, @aiPromptRecommendations, @aiPromptScope,
+        @aiPromptOverview, @aiPromptFindings, @aiPromptRecommendations, @aiPromptScope, @aiTemperature,
         @resourceFolder,
         @defaultHours, @defaultRate, @isActive, @sortOrder, GETUTCDATE(), GETUTCDATE()
       );
       
       SELECT Id, Name, Description, Category, TemplateFileName,
              OverviewTemplate, ScopeTemplate, MethodologyTemplate, DeliverablesTemplate, RecommendationsTemplate,
-             AIPromptOverview, AIPromptFindings, AIPromptRecommendations, AIPromptScope,
+             AIPromptOverview, AIPromptFindings, AIPromptRecommendations, AIPromptScope, AITemperature,
              ResourceFolder,
              DefaultHours, DefaultRate, IsActive, SortOrder, CreatedAt, UpdatedAt
       FROM dbo.AssessmentTypes WHERE Id = @id;
@@ -337,6 +338,7 @@ export class AssessmentTypeService {
         aiPromptFindings: assessmentType.AIPromptFindings || null,
         aiPromptRecommendations: assessmentType.AIPromptRecommendations || null,
         aiPromptScope: assessmentType.AIPromptScope || null,
+        aiTemperature: assessmentType.AITemperature ?? 0.7,
         resourceFolder: assessmentType.ResourceFolder || null,
         defaultHours: assessmentType.DefaultHours ?? 0,
         defaultRate: assessmentType.DefaultRate ?? 175.00,
@@ -378,6 +380,7 @@ export class AssessmentTypeService {
           AIPromptFindings = @aiPromptFindings,
           AIPromptRecommendations = @aiPromptRecommendations,
           AIPromptScope = @aiPromptScope,
+          AITemperature = @aiTemperature,
           ResourceFolder = @resourceFolder,
           DefaultHours = @defaultHours,
           DefaultRate = @defaultRate,
@@ -410,6 +413,7 @@ export class AssessmentTypeService {
         aiPromptFindings: assessmentType.AIPromptFindings || null,
         aiPromptRecommendations: assessmentType.AIPromptRecommendations || null,
         aiPromptScope: assessmentType.AIPromptScope || null,
+        aiTemperature: assessmentType.AITemperature ?? 0.7,
         resourceFolder: assessmentType.ResourceFolder || null,
         defaultHours: assessmentType.DefaultHours ?? 0,
         defaultRate: assessmentType.DefaultRate ?? 175.00,

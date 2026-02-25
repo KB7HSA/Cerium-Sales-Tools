@@ -73,6 +73,8 @@ export class UserManagementComponent implements OnInit {
         return 'text-gray-600 bg-gray-100 dark:bg-gray-700 dark:text-gray-200';
       case 'readonly':
         return 'text-yellow-600 bg-yellow-100 dark:bg-yellow-900 dark:text-yellow-200';
+      case 'pending':
+        return 'text-orange-600 bg-orange-100 dark:bg-orange-900 dark:text-orange-200';
       default:
         return 'text-gray-600 bg-gray-100';
     }
@@ -88,6 +90,8 @@ export class UserManagementComponent implements OnInit {
         return 'User';
       case 'readonly':
         return 'Read-Only';
+      case 'pending':
+        return 'Pending';
       default:
         return role;
     }

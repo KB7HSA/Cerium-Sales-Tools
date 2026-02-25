@@ -21,7 +21,7 @@ export const serverConfig = {
 export const azureOpenAIConfig = {
   endpoint: process.env.AZURE_OPENAI_ENDPOINT || '',
   apiKey: process.env.AZURE_OPENAI_API_KEY || '',
-  deploymentName: process.env.AZURE_OPENAI_DEPLOYMENT || 'o4-mini',
+  deploymentName: process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-4.1',
   apiVersion: process.env.AZURE_OPENAI_API_VERSION || '2025-01-01-preview',
 };
 
