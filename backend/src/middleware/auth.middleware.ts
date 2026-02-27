@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import jwksRsa from 'jwks-rsa';
+import { executeQuery } from '../config/database';
 
 /**
  * Azure AD JWT Authentication Middleware
@@ -180,10 +181,12 @@ export async function optionalAuthMiddleware(req: AuthenticatedRequest, res: Res
 
 /**
  * Authorization middleware factory - checks if user has a specific role
- * Requires authMiddleware to run first
+ * Requires authMiddleware to run first.
+ * Looks up the user's RoleName from the AdminUsers table and checks
+ * it against the required roles list.
  */
 export function requireRole(...roles: string[]) {
-  return (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
+  return async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
     if (!req.user) {
       res.status(401).json({
         success: false,
@@ -192,8 +195,39 @@ export function requireRole(...roles: string[]) {
       return;
     }
 
-    // For now, role checking is done at the application level via the database
-    // Azure AD roles can be added later via App Roles in the Azure AD app registration
-    next();
+    try {
+      // Look up the user's role from the database
+      const users = await executeQuery<{ RoleName: string }>(
+        `SELECT RoleName FROM AdminUsers WHERE Email = @email`,
+        { email: req.user.email }
+      );
+
+      if (users.length === 0) {
+        res.status(403).json({
+          success: false,
+          message: 'User not found in the system.',
+        });
+        return;
+      }
+
+      const userRole = (users[0].RoleName || '').toLowerCase();
+      const requiredRoles = roles.map(r => r.toLowerCase());
+
+      if (!requiredRoles.includes(userRole)) {
+        res.status(403).json({
+          success: false,
+          message: `Access denied. Required role: ${roles.join(' or ')}. Your role: ${userRole}.`,
+        });
+        return;
+      }
+
+      next();
+    } catch (error) {
+      console.error('Role check failed:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to verify user role.',
+      });
+    }
   };
 }

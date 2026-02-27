@@ -333,19 +333,24 @@ export class QuoteService {
       Status: 'status',
     };
 
+    // Whitelist of allowed PascalCase column names to prevent SQL injection via dynamic keys
+    const ALLOWED_COLUMNS = new Set([
+      ...Object.keys(fieldMappings), 'QuoteType', 'CustomerId', 'CustomerName',
+      'CreatedDate', 'CreatedTime', 'CreatedBy', 'CreatedByEmail', 'ExpiresAt', 'AcceptedAt'
+    ]);
+
     Object.keys(updates).forEach((key) => {
-      if (key !== 'Id' && key !== 'CreatedAt' && key !== 'UpdatedAt' && key !== 'selectedOptions') {
-        const dbKey = key;
-        fields.push(`${dbKey} = @${dbKey}`);
-        
-        // Handle boolean conversion
-        if (key === 'AnnualDiscountApplied') {
-          params[dbKey] = (updates as any)[key] ? 1 : 0;
-        } else if (key === 'Status') {
-          params[dbKey] = ((updates as any)[key] || '').toLowerCase();
-        } else {
-          params[dbKey] = (updates as any)[key];
-        }
+      if (!ALLOWED_COLUMNS.has(key)) return;
+      const dbKey = key;
+      fields.push(`${dbKey} = @${dbKey}`);
+      
+      // Handle boolean conversion
+      if (key === 'AnnualDiscountApplied') {
+        params[dbKey] = (updates as any)[key] ? 1 : 0;
+      } else if (key === 'Status') {
+        params[dbKey] = ((updates as any)[key] || '').toLowerCase();
+      } else {
+        params[dbKey] = (updates as any)[key];
       }
     });
 

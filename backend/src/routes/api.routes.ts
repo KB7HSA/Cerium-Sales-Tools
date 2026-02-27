@@ -1,6 +1,15 @@
 import { Router, Request, Response } from 'express';
 import { sendSuccess, sendError } from '../middleware/error.middleware';
-import { authMiddleware, AuthenticatedRequest } from '../middleware/auth.middleware';
+import { authMiddleware, AuthenticatedRequest, requireRole, optionalAuthMiddleware } from '../middleware/auth.middleware';
+import {
+  validateBody,
+  createCustomerSchema, updateCustomerSchema,
+  createLaborItemSchema, updateLaborItemSchema,
+  createQuoteSchema, updateQuoteSchema,
+  createMSPOfferingSchema,
+  aiRenewalsAnalysisSchema, renewalsPromptSchema,
+  updateUserRoleSchema, updatePermissionsSchema,
+} from '../middleware/validation.middleware';
 import { CustomerService } from '../services/customer.service';
 import { QuoteService } from '../services/quote.service';
 import { LaborItemService } from '../services/labor-item.service';
@@ -27,14 +36,39 @@ router.get('/health', (req: Request, res: Response) => {
   sendSuccess(res, { status: 'API is running', timestamp: new Date() }, 200, 'Health check passed');
 });
 
-// Microsoft auth sync - called during login before backend token is available
-router.post('/auth/microsoft/sync', async (req: Request, res: Response) => {
+// Microsoft auth sync - requires a valid Azure AD token
+// Uses optionalAuthMiddleware so that the token is verified and user info extracted,
+// but we also accept the profile data to complete the sync.
+router.post('/auth/microsoft/sync', optionalAuthMiddleware, async (req: Request, res: Response) => {
   try {
+    const authReq = req as AuthenticatedRequest;
     const { profile } = req.body;
     
     if (!profile || (!profile.mail && !profile.userPrincipalName)) {
       sendError(res, 'Invalid profile data - email is required', 400);
       return;
+    }
+
+    // Security: if a valid token was provided, ensure the profile email matches the token
+    if (authReq.user && authReq.user.email) {
+      const tokenEmail = authReq.user.email.toLowerCase();
+      const profileEmail = (profile.mail || profile.userPrincipalName || '').toLowerCase();
+      if (tokenEmail !== profileEmail) {
+        sendError(res, 'Profile email does not match authenticated token', 403);
+        return;
+      }
+    }
+    // If no valid token is present, restrict to only allowing sync for existing users
+    // (new user creation is only allowed with a valid token)
+    if (!authReq.user) {
+      const existingEmail = (profile.mail || profile.userPrincipalName || '').toLowerCase();
+      if (existingEmail) {
+        const existing = await userService.getUserByEmail(existingEmail);
+        if (!existing) {
+          sendError(res, 'Authentication token required for new user registration', 401);
+          return;
+        }
+      }
     }
 
     const result = await userService.syncMicrosoftUser(profile);
@@ -67,8 +101,8 @@ router.post('/auth/microsoft/sync', async (req: Request, res: Response) => {
 // ===== AUTHENTICATED ROUTES (JWT required from here on) =====
 router.use(authMiddleware);
 
-// ===== DATABASE MIGRATIONS (temporary endpoint) =====
-router.post('/run-migration/add-template-filename', async (req: Request, res: Response) => {
+// ===== DATABASE MIGRATIONS (temporary endpoint — admin only) =====
+router.post('/run-migration/add-template-filename', requireRole('admin'), async (req: Request, res: Response) => {
   try {
     // Check if column exists
     const checkResult = await executeQuery<{ cnt: number }>(
@@ -120,7 +154,7 @@ router.get('/customers/:id', async (req: Request, res: Response) => {
   }
 });
 
-router.post('/customers', async (req: Request, res: Response) => {
+router.post('/customers', validateBody(createCustomerSchema), async (req: Request, res: Response) => {
   try {
     const newCustomer = await CustomerService.createCustomer(req.body);
     sendSuccess(res, newCustomer, 201, 'Customer created successfully');
@@ -129,7 +163,7 @@ router.post('/customers', async (req: Request, res: Response) => {
   }
 });
 
-router.put('/customers/:id', async (req: Request, res: Response) => {
+router.put('/customers/:id', validateBody(updateCustomerSchema), async (req: Request, res: Response) => {
   try {
     const updated = await CustomerService.updateCustomer(req.params.id, req.body);
     if (!updated) {
@@ -185,7 +219,7 @@ router.get('/quotes/:id', async (req: Request, res: Response) => {
   }
 });
 
-router.post('/quotes', async (req: Request, res: Response) => {
+router.post('/quotes', validateBody(createQuoteSchema), async (req: Request, res: Response) => {
   try {
     const body = req.body;
     const quoteType = (body.QuoteType || body.type || 'msp').toLowerCase();
@@ -212,7 +246,7 @@ router.post('/quotes', async (req: Request, res: Response) => {
   }
 });
 
-router.put('/quotes/:id', async (req: Request, res: Response) => {
+router.put('/quotes/:id', validateBody(updateQuoteSchema), async (req: Request, res: Response) => {
   try {
     const updated = await QuoteService.updateQuote(req.params.id, req.body);
     if (!updated) {
@@ -286,7 +320,7 @@ router.get('/labor-sections', async (req: Request, res: Response) => {
   }
 });
 
-router.post('/labor-items', async (req: Request, res: Response) => {
+router.post('/labor-items', validateBody(createLaborItemSchema), async (req: Request, res: Response) => {
   try {
     const newItem = await LaborItemService.createLaborItem(req.body);
     sendSuccess(res, newItem, 201, 'Labor item created successfully');
@@ -295,7 +329,7 @@ router.post('/labor-items', async (req: Request, res: Response) => {
   }
 });
 
-router.put('/labor-items/:id', async (req: Request, res: Response) => {
+router.put('/labor-items/:id', validateBody(updateLaborItemSchema), async (req: Request, res: Response) => {
   try {
     const updated = await LaborItemService.updateLaborItem(req.params.id, req.body);
     if (!updated) {
@@ -350,7 +384,7 @@ router.get('/msp-offerings/:id', async (req: Request, res: Response) => {
   }
 });
 
-router.post('/msp-offerings', async (req: Request, res: Response) => {
+router.post('/msp-offerings', validateBody(createMSPOfferingSchema), async (req: Request, res: Response) => {
   try {
     console.log('[POST /msp-offerings] Received request body:', JSON.stringify(req.body, null, 2));
     const newOffering = await MSPOfferingService.createOffering(req.body);
@@ -1011,8 +1045,8 @@ router.delete('/generated-sows/:id', async (req: Request, res: Response) => {
 
 // ===== E-RATE FORM 470 =====
 
-// Clear all Form 470 data (for fresh start)
-router.delete('/erate/form470/clear', async (req: Request, res: Response) => {
+// Clear all Form 470 data (for fresh start — admin only)
+router.delete('/erate/form470/clear', requireRole('admin'), async (req: Request, res: Response) => {
   try {
     console.log('[API] Clearing all E-Rate Form 470 data...');
     await executeQuery('DELETE FROM dbo.ERateForm470', {});
@@ -1095,8 +1129,8 @@ router.patch('/erate/form470/:id/status', async (req: Request, res: Response) =>
   }
 });
 
-// Run E-Rate database migration
-router.post('/erate/run-migration', async (req: Request, res: Response) => {
+// Run E-Rate database migration (admin only)
+router.post('/erate/run-migration', requireRole('admin'), async (req: Request, res: Response) => {
   try {
     // Check if tables exist
     const form470Exists = await executeQuery<{ cnt: number }>(
@@ -1476,8 +1510,8 @@ router.patch('/erate/frn/:id/status', async (req: Request, res: Response) => {
   }
 });
 
-// Clear all FRN data (for fresh start)
-router.delete('/erate/frn/clear', async (req: Request, res: Response) => {
+// Clear all FRN data (for fresh start — admin only)
+router.delete('/erate/frn/clear', requireRole('admin'), async (req: Request, res: Response) => {
   try {
     console.log('[API] Clearing all E-Rate FRN data...');
     await executeQuery('DELETE FROM dbo.ERateFRNStatus', {});
@@ -1608,19 +1642,14 @@ router.get('/auth/users/:userId/roles', async (req: Request, res: Response) => {
   }
 });
 
-// Update module permissions for a user
-router.put('/auth/users/:userId/modules/:moduleName/permissions', async (req: Request, res: Response) => {
+// Update module permissions for a user (admin only)
+router.put('/auth/users/:userId/modules/:moduleName/permissions', requireRole('admin'), validateBody(updatePermissionsSchema), async (req: Request, res: Response) => {
   try {
     const { userId, moduleName } = req.params;
     const { permissions } = req.body;
 
-    if (!Array.isArray(permissions)) {
-      sendError(res, 'Permissions must be an array', 400);
-      return;
-    }
-
     const validPermissions = ['view', 'create', 'edit', 'delete', 'admin'];
-    const invalidPermissions = permissions.filter(p => !validPermissions.includes(p));
+    const invalidPermissions = permissions.filter((p: string) => !validPermissions.includes(p));
     
     if (invalidPermissions.length > 0) {
       sendError(res, `Invalid permissions: ${invalidPermissions.join(', ')}`, 400);
@@ -1634,17 +1663,11 @@ router.put('/auth/users/:userId/modules/:moduleName/permissions', async (req: Re
   }
 });
 
-// Update user role (admin, manager, user, readonly)
-router.put('/auth/users/:userId/role', async (req: Request, res: Response) => {
+// Update user role (admin, manager, user, readonly) — admin only
+router.put('/auth/users/:userId/role', requireRole('admin'), validateBody(updateUserRoleSchema), async (req: Request, res: Response) => {
   try {
     const { userId } = req.params;
     const { role } = req.body;
-
-    const validRoles = ['admin', 'manager', 'user', 'readonly'];
-    if (!validRoles.includes(role)) {
-      sendError(res, `Invalid role. Must be one of: ${validRoles.join(', ')}`, 400);
-      return;
-    }
 
     await userService.updateUserRole(userId, role);
     sendSuccess(res, null, 200, 'User role updated successfully');
@@ -1653,8 +1676,8 @@ router.put('/auth/users/:userId/role', async (req: Request, res: Response) => {
   }
 });
 
-// Remove module access for a user
-router.delete('/auth/users/:userId/modules/:moduleName', async (req: Request, res: Response) => {
+// Remove module access for a user (admin only)
+router.delete('/auth/users/:userId/modules/:moduleName', requireRole('admin'), async (req: Request, res: Response) => {
   try {
     const { userId, moduleName } = req.params;
     await userService.removeModuleAccess(userId, moduleName);
@@ -1932,14 +1955,10 @@ router.get('/admin/renewals-prompt', async (req: Request, res: Response) => {
   }
 });
 
-// Update the renewals AI prompt
-router.put('/admin/renewals-prompt', async (req: Request, res: Response) => {
+// Update the renewals AI prompt (admin only)
+router.put('/admin/renewals-prompt', requireRole('admin'), validateBody(renewalsPromptSchema), async (req: Request, res: Response) => {
   try {
     const { promptText, temperature, maxTokens, updatedBy } = req.body;
-    if (!promptText || typeof promptText !== 'string') {
-      sendError(res, 'promptText is required', 400);
-      return;
-    }
 
     // Ensure table exists
     await executeQuery(`
@@ -1975,8 +1994,8 @@ router.put('/admin/renewals-prompt', async (req: Request, res: Response) => {
   }
 });
 
-// Reset renewals prompt to default
-router.post('/admin/renewals-prompt/reset', async (req: Request, res: Response) => {
+// Reset renewals prompt to default (admin only)
+router.post('/admin/renewals-prompt/reset', requireRole('admin'), async (req: Request, res: Response) => {
   try {
     await executeQuery(`DELETE FROM dbo.RenewalsAIPrompt WHERE PromptKey = 'renewals-summary'`, {});
     sendSuccess(res, {
@@ -1992,14 +2011,9 @@ router.post('/admin/renewals-prompt/reset', async (req: Request, res: Response) 
 });
 
 // Generate AI renewals analysis for a customer
-router.post('/ai/renewals-analysis', async (req: Request, res: Response) => {
+router.post('/ai/renewals-analysis', validateBody(aiRenewalsAnalysisSchema), async (req: Request, res: Response) => {
   try {
     const { customerName, hardwareItems, softwareItems, hwSummary, swSummary, hwByArchitecture, swByArchitecture, hwEolTimeline, swEndingSoon } = req.body;
-
-    if (!customerName) {
-      sendError(res, 'customerName is required', 400);
-      return;
-    }
 
     // Load custom prompt if available
     let systemPrompt = getDefaultRenewalsPrompt();
@@ -2033,6 +2047,10 @@ router.post('/ai/renewals-analysis', async (req: Request, res: Response) => {
       temperature,
       additionalNotes: userPrompt,
     });
+
+    // Include the actual prompts used for debug panel
+    result.systemPrompt = systemPrompt;
+    result.userPrompt = userPrompt;
 
     sendSuccess(res, result, 200, 'Renewals AI analysis generated');
   } catch (error: any) {
@@ -2280,8 +2298,8 @@ router.get('/dashboard/stats', async (req: Request, res: Response) => {
 
 // ===== MENU CONFIGURATION =====
 
-// Run menu configuration migration (create table & seed data)
-router.post('/menu-config/migrate', async (req: Request, res: Response) => {
+// Run menu configuration migration (create table & seed data — admin only)
+router.post('/menu-config/migrate', requireRole('admin'), async (req: Request, res: Response) => {
   try {
     // Check if table exists
     const tableCheck = await executeQuery<{ cnt: number }>(
@@ -2413,8 +2431,8 @@ router.get('/menu-config/visible', async (req: Request, res: Response) => {
   }
 });
 
-// Reorder menu items - swap sort order between two sibling items
-router.put('/menu-config/reorder', async (req: Request, res: Response) => {
+// Reorder menu items — admin only
+router.put('/menu-config/reorder', requireRole('admin'), async (req: Request, res: Response) => {
   try {
     const { menuItemKey, direction } = req.body;
 
@@ -2492,8 +2510,8 @@ router.put('/menu-config/reorder', async (req: Request, res: Response) => {
   }
 });
 
-// Update menu item visibility
-router.put('/menu-config/:key', async (req: Request, res: Response) => {
+// Update menu item visibility (admin only)
+router.put('/menu-config/:key', requireRole('admin'), async (req: Request, res: Response) => {
   try {
     const { key } = req.params;
     const { IsVisible, UpdatedBy } = req.body;
@@ -2542,8 +2560,8 @@ router.put('/menu-config/:key', async (req: Request, res: Response) => {
   }
 });
 
-// Bulk update menu item visibility
-router.put('/menu-config/bulk/update', async (req: Request, res: Response) => {
+// Bulk update menu item visibility (admin only)
+router.put('/menu-config/bulk/update', requireRole('admin'), async (req: Request, res: Response) => {
 
   try {
     const { items, UpdatedBy } = req.body;

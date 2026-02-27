@@ -9,6 +9,10 @@ export const msAuthGuard: CanActivateFn = (route, state) => {
   const accounts = authService.instance.getAllAccounts();
   
   if (accounts.length > 0) {
+    // Ensure an active account is set (needed after page refresh)
+    if (!authService.instance.getActiveAccount()) {
+      authService.instance.setActiveAccount(accounts[0]);
+    }
     return true;
   }
 

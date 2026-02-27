@@ -108,14 +108,19 @@ export class LaborItemService {
    * Update labor item
    */
   static async updateLaborItem(id: string, updates: Partial<LaborItem>): Promise<LaborItem | null> {
+    // Whitelist of allowed column names to prevent SQL injection via dynamic keys
+    const ALLOWED_COLUMNS = new Set([
+      'Name', 'HoursPerUnit', 'RatePerHour', 'UnitPrice', 'UnitOfMeasure',
+      'Section', 'ReferenceArchitecture', 'Description', 'IsActive'
+    ]);
+
     const fields: string[] = [];
     const params: Record<string, any> = { id };
 
     Object.keys(updates).forEach((key) => {
-      if (key !== 'Id' && key !== 'CreatedAt' && key !== 'UpdatedAt') {
-        fields.push(`${key} = @${key}`);
-        params[key] = (updates as any)[key];
-      }
+      if (!ALLOWED_COLUMNS.has(key)) return;
+      fields.push(`${key} = @${key}`);
+      params[key] = (updates as any)[key];
     });
 
     if (fields.length === 0) {

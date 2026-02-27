@@ -97,18 +97,20 @@ export class CustomerService {
    * Update customer
    */
   static async updateCustomer(id: string, updates: Partial<Customer>): Promise<Customer | null> {
+    // Whitelist of allowed column names to prevent SQL injection via dynamic keys
+    const ALLOWED_COLUMNS = new Set(['Name', 'Company', 'Email', 'Phone', 'Status', 'Industry', 'Website']);
+
     const fields: string[] = [];
     const params: Record<string, any> = { id };
 
     Object.keys(updates).forEach((key) => {
-      if (key !== 'Id' && key !== 'CreatedAt' && key !== 'UpdatedAt') {
-        fields.push(`${key} = @${key}`);
-        // Convert status to lowercase if present
-        if (key === 'Status') {
-          params[key] = (updates as any)[key].toLowerCase();
-        } else {
-          params[key] = (updates as any)[key];
-        }
+      if (!ALLOWED_COLUMNS.has(key)) return;
+      fields.push(`${key} = @${key}`);
+      // Convert status to lowercase if present
+      if (key === 'Status') {
+        params[key] = (updates as any)[key].toLowerCase();
+      } else {
+        params[key] = (updates as any)[key];
       }
     });
 

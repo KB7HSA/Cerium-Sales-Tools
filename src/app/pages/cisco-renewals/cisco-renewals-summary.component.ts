@@ -1,12 +1,14 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Subscription } from 'rxjs';
+import { Subscription, timer } from 'rxjs';
+import { switchMap, retry } from 'rxjs/operators';
 import * as XLSX from 'xlsx';
 import { marked } from 'marked';
 import { CiscoRenewalsService, HardwareRenewalItem, CustomerSummary } from '../../shared/services/cisco-renewals.service';
 import { SoftwareRenewalsService, SoftwareRenewalItem, SoftwareCustomerSummary } from '../../shared/services/software-renewals.service';
 import { RenewalsAIService } from '../../shared/services/renewals-ai.service';
+import { RenewalsDocxExportService } from '../../shared/services/renewals-docx-export.service';
 
 interface CombinedCustomerSummary {
   customerName: string;
@@ -67,21 +69,44 @@ export class CiscoRenewalsSummaryComponent implements OnInit, OnDestroy {
   aiRenderedHtml = '';
   aiError = '';
   aiTokens = 0;
+  aiPromptTokens = 0;
+  aiCompletionTokens = 0;
   aiModel = '';
+  aiFinishReason = '';
+
+  // Debug
+  showDebug = false;
+  debugSystemPrompt = '';
+  debugUserPrompt = '';
+  debugRequestPayload = '';
 
   private subscriptions: Subscription[] = [];
 
   constructor(
     private hwService: CiscoRenewalsService,
     private swService: SoftwareRenewalsService,
-    private renewalsAI: RenewalsAIService
+    private renewalsAI: RenewalsAIService,
+    private docxExport: RenewalsDocxExportService,
   ) {}
 
   ngOnInit(): void {
-    // Check AI status
-    this.renewalsAI.checkAIStatus().subscribe(status => {
-      this.aiConfigured = status.configured;
-    });
+    // Check AI status — delay briefly to let MSAL token acquisition finish,
+    // then retry once if the first attempt fails (e.g., 401 during MSAL init)
+    this.subscriptions.push(
+      timer(500).pipe(
+        switchMap(() => this.renewalsAI.checkAIStatus())
+      ).subscribe(status => {
+        this.aiConfigured = status.configured;
+        // If initial check failed (likely auth issue), retry after 3s
+        if (!status.configured) {
+          timer(3000).pipe(
+            switchMap(() => this.renewalsAI.checkAIStatus())
+          ).subscribe(retryStatus => {
+            this.aiConfigured = retryStatus.configured;
+          });
+        }
+      })
+    );
 
     this.subscriptions.push(
       this.hwService.renewals$.subscribe(items => {
@@ -382,15 +407,35 @@ export class CiscoRenewalsSummaryComponent implements OnInit, OnDestroy {
       swByArchitecture: this.swByArchitecture,
       hwEolTimeline: this.hwEolTimeline,
       swEndingSoon: this.swEndingSoon,
-    }).subscribe(result => {
-      this.aiGenerating = false;
-      if (result.generated) {
-        this.aiContent = result.content;
-        this.aiRenderedHtml = marked.parse(result.content) as string;
+    }).subscribe({
+      next: (result) => {
+        this.aiGenerating = false;
+        // Always capture debug info regardless of content
         this.aiTokens = result.tokens || 0;
+        this.aiPromptTokens = result.promptTokens || 0;
+        this.aiCompletionTokens = result.completionTokens || 0;
         this.aiModel = result.model || '';
-      } else {
-        this.aiError = result.content || 'AI analysis generation failed.';
+        this.aiFinishReason = result.finishReason || '';
+        this.debugSystemPrompt = result.systemPrompt || '';
+        this.debugUserPrompt = result.userPrompt || '';
+
+        if (result.generated && result.content) {
+          this.aiContent = result.content;
+          this.aiRenderedHtml = marked.parse(result.content) as string;
+        } else if (result.generated && !result.content) {
+          // API succeeded but returned empty content — likely reasoning model exhausted token budget
+          this.aiError = `AI returned empty content (${this.aiCompletionTokens} completion tokens consumed, finish reason: ${this.aiFinishReason || 'unknown'}). ` +
+            (this.aiFinishReason === 'length'
+              ? 'The model ran out of tokens — reasoning used the entire budget. Try increasing max tokens in the prompt settings.'
+              : 'The model produced no output. Try again or check the prompt configuration.');
+        } else {
+          this.aiError = result.content || 'AI analysis generation failed.';
+        }
+      },
+      error: (error) => {
+        console.error('AI analysis HTTP error:', error);
+        this.aiGenerating = false;
+        this.aiError = error?.error?.message || error?.message || 'AI analysis request failed. Please check your connection and try again.';
       }
     });
   }
@@ -400,7 +445,17 @@ export class CiscoRenewalsSummaryComponent implements OnInit, OnDestroy {
     this.aiRenderedHtml = '';
     this.aiError = '';
     this.aiTokens = 0;
+    this.aiPromptTokens = 0;
+    this.aiCompletionTokens = 0;
     this.aiModel = '';
+    this.aiFinishReason = '';
+    this.debugSystemPrompt = '';
+    this.debugUserPrompt = '';
+    this.debugRequestPayload = '';
+  }
+
+  toggleDebug(): void {
+    this.showDebug = !this.showDebug;
   }
 
   copyAIAnalysis(): void {
@@ -420,6 +475,23 @@ export class CiscoRenewalsSummaryComponent implements OnInit, OnDestroy {
     a.download = `Renewal_Analysis_${this.selectedCustomer.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().split('T')[0]}.md`;
     a.click();
     URL.revokeObjectURL(url);
+  }
+
+  downloadDocx(): void {
+    if (!this.aiContent || !this.selectedCustomer) return;
+    this.docxExport.exportToDocx({
+      customerName: this.selectedCustomer,
+      generatedDate: new Date().toISOString().split('T')[0],
+      aiContent: this.aiContent,
+      hwSummary: this.hwSummary,
+      swSummary: this.swSummary,
+      hwByArchitecture: this.hwByArchitecture,
+      swByArchitecture: this.swByArchitecture,
+      hwEolTimeline: this.hwEolTimeline,
+      swEndingSoon: this.swEndingSoon,
+      aiModel: this.aiModel,
+      aiTokens: this.aiTokens,
+    });
   }
 
   exportSummaryToExcel(): void {

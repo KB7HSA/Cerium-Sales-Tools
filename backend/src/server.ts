@@ -3,6 +3,7 @@ import express, { Express } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
+import rateLimit from 'express-rate-limit';
 
 import { serverConfig } from './config/server';
 import { getConnectionPool, closeConnectionPool } from './config/database';
@@ -26,9 +27,39 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
 }));
 
-// Body parsing
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
+// Global rate limiter — 200 requests per minute per IP
+const globalLimiter = rateLimit({
+  windowMs: 60 * 1000,   // 1 minute
+  max: 200,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Too many requests. Please try again later.' },
+});
+app.use(globalLimiter);
+
+// Strict rate limiter for AI generation endpoints — 10 requests per minute per IP
+const aiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'AI generation rate limit exceeded. Please wait before trying again.' },
+});
+app.use('/api/ai/', aiLimiter);
+
+// Strict rate limiter for auth endpoints — 20 requests per minute per IP
+const authLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Authentication rate limit exceeded. Please try again later.' },
+});
+app.use('/api/auth/', authLimiter);
+
+// Body parsing — reduced limit from 50mb to 10mb
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 // Logging
 app.use(morgan('combined'));
@@ -43,7 +74,7 @@ async function initializeDatabase() {
     console.log('✅ Database pool initialized');
   } catch (error) {
     console.error('❌ Failed to initialize database:', error);
-    process.exit(1);
+    console.warn('⚠️  Server will start without database connection. DB-dependent routes will return 503.');
   }
 }
 

@@ -23,8 +23,12 @@ export interface AIGenerationResponse {
   generated: boolean;
   content: string;
   tokens: number;
+  promptTokens?: number;
+  completionTokens?: number;
   model: string;
   finishReason: string;
+  systemPrompt?: string;
+  userPrompt?: string;
 }
 
 /**
@@ -58,29 +62,41 @@ export class AzureOpenAIService {
       const url = `${azureOpenAIConfig.endpoint}/openai/deployments/${azureOpenAIConfig.deploymentName}/chat/completions?api-version=${azureOpenAIConfig.apiVersion}`;
 
       // Build request body — reasoning models (o1, o3, o4-mini, etc.) do NOT support temperature
-      const isReasoningModel = /^(o1|o3|o4)/i.test(azureOpenAIConfig.deploymentName);
+      const isReasoningModel = /^(o1|o3|o4)/i.test(azureOpenAIConfig.deploymentName.trim());
+
+      // For reasoning models, max_completion_tokens covers BOTH reasoning (thinking) AND
+      // output tokens. We need a much higher budget to avoid the model exhausting tokens
+      // on reasoning and returning empty content. Use at least 16384 for reasoning models.
+      const baseMaxTokens = request.maxTokens || 4000;
+      const effectiveMaxTokens = isReasoningModel ? Math.max(baseMaxTokens * 4, 16384) : baseMaxTokens;
+
       const requestBody: any = {
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }
         ],
-        max_completion_tokens: request.maxTokens || 4000,
+        max_completion_tokens: effectiveMaxTokens,
       };
       if (!isReasoningModel && request.temperature !== undefined) {
         requestBody.temperature = request.temperature;
       }
 
+      // Reasoning models need more time (thinking + generation)
+      const timeout = isReasoningModel ? 180000 : 60000;
+
       console.log(`🤖 Azure OpenAI request to ${azureOpenAIConfig.deploymentName} (reasoning=${isReasoningModel})`);
       console.log(`🌡️ Temperature: ${requestBody.temperature !== undefined ? requestBody.temperature : 'not set (reasoning model)'}`);
       console.log(`📝 System prompt length: ${systemPrompt.length} chars`);
       console.log(`📝 User prompt length: ${userPrompt.length} chars`);
+      console.log(`🎯 max_completion_tokens: ${effectiveMaxTokens} (base: ${baseMaxTokens}, reasoning: ${isReasoningModel})`);
+      console.log(`⏱️ Timeout: ${timeout / 1000}s`);
 
       const response = await axios.post(url, requestBody, {
         headers: {
           'Content-Type': 'application/json',
           'api-key': azureOpenAIConfig.apiKey,
         },
-        timeout: 60000, // 60 second timeout for AI generation
+        timeout,
       });
 
       const choice = response.data.choices?.[0];
@@ -90,8 +106,12 @@ export class AzureOpenAIService {
         generated: true,
         content: choice?.message?.content || '',
         tokens: usage?.total_tokens || 0,
+        promptTokens: usage?.prompt_tokens || 0,
+        completionTokens: usage?.completion_tokens || 0,
         model: response.data.model || azureOpenAIConfig.deploymentName,
         finishReason: choice?.finish_reason || 'unknown',
+        systemPrompt,
+        userPrompt,
       };
 
     } catch (error: any) {

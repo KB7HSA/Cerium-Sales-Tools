@@ -92,7 +92,20 @@ export function MSALInterceptorConfigFactory(): MsalInterceptorConfiguration {
 
 /**
  * MSAL Instance factory
+ * 
+ * Creates and initializes the MSAL PublicClientApplication.
+ * MSAL Browser v5+ requires initialize() before the instance can be used.
+ * The MSAL_INSTANCE provider in app.config supports async factories.
  */
 export function MSALInstanceFactory(): IPublicClientApplication {
-  return new PublicClientApplication(msalConfig);
+  const msalInstance = new PublicClientApplication(msalConfig);
+  // v5+ requires initialize() — Angular MSAL will await the returned promise
+  msalInstance.initialize().then(() => {
+    // After initialization, check for and set an active account
+    const accounts = msalInstance.getAllAccounts();
+    if (accounts.length > 0 && !msalInstance.getActiveAccount()) {
+      msalInstance.setActiveAccount(accounts[0]);
+    }
+  });
+  return msalInstance;
 }

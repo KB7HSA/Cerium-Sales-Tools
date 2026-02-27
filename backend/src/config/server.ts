@@ -19,10 +19,10 @@ export const serverConfig = {
  *   AZURE_OPENAI_API_VERSION - API version (default: 2025-01-01-preview)
  */
 export const azureOpenAIConfig = {
-  endpoint: process.env.AZURE_OPENAI_ENDPOINT || '',
-  apiKey: process.env.AZURE_OPENAI_API_KEY || '',
-  deploymentName: process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-4.1',
-  apiVersion: process.env.AZURE_OPENAI_API_VERSION || '2025-01-01-preview',
+  endpoint: (process.env.AZURE_OPENAI_ENDPOINT || '').trim(),
+  apiKey: (process.env.AZURE_OPENAI_API_KEY || '').trim(),
+  deploymentName: (process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-4.1').trim(),
+  apiVersion: (process.env.AZURE_OPENAI_API_VERSION || '2025-01-01-preview').trim(),
 };
 
 export const isDevelopment = serverConfig.env === 'development';

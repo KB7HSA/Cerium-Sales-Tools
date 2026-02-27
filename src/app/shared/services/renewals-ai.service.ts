@@ -29,8 +29,12 @@ export interface RenewalsAIAnalysisResponse {
   generated: boolean;
   content: string;
   tokens?: number;
+  promptTokens?: number;
+  completionTokens?: number;
   model?: string;
   finishReason?: string;
+  systemPrompt?: string;
+  userPrompt?: string;
 }
 
 @Injectable({
@@ -52,14 +56,9 @@ export class RenewalsAIService {
   /** Generate AI renewals analysis for a customer */
   generateAnalysis(request: RenewalsAIAnalysisRequest): Observable<RenewalsAIAnalysisResponse> {
     return this.http.post<{ data: RenewalsAIAnalysisResponse }>(`${this.apiUrl}/ai/renewals-analysis`, request).pipe(
-      map(r => r.data),
-      catchError(error => {
-        console.error('Renewals AI analysis error:', error);
-        return of({
-          generated: false,
-          content: 'AI analysis failed. Please try again or check the Azure OpenAI configuration.',
-        });
-      })
+      map(r => r.data)
+      // NOTE: Do NOT catchError here — let HTTP errors (401, 500, timeout) propagate
+      // to the component so the user sees the real error message.
     );
   }
 
