@@ -48,6 +48,7 @@ export class LaborBudgetAdminComponent implements OnInit, OnDestroy {
   blueprintAdoptionHours: number = 0;
   blueprintAdoptionRate: number = 175;
   blueprintAdoptionNotes: string = '';
+  blueprintReferenceArchitecture: string = '';
   blueprintErrorMessage: string = '';
 
   // Filtering and inline edit state.
@@ -301,7 +302,8 @@ export class LaborBudgetAdminComponent implements OnInit, OnDestroy {
       projectManagementNotes: this.blueprintProjectManagementNotes.trim(),
       adoptionHours: this.blueprintAdoptionHours,
       adoptionRatePerHour: this.blueprintAdoptionRate,
-      adoptionNotes: this.blueprintAdoptionNotes.trim()
+      adoptionNotes: this.blueprintAdoptionNotes.trim(),
+      referenceArchitecture: this.blueprintReferenceArchitecture || ''
     };
 
     if (this.blueprintFormId) {
@@ -327,6 +329,7 @@ export class LaborBudgetAdminComponent implements OnInit, OnDestroy {
     this.blueprintAdoptionHours = blueprint.adoptionHours;
     this.blueprintAdoptionRate = blueprint.adoptionRatePerHour;
     this.blueprintAdoptionNotes = blueprint.adoptionNotes;
+    this.blueprintReferenceArchitecture = blueprint.referenceArchitecture || '';
     this.blueprintErrorMessage = '';
   }
 
@@ -354,6 +357,7 @@ export class LaborBudgetAdminComponent implements OnInit, OnDestroy {
     this.blueprintAdoptionHours = 0;
     this.blueprintAdoptionRate = 175;
     this.blueprintAdoptionNotes = '';
+    this.blueprintReferenceArchitecture = '';
     this.blueprintErrorMessage = '';
   }
 

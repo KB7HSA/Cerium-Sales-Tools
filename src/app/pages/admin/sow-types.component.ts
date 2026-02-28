@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { Subscription } from 'rxjs';
-import { SOWService, SOWType, ReferenceArchitecture } from '../../shared/services/sow.service';
+import { SOWService, SOWType, ReferenceArchitecture, SOWContentSection } from '../../shared/services/sow.service';
 
 @Component({
   selector: 'app-sow-types',
@@ -25,6 +25,7 @@ export class SOWTypesComponent implements OnInit, OnDestroy {
   showModal: boolean = false;
   editingType: SOWType | null = null;
   formData: SOWType = this.getEmptyType();
+  contentSections: SOWContentSection[] = [];
 
   constructor(private sowService: SOWService) {}
 
@@ -104,6 +105,7 @@ export class SOWTypesComponent implements OnInit, OnDestroy {
   openCreateModal(): void {
     this.editingType = null;
     this.formData = this.getEmptyType();
+    this.contentSections = [];
     this.showModal = true;
   }
 
@@ -113,6 +115,7 @@ export class SOWTypesComponent implements OnInit, OnDestroy {
       ...type,
       selectedArchitectureIds: type.ReferenceArchitectures?.map(ra => ra.Id!) || []
     };
+    this.contentSections = this.parseContentSections(type.ContentSections);
     this.showModal = true;
   }
 
@@ -120,9 +123,15 @@ export class SOWTypesComponent implements OnInit, OnDestroy {
     this.showModal = false;
     this.editingType = null;
     this.formData = this.getEmptyType();
+    this.contentSections = [];
   }
 
   saveType(): void {
+    // Serialize content sections to JSON before saving
+    this.formData.ContentSections = this.contentSections.length > 0
+      ? JSON.stringify(this.contentSections)
+      : null as any;
+
     if (this.editingType?.Id) {
       this.sowService.updateSOWType(this.editingType.Id, this.formData).subscribe(result => {
         if (result) {
@@ -177,6 +186,42 @@ export class SOWTypesComponent implements OnInit, OnDestroy {
     } else {
       this.formData.selectedArchitectureIds.push(archId);
     }
+  }
+
+  // Content Sections management
+  parseContentSections(json?: string): SOWContentSection[] {
+    if (!json) return [];
+    try {
+      return JSON.parse(json);
+    } catch {
+      return [];
+    }
+  }
+
+  addContentSection(): void {
+    this.contentSections.push({
+      id: crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2),
+      name: '',
+      type: 'text',
+      content: '',
+      templateTag: '',
+      sortOrder: this.contentSections.length,
+      enabledByDefault: true
+    });
+  }
+
+  removeContentSection(index: number): void {
+    this.contentSections.splice(index, 1);
+    this.contentSections.forEach((s, i) => s.sortOrder = i);
+  }
+
+  moveContentSection(index: number, direction: 'up' | 'down'): void {
+    const newIndex = direction === 'up' ? index - 1 : index + 1;
+    if (newIndex < 0 || newIndex >= this.contentSections.length) return;
+    const temp = this.contentSections[index];
+    this.contentSections[index] = this.contentSections[newIndex];
+    this.contentSections[newIndex] = temp;
+    this.contentSections.forEach((s, i) => s.sortOrder = i);
   }
 
   formatCurrency(value: number | undefined): string {

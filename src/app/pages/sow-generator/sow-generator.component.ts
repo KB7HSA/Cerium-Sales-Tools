@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { Subscription, forkJoin, of } from 'rxjs';
-import { SOWService, SOWType, ReferenceArchitecture, GeneratedSOW } from '../../shared/services/sow.service';
+import { SOWService, SOWType, ReferenceArchitecture, GeneratedSOW, SOWContentSection } from '../../shared/services/sow.service';
 import { SOWAIService, SOWAIGenerationContext, SOWAIDocumentReviewResponse } from '../../shared/services/sow-ai.service';
 import { CustomerManagementService, Customer } from '../../shared/services/customer-management.service';
 import { SOWDocumentGeneratorService, SOWDocumentData } from '../../shared/services/sow-document-generator.service';
@@ -85,6 +85,9 @@ export class SowGeneratorComponent implements OnInit, OnDestroy {
   // Selected type for display
   selectedType: SOWType | null = null;
   selectedArchitecture: ReferenceArchitecture | null = null;
+
+  // Content sections from SOW type
+  contentSections: (SOWContentSection & { enabled: boolean })[] = [];
 
   // Pending auto-fill from quote navigation
   private pendingQuoteParams: Record<string, string> | null = null;
@@ -249,6 +252,11 @@ export class SowGeneratorComponent implements OnInit, OnDestroy {
       this.technicalResourcesContent = '';
       this.technicalResourcesFiles = [];
       this.resourcesLoaded = false;
+
+      // Parse content sections
+      this.contentSections = this.parseContentSections(this.selectedType.ContentSections);
+    } else {
+      this.contentSections = [];
     }
     this.updateTitle();
   }
@@ -353,11 +361,18 @@ export class SowGeneratorComponent implements OnInit, OnDestroy {
         estimatedHours: estHours,
         hourlyRate: estRate,
         totalPrice: (this.fromQuote && this.quoteTotalPrice) ? this.quoteTotalPrice : (estHours * estRate),
-        templateFileName: this.selectedType.TemplateFileName || 'SOW-Template.docx',
+        templateFileName: this.selectedType.TemplateFileName || 'Cerium_SOW_Master_v1.docx',
         aiSummary: this.aiGeneratedOverview || '',
         aiFindings: this.aiGeneratedFindings || '',
         aiRecommendations: this.aiGeneratedRecommendations || '',
-        aiScope: this.aiGeneratedScope || ''
+        aiScope: this.aiGeneratedScope || '',
+        contentSections: this.getEnabledContentSections().map(s => ({
+          name: s.name,
+          type: s.type,
+          content: s.content,
+          imageFileName: s.imageFileName,
+          templateTag: s.templateTag
+        }))
       };
 
       this.sowService.createGeneratedSOW(sow).subscribe({
@@ -367,6 +382,11 @@ export class SowGeneratorComponent implements OnInit, OnDestroy {
               const documentBlob = await this.documentService.generateDocument(documentData);
 
               const reader = new FileReader();
+              reader.onerror = () => {
+                console.error('FileReader error');
+                this.errorMessage = `SOW "${this.sowTitle}" saved but document conversion failed.`;
+                this.isGenerating = false;
+              };
               reader.onloadend = () => {
                 const base64Data = (reader.result as string).split(',')[1];
                 const fileName = `${this.customerName.replace(/[^a-zA-Z0-9]/g, '_')}_SOW_${new Date().toISOString().split('T')[0]}.docx`;
@@ -385,7 +405,7 @@ export class SowGeneratorComponent implements OnInit, OnDestroy {
 
                       this.successMessage = `SOW "${this.sowTitle}" created and document saved!`;
                     } else {
-                      this.successMessage = `SOW "${this.sowTitle}" created! (Document save failed)`;
+                      this.errorMessage = `SOW "${this.sowTitle}" created but document save returned false.`;
                     }
 
                     if (this.enableProfessionalReview) {
@@ -398,7 +418,7 @@ export class SowGeneratorComponent implements OnInit, OnDestroy {
                   },
                   error: (err) => {
                     console.error('Error saving document:', err);
-                    this.successMessage = `SOW "${this.sowTitle}" created! (Document save failed)`;
+                    this.errorMessage = `SOW record created but document save failed: ${err?.message || err}`;
                     if (this.enableProfessionalReview) {
                       this.performProfessionalReview(documentData);
                     } else {
@@ -410,27 +430,27 @@ export class SowGeneratorComponent implements OnInit, OnDestroy {
                 });
               };
               reader.readAsDataURL(documentBlob);
-            } catch (docError) {
+            } catch (docError: any) {
               console.error('Error generating document:', docError);
-              this.successMessage = `SOW "${this.sowTitle}" created! (Document generation failed)`;
+              this.errorMessage = `SOW record created but document generation failed: ${docError?.message || docError}`;
               this.resetForm();
               this.activeTab = 'history';
               this.isGenerating = false;
             }
           } else {
-            this.errorMessage = 'Failed to create SOW. Please try again.';
+            this.errorMessage = 'Failed to create SOW — backend returned no data. The database may be unavailable.';
             this.isGenerating = false;
           }
         },
         error: (error) => {
           console.error('Error creating SOW:', error);
-          this.errorMessage = 'An error occurred while creating the SOW.';
+          this.errorMessage = `Failed to create SOW: ${error?.message || error}`;
           this.isGenerating = false;
         }
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error generating SOW:', error);
-      this.errorMessage = 'An error occurred while generating the SOW.';
+      this.errorMessage = `Error generating SOW: ${error?.message || error}`;
       this.isGenerating = false;
     }
   }
@@ -472,6 +492,35 @@ export class SowGeneratorComponent implements OnInit, OnDestroy {
     this.quoteHourlyRate = 0;
     this.quoteTotalPrice = 0;
     this.pendingQuoteParams = null;
+    this.contentSections = [];
+  }
+
+  parseContentSections(json?: string): (SOWContentSection & { enabled: boolean })[] {
+    if (!json) return [];
+    try {
+      const sections: SOWContentSection[] = JSON.parse(json);
+      return sections
+        .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0))
+        .map(s => ({ ...s, enabled: s.enabledByDefault ?? true }));
+    } catch {
+      return [];
+    }
+  }
+
+  getEnabledContentSections(): (SOWContentSection & { enabled: boolean })[] {
+    return this.contentSections.filter(s => s.enabled);
+  }
+
+  onSectionImageUpload(section: SOWContentSection & { enabled: boolean }, event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (!input.files || input.files.length === 0) return;
+    const file = input.files[0];
+    section.imageFileName = file.name;
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      section.content = reader.result as string;
+    };
+    reader.readAsDataURL(file);
   }
 
   // AI Content Generation
@@ -690,8 +739,21 @@ export class SowGeneratorComponent implements OnInit, OnDestroy {
   }
 
   downloadSOW(sow: GeneratedSOW): void {
-    if (sow.Id) {
-      this.sowService.downloadSOW(sow.Id);
+    if (sow.Id && sow.FileName) {
+      this.sowService.downloadSOW(sow.Id).subscribe(blob => {
+        if (blob) {
+          const url = window.URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = sow.FileName || 'SOW_Document.docx';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          window.URL.revokeObjectURL(url);
+        } else {
+          this.errorMessage = 'Failed to download SOW document.';
+        }
+      });
     }
   }
 

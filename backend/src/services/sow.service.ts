@@ -34,6 +34,7 @@ export interface SOWType {
   AIPromptScope?: string;
   AITemperature?: number;
   ResourceFolder?: string;
+  ContentSections?: string;
   DefaultHours?: number;
   DefaultRate?: number;
   IsActive: boolean;
@@ -95,7 +96,7 @@ export class SOWTypeService {
       SELECT Id, Name, Description, Category, TemplateFileName,
              OverviewTemplate, ScopeTemplate, MethodologyTemplate, DeliverablesTemplate, RecommendationsTemplate,
              AIPromptOverview, AIPromptFindings, AIPromptRecommendations, AIPromptScope, AITemperature,
-             ResourceFolder,
+             ResourceFolder, ContentSections,
              DefaultHours, DefaultRate, IsActive, SortOrder, CreatedAt, UpdatedAt
       FROM dbo.SOWTypes
     `;
@@ -127,7 +128,7 @@ export class SOWTypeService {
       SELECT Id, Name, Description, Category, TemplateFileName,
              OverviewTemplate, ScopeTemplate, MethodologyTemplate, DeliverablesTemplate, RecommendationsTemplate,
              AIPromptOverview, AIPromptFindings, AIPromptRecommendations, AIPromptScope, AITemperature,
-             ResourceFolder,
+             ResourceFolder, ContentSections,
              DefaultHours, DefaultRate, IsActive, SortOrder, CreatedAt, UpdatedAt
       FROM dbo.SOWTypes
       WHERE Id = @id
@@ -177,21 +178,21 @@ export class SOWTypeService {
         Id, Name, Description, Category, TemplateFileName,
         OverviewTemplate, ScopeTemplate, MethodologyTemplate, DeliverablesTemplate, RecommendationsTemplate,
         AIPromptOverview, AIPromptFindings, AIPromptRecommendations, AIPromptScope, AITemperature,
-        ResourceFolder,
+        ResourceFolder, ContentSections,
         DefaultHours, DefaultRate, IsActive, SortOrder, CreatedAt, UpdatedAt
       )
       VALUES (
         @id, @name, @description, @category, @templateFileName,
         @overviewTemplate, @scopeTemplate, @methodologyTemplate, @deliverablesTemplate, @recommendationsTemplate,
         @aiPromptOverview, @aiPromptFindings, @aiPromptRecommendations, @aiPromptScope, @aiTemperature,
-        @resourceFolder,
+        @resourceFolder, @contentSections,
         @defaultHours, @defaultRate, @isActive, @sortOrder, GETUTCDATE(), GETUTCDATE()
       );
 
       SELECT Id, Name, Description, Category, TemplateFileName,
              OverviewTemplate, ScopeTemplate, MethodologyTemplate, DeliverablesTemplate, RecommendationsTemplate,
              AIPromptOverview, AIPromptFindings, AIPromptRecommendations, AIPromptScope, AITemperature,
-             ResourceFolder,
+             ResourceFolder, ContentSections,
              DefaultHours, DefaultRate, IsActive, SortOrder, CreatedAt, UpdatedAt
       FROM dbo.SOWTypes WHERE Id = @id;
     `;
@@ -214,6 +215,7 @@ export class SOWTypeService {
         aiPromptScope: sowType.AIPromptScope || null,
         aiTemperature: sowType.AITemperature ?? 0.7,
         resourceFolder: sowType.ResourceFolder || null,
+        contentSections: sowType.ContentSections || null,
         defaultHours: sowType.DefaultHours ?? 0,
         defaultRate: sowType.DefaultRate ?? 175.00,
         isActive: sowType.IsActive ?? true,
@@ -256,6 +258,7 @@ export class SOWTypeService {
           AIPromptScope = @aiPromptScope,
           AITemperature = @aiTemperature,
           ResourceFolder = @resourceFolder,
+          ContentSections = @contentSections,
           DefaultHours = @defaultHours,
           DefaultRate = @defaultRate,
           IsActive = @isActive,
@@ -265,8 +268,8 @@ export class SOWTypeService {
 
       SELECT Id, Name, Description, Category, TemplateFileName,
              OverviewTemplate, ScopeTemplate, MethodologyTemplate, DeliverablesTemplate, RecommendationsTemplate,
-             AIPromptOverview, AIPromptFindings, AIPromptRecommendations, AIPromptScope,
-             ResourceFolder,
+             AIPromptOverview, AIPromptFindings, AIPromptRecommendations, AIPromptScope, AITemperature,
+             ResourceFolder, ContentSections,
              DefaultHours, DefaultRate, IsActive, SortOrder, CreatedAt, UpdatedAt
       FROM dbo.SOWTypes WHERE Id = @id;
     `;
@@ -289,6 +292,7 @@ export class SOWTypeService {
         aiPromptScope: sowType.AIPromptScope || null,
         aiTemperature: sowType.AITemperature ?? 0.7,
         resourceFolder: sowType.ResourceFolder || null,
+        contentSections: sowType.ContentSections || null,
         defaultHours: sowType.DefaultHours ?? 0,
         defaultRate: sowType.DefaultRate ?? 175.00,
         isActive: sowType.IsActive ?? true,

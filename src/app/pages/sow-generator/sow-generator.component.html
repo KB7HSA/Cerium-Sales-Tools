@@ -157,6 +157,66 @@
               placeholder="Any specific requirements or context for this SOW..."
               class="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white"></textarea>
           </div>
+
+          <!-- SOW Content Sections -->
+          <div *ngIf="contentSections.length > 0" class="rounded-lg border border-gray-200 p-4 dark:border-gray-700">
+            <h3 class="mb-3 font-medium text-gray-800 dark:text-white/90">SOW Content</h3>
+            <p class="mb-3 text-xs text-gray-500 dark:text-gray-400">Select the sections to include in the generated document</p>
+            <div class="space-y-2">
+              <div *ngFor="let section of contentSections; let i = index">
+                <label
+                  class="flex items-start gap-3 rounded-lg border px-3 py-2.5 transition-colors cursor-pointer"
+                  [ngClass]="section.enabled
+                    ? 'border-brand-200 bg-brand-50/50 dark:border-brand-800 dark:bg-brand-900/10'
+                    : 'border-gray-200 bg-white hover:border-gray-300 dark:border-gray-700 dark:bg-gray-800/30 dark:hover:border-gray-600'">
+                  <input
+                    type="checkbox"
+                    [(ngModel)]="section.enabled"
+                    class="mt-0.5 h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500 dark:border-gray-600">
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2">
+                      <span class="text-sm font-medium" [ngClass]="section.enabled ? 'text-gray-800 dark:text-white/90' : 'text-gray-500 dark:text-gray-400'">{{ section.name }}</span>
+                      <span class="inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium"
+                        [ngClass]="section.type === 'image'
+                          ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
+                          : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'">
+                        {{ section.type === 'image' ? 'Image' : 'Text' }}
+                      </span>
+                      <span *ngIf="section.templateTag" class="inline-flex items-center rounded-full bg-blue-50 px-1.5 py-0.5 font-mono text-[10px] text-blue-600 dark:bg-blue-900/20 dark:text-blue-400">
+                        {{'{'}}{{ section.templateTag }}{{'}'}}
+                      </span>
+                    </div>
+                    <p *ngIf="section.type === 'text' && section.content" class="mt-0.5 text-xs text-gray-400 dark:text-gray-500 truncate">
+                      {{ section.content.length > 80 ? section.content.substring(0, 80) + '...' : section.content }}
+                    </p>
+                    <p *ngIf="section.type === 'image' && !section.imageFileName" class="mt-0.5 text-xs text-amber-500 dark:text-amber-400">
+                      Upload an image below when enabled
+                    </p>
+                    <p *ngIf="section.type === 'image' && section.imageFileName" class="mt-0.5 text-xs text-green-600 dark:text-green-400">
+                      Image: {{ section.imageFileName }}
+                    </p>
+                  </div>
+                </label>
+                <!-- Image upload for image-type sections -->
+                <div
+                  *ngIf="section.type === 'image' && section.enabled"
+                  class="ml-7 mt-1 rounded-lg border border-dashed border-gray-300 bg-gray-50 p-3 dark:border-gray-600 dark:bg-gray-800/30">
+                  <div class="flex items-center gap-3">
+                    <label class="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600">
+                      <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                      Choose Image
+                      <input type="file" accept="image/*" (change)="onSectionImageUpload(section, $event)" class="hidden">
+                    </label>
+                    <span *ngIf="section.imageFileName" class="text-xs text-gray-600 dark:text-gray-400">{{ section.imageFileName }}</span>
+                    <span *ngIf="!section.imageFileName" class="text-xs text-gray-400 dark:text-gray-500">No image selected</span>
+                  </div>
+                  <div *ngIf="section.content && section.type === 'image'" class="mt-2">
+                    <img [src]="section.content" alt="Section image preview" class="max-h-32 rounded-lg border border-gray-200 dark:border-gray-700">
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- Right Column - Preview -->
@@ -633,10 +693,13 @@
               <option value="archived">Archived</option>
             </select>
             <button
-              *ngIf="sow.FileName"
               (click)="downloadSOW(sow)"
-              class="rounded-lg border border-gray-300 p-2 text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
-              title="Download">
+              [disabled]="!sow.FileName"
+              class="rounded-lg border p-2 transition-colors"
+              [ngClass]="sow.FileName 
+                ? 'border-gray-300 text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800 cursor-pointer' 
+                : 'border-gray-200 text-gray-300 dark:border-gray-800 dark:text-gray-600 cursor-not-allowed'"
+              [title]="sow.FileName ? 'Download ' + sow.FileName : 'No document file available'">
               <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>

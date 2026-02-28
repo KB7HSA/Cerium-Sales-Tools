@@ -157,13 +157,18 @@ export class TechnicalResourcesService {
   }
 
   /**
-   * Sanitize folder path to prevent directory traversal attacks
+   * Sanitize folder path to prevent directory traversal attacks.
+   * Uses path.resolve + prefix validation instead of regex replacement.
    */
   private static sanitizePath(folderPath: string): string {
-    // Remove leading/trailing slashes and any .. segments
-    return folderPath
-      .replace(/\.\./g, '')
-      .replace(/^[\/\\]+/, '')
-      .replace(/[\/\\]+$/, '');
+    const baseDir = this.getBaseDir();
+    // Resolve the requested path against the base directory
+    const resolved = path.resolve(baseDir, folderPath);
+    // Ensure the resolved path is still within the base directory
+    if (!resolved.startsWith(baseDir)) {
+      throw new Error('Access denied: path traversal detected');
+    }
+    // Return only the relative portion
+    return path.relative(baseDir, resolved);
   }
 }

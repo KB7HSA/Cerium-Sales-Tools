@@ -7,6 +7,17 @@ import { environment } from '../../../environments/environment';
 // INTERFACES
 // ================================================================
 
+export interface SOWContentSection {
+  id: string;
+  name: string;
+  type: 'text' | 'image';
+  content: string;
+  imageFileName?: string;
+  templateTag?: string;
+  sortOrder: number;
+  enabledByDefault: boolean;
+}
+
 export interface ReferenceArchitecture {
   Id?: string;
   Name: string;
@@ -36,6 +47,7 @@ export interface SOWType {
   AIPromptScope?: string;
   AITemperature?: number;
   ResourceFolder?: string;
+  ContentSections?: string;
   DefaultHours?: number;
   DefaultRate?: number;
   IsActive: boolean;
@@ -257,7 +269,8 @@ export class SOWService {
       tap(() => this.loadGeneratedSOWs().subscribe()),
       catchError(error => {
         console.error('Error creating generated SOW:', error);
-        return of(null);
+        const message = error?.error?.message || error?.error?.error || error?.message || 'Unknown error';
+        throw new Error(`Failed to save SOW to database: ${message}`);
       })
     );
   }
@@ -282,7 +295,8 @@ export class SOWService {
       tap(() => this.loadGeneratedSOWs().subscribe()),
       catchError(error => {
         console.error('Error updating SOW document:', error);
-        return of(false);
+        const message = error?.error?.message || error?.error?.error || error?.message || 'Unknown error';
+        throw new Error(`Failed to save document to database: ${message}`);
       })
     );
   }
@@ -298,8 +312,15 @@ export class SOWService {
     );
   }
 
-  downloadSOW(id: string): void {
-    window.open(`${this.apiUrl}/generated-sows/${id}/download`, '_blank');
+  downloadSOW(id: string): Observable<Blob | null> {
+    return this.http.get(`${this.apiUrl}/generated-sows/${id}/download`, {
+      responseType: 'blob'
+    }).pipe(
+      catchError(error => {
+        console.error('Error downloading SOW:', error);
+        return of(null);
+      })
+    );
   }
 
   deleteGeneratedSOW(id: string): Observable<boolean> {

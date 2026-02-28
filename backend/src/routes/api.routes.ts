@@ -9,6 +9,8 @@ import {
   createMSPOfferingSchema,
   aiRenewalsAnalysisSchema, renewalsPromptSchema,
   updateUserRoleSchema, updatePermissionsSchema,
+  createBlueprintSchema, updateBlueprintSchema,
+  createLaborSolutionSchema, updateLaborSolutionSchema,
 } from '../middleware/validation.middleware';
 import { CustomerService } from '../services/customer.service';
 import { QuoteService } from '../services/quote.service';
@@ -26,6 +28,8 @@ import { azureOpenAIConfig } from '../config/server';
 import { TechnicalResourcesService } from '../services/technical-resources.service';
 import { userService } from '../services/user.service';
 import { executeQuery } from '../config/database';
+import { SolutionBlueprintService } from '../services/solution-blueprint.service';
+import { LaborSolutionService } from '../services/labor-solution.service';
 
 const router = Router();
 
@@ -95,6 +99,39 @@ router.post('/auth/microsoft/sync', optionalAuthMiddleware, async (req: Request,
   } catch (error: any) {
     console.error('Microsoft sync error:', error);
     sendError(res, 'Failed to sync Microsoft user', 500, error.message);
+  }
+});
+
+// ===== PUBLIC MENU CONFIGURATION (read-only) =====
+// These must be above the authMiddleware wall so the sidebar can load
+// menu config before MSAL has acquired a token (e.g., on first page load).
+
+// Get all menu configuration items (read-only)
+router.get('/menu-config', async (req: Request, res: Response) => {
+  try {
+    const items = await executeQuery(
+      `SELECT Id, MenuItemKey, DisplayName, ParentKey, IsVisible, IsProtected, SortOrder, UpdatedAt, UpdatedBy
+       FROM dbo.MenuConfiguration
+       ORDER BY SortOrder, DisplayName`
+    );
+    sendSuccess(res, items, 200, 'Menu configuration retrieved');
+  } catch (error: any) {
+    sendError(res, 'Failed to retrieve menu configuration', 500, error.message);
+  }
+});
+
+// Get only visible menu items (for non-admin sidebar filtering)
+router.get('/menu-config/visible', async (req: Request, res: Response) => {
+  try {
+    const items = await executeQuery(
+      `SELECT MenuItemKey, DisplayName, ParentKey, IsProtected, SortOrder
+       FROM dbo.MenuConfiguration
+       WHERE IsVisible = 1
+       ORDER BY SortOrder, DisplayName`
+    );
+    sendSuccess(res, items, 200, 'Visible menu items retrieved');
+  } catch (error: any) {
+    sendError(res, 'Failed to retrieve visible menu items', 500, error.message);
   }
 });
 
@@ -176,7 +213,7 @@ router.put('/customers/:id', validateBody(updateCustomerSchema), async (req: Req
   }
 });
 
-router.delete('/customers/:id', async (req: Request, res: Response) => {
+router.delete('/customers/:id', requireRole('admin', 'manager'), async (req: Request, res: Response) => {
   try {
     await CustomerService.deleteCustomer(req.params.id);
     sendSuccess(res, { id: req.params.id }, 200, 'Customer deleted successfully');
@@ -259,7 +296,7 @@ router.put('/quotes/:id', validateBody(updateQuoteSchema), async (req: Request, 
   }
 });
 
-router.delete('/quotes/:id', async (req: Request, res: Response) => {
+router.delete('/quotes/:id', requireRole('admin', 'manager'), async (req: Request, res: Response) => {
   try {
     await QuoteService.deleteQuote(req.params.id);
     sendSuccess(res, { id: req.params.id }, 200, 'Quote deleted successfully');
@@ -320,6 +357,15 @@ router.get('/labor-sections', async (req: Request, res: Response) => {
   }
 });
 
+router.get('/labor-units', async (req: Request, res: Response) => {
+  try {
+    const units = await LaborItemService.getDistinctUnits();
+    sendSuccess(res, units, 200, 'Labor units retrieved successfully');
+  } catch (error: any) {
+    sendError(res, 'Failed to retrieve labor units', 500, error.message);
+  }
+});
+
 router.post('/labor-items', validateBody(createLaborItemSchema), async (req: Request, res: Response) => {
   try {
     const newItem = await LaborItemService.createLaborItem(req.body);
@@ -342,7 +388,7 @@ router.put('/labor-items/:id', validateBody(updateLaborItemSchema), async (req: 
   }
 });
 
-router.delete('/labor-items/:id', async (req: Request, res: Response) => {
+router.delete('/labor-items/:id', requireRole('admin', 'manager'), async (req: Request, res: Response) => {
   try {
     await LaborItemService.deleteLaborItem(req.params.id);
     sendSuccess(res, { id: req.params.id }, 200, 'Labor item deleted successfully');
@@ -357,6 +403,129 @@ router.get('/labor-items/search/:term', async (req: Request, res: Response) => {
     sendSuccess(res, results, 200, 'Search completed');
   } catch (error: any) {
     sendError(res, 'Search failed', 500, error.message);
+  }
+});
+
+// ===== SOLUTION BLUEPRINTS =====
+
+router.get('/solution-blueprints', async (req: Request, res: Response) => {
+  try {
+    const blueprints = await SolutionBlueprintService.getAll();
+    sendSuccess(res, blueprints, 200, 'Solution blueprints retrieved successfully');
+  } catch (error: any) {
+    sendError(res, 'Failed to retrieve solution blueprints', 500, error.message);
+  }
+});
+
+router.get('/solution-blueprints/:id', async (req: Request, res: Response) => {
+  try {
+    const blueprint = await SolutionBlueprintService.getById(req.params.id);
+    if (!blueprint) {
+      sendError(res, 'Solution blueprint not found', 404);
+    } else {
+      sendSuccess(res, blueprint, 200, 'Solution blueprint retrieved successfully');
+    }
+  } catch (error: any) {
+    sendError(res, 'Failed to retrieve solution blueprint', 500, error.message);
+  }
+});
+
+router.post('/solution-blueprints', validateBody(createBlueprintSchema), async (req: Request, res: Response) => {
+  try {
+    const blueprint = await SolutionBlueprintService.create(req.body);
+    sendSuccess(res, blueprint, 201, 'Solution blueprint created successfully');
+  } catch (error: any) {
+    sendError(res, 'Failed to create solution blueprint', 500, error.message);
+  }
+});
+
+router.put('/solution-blueprints/:id', validateBody(updateBlueprintSchema), async (req: Request, res: Response) => {
+  try {
+    const updated = await SolutionBlueprintService.update(req.params.id, req.body);
+    if (!updated) {
+      sendError(res, 'Solution blueprint not found', 404);
+    } else {
+      sendSuccess(res, updated, 200, 'Solution blueprint updated successfully');
+    }
+  } catch (error: any) {
+    sendError(res, 'Failed to update solution blueprint', 500, error.message);
+  }
+});
+
+router.delete('/solution-blueprints/:id', requireRole('admin', 'manager'), async (req: Request, res: Response) => {
+  try {
+    await SolutionBlueprintService.delete(req.params.id);
+    sendSuccess(res, { id: req.params.id }, 200, 'Solution blueprint deleted successfully');
+  } catch (error: any) {
+    sendError(res, 'Failed to delete solution blueprint', 500, error.message);
+  }
+});
+
+// ===== LABOR SOLUTIONS =====
+
+router.get('/labor-solutions', async (req: Request, res: Response) => {
+  try {
+    const solutions = await LaborSolutionService.getAll();
+    sendSuccess(res, solutions, 200, 'Labor solutions retrieved successfully');
+  } catch (error: any) {
+    sendError(res, 'Failed to retrieve labor solutions', 500, error.message);
+  }
+});
+
+router.get('/labor-solutions/:id', async (req: Request, res: Response) => {
+  try {
+    const solution = await LaborSolutionService.getById(req.params.id);
+    if (!solution) {
+      sendError(res, 'Labor solution not found', 404);
+    } else {
+      sendSuccess(res, solution, 200, 'Labor solution retrieved successfully');
+    }
+  } catch (error: any) {
+    sendError(res, 'Failed to retrieve labor solution', 500, error.message);
+  }
+});
+
+router.post('/labor-solutions', validateBody(createLaborSolutionSchema), async (req: Request, res: Response) => {
+  try {
+    const solution = await LaborSolutionService.create(req.body);
+    sendSuccess(res, solution, 201, 'Labor solution created successfully');
+  } catch (error: any) {
+    sendError(res, 'Failed to create labor solution', 500, error.message);
+  }
+});
+
+router.put('/labor-solutions/:id', validateBody(updateLaborSolutionSchema), async (req: Request, res: Response) => {
+  try {
+    const updated = await LaborSolutionService.update(req.params.id, req.body);
+    if (!updated) {
+      sendError(res, 'Labor solution not found', 404);
+    } else {
+      sendSuccess(res, updated, 200, 'Labor solution updated successfully');
+    }
+  } catch (error: any) {
+    sendError(res, 'Failed to update labor solution', 500, error.message);
+  }
+});
+
+router.delete('/labor-solutions/:id', requireRole('admin', 'manager'), async (req: Request, res: Response) => {
+  try {
+    await LaborSolutionService.delete(req.params.id);
+    sendSuccess(res, { id: req.params.id }, 200, 'Labor solution deleted successfully');
+  } catch (error: any) {
+    sendError(res, 'Failed to delete labor solution', 500, error.message);
+  }
+});
+
+router.put('/labor-solutions-bulk', async (req: Request, res: Response) => {
+  try {
+    const { solutions } = req.body;
+    if (!solutions || !Array.isArray(solutions)) {
+      return sendError(res, 'solutions array is required', 400);
+    }
+    const result = await LaborSolutionService.replaceAll(solutions);
+    sendSuccess(res, result, 200, 'Labor solutions synced successfully');
+  } catch (error: any) {
+    sendError(res, 'Failed to sync labor solutions', 500, error.message);
   }
 });
 
@@ -409,7 +578,7 @@ router.put('/msp-offerings/:id', async (req: Request, res: Response) => {
   }
 });
 
-router.delete('/msp-offerings/:id', async (req: Request, res: Response) => {
+router.delete('/msp-offerings/:id', requireRole('admin'), async (req: Request, res: Response) => {
   try {
     await MSPOfferingService.deleteOffering(req.params.id);
     sendSuccess(res, { id: req.params.id }, 200, 'MSP offering deleted successfully');
@@ -535,7 +704,7 @@ router.put('/export-schemas/:id', async (req: Request, res: Response) => {
   }
 });
 
-router.delete('/export-schemas/:id', async (req: Request, res: Response) => {
+router.delete('/export-schemas/:id', requireRole('admin'), async (req: Request, res: Response) => {
   try {
     await ExportSchemaService.deleteSchema(req.params.id);
     sendSuccess(res, { id: req.params.id }, 200, 'Export schema deleted successfully');
@@ -569,7 +738,7 @@ router.get('/sow-documents/:id', async (req: Request, res: Response) => {
   }
 });
 
-router.get('/sow-documents/:id/download', async (req: Request, res: Response) => {
+router.get('/sow-documents/:id/download', requireRole('admin', 'manager', 'user'), async (req: Request, res: Response) => {
   try {
     const file = await SOWDocumentService.getSOWDocumentFile(req.params.id);
     if (!file) {
@@ -650,7 +819,7 @@ router.put('/sow-documents/:id/status', async (req: Request, res: Response) => {
   }
 });
 
-router.delete('/sow-documents/:id', async (req: Request, res: Response) => {
+router.delete('/sow-documents/:id', requireRole('admin', 'manager'), async (req: Request, res: Response) => {
   try {
     await SOWDocumentService.deleteSOWDocument(req.params.id);
     sendSuccess(res, { id: req.params.id }, 200, 'SOW document deleted successfully');
@@ -706,7 +875,7 @@ router.put('/reference-architectures/:id', async (req: Request, res: Response) =
   }
 });
 
-router.delete('/reference-architectures/:id', async (req: Request, res: Response) => {
+router.delete('/reference-architectures/:id', requireRole('admin'), async (req: Request, res: Response) => {
   try {
     await ReferenceArchitectureService.delete(req.params.id);
     sendSuccess(res, { id: req.params.id }, 200, 'Reference architecture deleted successfully');
@@ -762,7 +931,7 @@ router.put('/assessment-types/:id', async (req: Request, res: Response) => {
   }
 });
 
-router.delete('/assessment-types/:id', async (req: Request, res: Response) => {
+router.delete('/assessment-types/:id', requireRole('admin'), async (req: Request, res: Response) => {
   try {
     await AssessmentTypeService.delete(req.params.id);
     sendSuccess(res, { id: req.params.id }, 200, 'Assessment type deleted successfully');
@@ -795,7 +964,7 @@ router.get('/generated-assessments/:id', async (req: Request, res: Response) => 
   }
 });
 
-router.get('/generated-assessments/:id/download', async (req: Request, res: Response) => {
+router.get('/generated-assessments/:id/download', requireRole('admin', 'manager', 'user'), async (req: Request, res: Response) => {
   try {
     const file = await GeneratedAssessmentService.getFile(req.params.id);
     if (!file) {
@@ -876,7 +1045,7 @@ router.put('/generated-assessments/:id/status', async (req: Request, res: Respon
   }
 });
 
-router.delete('/generated-assessments/:id', async (req: Request, res: Response) => {
+router.delete('/generated-assessments/:id', requireRole('admin', 'manager'), async (req: Request, res: Response) => {
   try {
     await GeneratedAssessmentService.delete(req.params.id);
     sendSuccess(res, { id: req.params.id }, 200, 'Generated assessment deleted successfully');
@@ -932,7 +1101,7 @@ router.put('/sow-types/:id', async (req: Request, res: Response) => {
   }
 });
 
-router.delete('/sow-types/:id', async (req: Request, res: Response) => {
+router.delete('/sow-types/:id', requireRole('admin'), async (req: Request, res: Response) => {
   try {
     await SOWTypeService.delete(req.params.id);
     sendSuccess(res, { id: req.params.id }, 200, 'SOW type deleted');
@@ -965,7 +1134,7 @@ router.get('/generated-sows/:id', async (req: Request, res: Response) => {
   }
 });
 
-router.get('/generated-sows/:id/download', async (req: Request, res: Response) => {
+router.get('/generated-sows/:id/download', requireRole('admin', 'manager', 'user'), async (req: Request, res: Response) => {
   try {
     const file = await GeneratedSOWService.getFile(req.params.id);
     if (!file || !file.FileData) {
@@ -1034,7 +1203,7 @@ router.put('/generated-sows/:id/status', async (req: Request, res: Response) => 
   }
 });
 
-router.delete('/generated-sows/:id', async (req: Request, res: Response) => {
+router.delete('/generated-sows/:id', requireRole('admin', 'manager'), async (req: Request, res: Response) => {
   try {
     await GeneratedSOWService.delete(req.params.id);
     sendSuccess(res, { id: req.params.id }, 200, 'Generated SOW deleted');
@@ -1403,7 +1572,7 @@ router.put('/erate/status-codes/:id', async (req: Request, res: Response) => {
 });
 
 // Delete a status code
-router.delete('/erate/status-codes/:id', async (req: Request, res: Response) => {
+router.delete('/erate/status-codes/:id', requireRole('admin'), async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     await ERateSettingsService.deleteStatusCode(id);
@@ -1524,14 +1693,16 @@ router.delete('/erate/frn/clear', requireRole('admin'), async (req: Request, res
 
 // ===== USER TABLE PREFERENCES =====
 
-// Get table preferences for a user
+// Get table preferences for the authenticated user
 router.get('/user-preferences/table/:tableName', async (req: Request, res: Response) => {
   try {
     const { tableName } = req.params;
-    const userEmail = req.query.userEmail as string;
+    // Security: always use the authenticated user's email, ignore client-supplied userEmail
+    const authReq = req as AuthenticatedRequest;
+    const userEmail = authReq.user?.email;
     
     if (!userEmail) {
-      sendError(res, 'userEmail query parameter is required', 400);
+      sendError(res, 'Authentication required', 401);
       return;
     }
     
@@ -1551,14 +1722,21 @@ router.get('/user-preferences/table/:tableName', async (req: Request, res: Respo
   }
 });
 
-// Save/update table preferences for a user
+// Save/update table preferences for the authenticated user
 router.put('/user-preferences/table/:tableName', async (req: Request, res: Response) => {
   try {
     const { tableName } = req.params;
-    const { userEmail, preferences } = req.body;
+    const { preferences } = req.body;
+    // Security: always use the authenticated user's email, ignore client-supplied userEmail
+    const authReq = req as AuthenticatedRequest;
+    const userEmail = authReq.user?.email;
     
-    if (!userEmail || !preferences) {
-      sendError(res, 'userEmail and preferences are required', 400);
+    if (!userEmail) {
+      sendError(res, 'Authentication required', 401);
+      return;
+    }
+    if (!preferences) {
+      sendError(res, 'preferences are required', 400);
       return;
     }
     
@@ -1585,10 +1763,27 @@ router.put('/user-preferences/table/:tableName', async (req: Request, res: Respo
 
 // ===== USER AUTHENTICATION =====
 
-// Get current user by email
-router.get('/auth/user/:email', async (req: Request, res: Response) => {
+// Get current user by email — users can only read their own profile; admins can read any
+router.get('/auth/user/:email', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { email } = req.params;
+
+    // Ownership check: non-admins can only query their own profile
+    const callerEmail = (req.user?.email || '').toLowerCase();
+    const requestedEmail = email.toLowerCase();
+    if (callerEmail !== requestedEmail) {
+      // Check if caller is admin
+      const callerRows = await executeQuery<{ RoleName: string }>(
+        `SELECT RoleName FROM AdminUsers WHERE Email = @email`,
+        { email: req.user?.email || '' }
+      );
+      const callerRole = (callerRows[0]?.RoleName || '').toLowerCase();
+      if (callerRole !== 'admin') {
+        sendError(res, 'Access denied. You can only view your own profile.', 403);
+        return;
+      }
+    }
+
     const user = await userService.getUserByEmail(email);
     
     if (!user) {
@@ -1622,7 +1817,7 @@ router.get('/auth/user/:email', async (req: Request, res: Response) => {
 });
 
 // Get all users (admin only)
-router.get('/auth/users', async (req: Request, res: Response) => {
+router.get('/auth/users', requireRole('admin'), async (req: Request, res: Response) => {
   try {
     const users = await userService.getAllUsers();
     sendSuccess(res, users, 200, 'Users retrieved successfully');
@@ -1631,8 +1826,8 @@ router.get('/auth/users', async (req: Request, res: Response) => {
   }
 });
 
-// Get user role assignments
-router.get('/auth/users/:userId/roles', async (req: Request, res: Response) => {
+// Get user role assignments (admin only)
+router.get('/auth/users/:userId/roles', requireRole('admin'), async (req: Request, res: Response) => {
   try {
     const { userId } = req.params;
     const roleAssignments = await userService.getUserRoleAssignments(userId);
@@ -2402,34 +2597,8 @@ router.post('/menu-config/migrate', requireRole('admin'), async (req: Request, r
   }
 });
 
-// Get all menu configuration items
-router.get('/menu-config', async (req: Request, res: Response) => {
-  try {
-    const items = await executeQuery(
-      `SELECT Id, MenuItemKey, DisplayName, ParentKey, IsVisible, IsProtected, SortOrder, UpdatedAt, UpdatedBy
-       FROM dbo.MenuConfiguration
-       ORDER BY SortOrder, DisplayName`
-    );
-    sendSuccess(res, items, 200, 'Menu configuration retrieved');
-  } catch (error: any) {
-    sendError(res, 'Failed to retrieve menu configuration', 500, error.message);
-  }
-});
-
-// Get only visible menu items (for non-admin sidebar filtering)
-router.get('/menu-config/visible', async (req: Request, res: Response) => {
-  try {
-    const items = await executeQuery(
-      `SELECT MenuItemKey, DisplayName, ParentKey, IsProtected, SortOrder
-       FROM dbo.MenuConfiguration
-       WHERE IsVisible = 1
-       ORDER BY SortOrder, DisplayName`
-    );
-    sendSuccess(res, items, 200, 'Visible menu items retrieved');
-  } catch (error: any) {
-    sendError(res, 'Failed to retrieve visible menu items', 500, error.message);
-  }
-});
+// NOTE: GET /menu-config and GET /menu-config/visible are defined above
+// the authMiddleware wall as public routes (sidebar needs them before auth).
 
 // Reorder menu items — admin only
 router.put('/menu-config/reorder', requireRole('admin'), async (req: Request, res: Response) => {

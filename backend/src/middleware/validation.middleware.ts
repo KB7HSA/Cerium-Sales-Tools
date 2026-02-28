@@ -60,31 +60,37 @@ export const updateLaborItemSchema = createLaborItemSchema.partial();
 // ===== QUOTE SCHEMAS =====
 
 export const createQuoteSchema = z.object({
-  QuoteType: z.string().max(100).optional(),
-  CustomerId: z.string().max(100).optional(),
-  CustomerName: z.string().max(255).optional(),
-  Notes: z.string().max(10000).optional(),
-  ServiceName: z.string().max(255).optional(),
-  ServiceLevelName: z.string().max(255).optional(),
-  PricingUnitLabel: z.string().max(255).optional(),
-  BasePricePerUnit: z.number().min(0).optional(),
-  ProfessionalServicesPrice: z.number().min(0).optional(),
-  ProfessionalServicesTotal: z.number().min(0).optional(),
-  PerUnitTotal: z.number().min(0).optional(),
-  AddOnMonthlyTotal: z.number().min(0).optional(),
-  AddOnOneTimeTotal: z.number().min(0).optional(),
-  AddOnPerUnitTotal: z.number().min(0).optional(),
-  NumberOfUsers: z.number().int().min(0).optional(),
-  DurationMonths: z.number().int().min(0).optional(),
-  MonthlyPrice: z.number().min(0).optional(),
-  TotalPrice: z.number().min(0).optional(),
-  SetupFee: z.number().min(0).optional(),
-  DiscountAmount: z.number().min(0).optional(),
-  AnnualDiscountApplied: z.boolean().optional(),
-  TotalHours: z.number().min(0).optional(),
-  Status: z.string().max(50).optional(),
-  selectedOptions: z.array(z.any()).optional(),
-}).passthrough(); // Allow additional fields like CreatedBy etc.
+  QuoteType: z.string().max(100).nullish(),
+  CustomerId: z.string().max(100).nullish(),
+  CustomerName: z.string().max(255).nullish(),
+  Notes: z.string().max(10000).nullish(),
+  ServiceName: z.string().max(255).nullish(),
+  ServiceLevelName: z.string().max(255).nullish(),
+  PricingUnitLabel: z.string().max(255).nullish(),
+  BasePricePerUnit: z.number().min(0).nullish(),
+  ProfessionalServicesPrice: z.number().min(0).nullish(),
+  ProfessionalServicesTotal: z.number().min(0).nullish(),
+  PerUnitTotal: z.number().min(0).nullish(),
+  AddOnMonthlyTotal: z.number().min(0).nullish(),
+  AddOnOneTimeTotal: z.number().min(0).nullish(),
+  AddOnPerUnitTotal: z.number().min(0).nullish(),
+  NumberOfUsers: z.number().int().min(0).nullish(),
+  DurationMonths: z.number().int().min(0).nullish(),
+  MonthlyPrice: z.number().min(0).nullish(),
+  TotalPrice: z.number().min(0).nullish(),
+  SetupFee: z.number().min(0).nullish(),
+  DiscountAmount: z.number().min(0).nullish(),
+  AnnualDiscountApplied: z.boolean().nullish(),
+  TotalHours: z.number().min(0).nullish(),
+  Status: z.string().max(50).nullish(),
+  selectedOptions: z.array(z.any()).nullish(),
+  workItems: z.array(z.any()).nullish(),
+  laborGroups: z.array(z.any()).nullish(),
+  CreatedDate: z.string().nullish(),
+  CreatedTime: z.string().nullish(),
+  CreatedBy: z.string().nullish(),
+  CreatedByEmail: z.string().nullish(),
+}).passthrough(); // Allow additional fields
 
 export const updateQuoteSchema = createQuoteSchema.partial();
 
@@ -128,3 +134,66 @@ export const updateUserRoleSchema = z.object({
 export const updatePermissionsSchema = z.object({
   permissions: z.array(z.string().max(100)),
 });
+
+// ===== SOLUTION BLUEPRINT SCHEMAS =====
+
+export const createBlueprintSchema = z.object({
+  Id: z.string().max(64).optional(),
+  Name: z.string().min(1, 'Name is required').max(255),
+  Description: z.string().max(4000).optional(),
+  OverheadPercent: z.number().min(0).max(100).optional(),
+  ContingencyPercent: z.number().min(0).max(100).optional(),
+  ProjectManagementPercent: z.number().min(0).max(100).optional(),
+  ProjectManagementHours: z.number().min(0).optional(),
+  ProjectManagementRatePerHour: z.number().min(0).optional(),
+  ProjectManagementNotes: z.string().max(4000).optional(),
+  AdoptionHours: z.number().min(0).optional(),
+  AdoptionRatePerHour: z.number().min(0).optional(),
+  AdoptionNotes: z.string().max(4000).optional(),
+  ReferenceArchitecture: z.string().max(255).optional(),
+  IsPublic: z.boolean().optional(),
+  Items: z.array(z.object({
+    Id: z.string().max(64).optional(),
+    id: z.string().max(64).optional(),
+    CatalogItemId: z.string().max(64).optional(),
+    catalogItemId: z.string().max(64).optional(),
+    Quantity: z.number().min(0).optional(),
+    quantity: z.number().min(0).optional(),
+    HoursPerUnit: z.number().min(0).optional(),
+    hoursPerUnit: z.number().min(0).optional(),
+    RatePerHour: z.number().min(0).optional(),
+    ratePerHour: z.number().min(0).optional(),
+    CatalogSnapshot: z.any().optional(),
+    catalogSnapshot: z.any().optional(),
+  })).optional(),
+});
+
+export const updateBlueprintSchema = createBlueprintSchema.partial();
+
+// ===== LABOR SOLUTION SCHEMAS =====
+
+export const createLaborSolutionSchema = z.object({
+  Id: z.string().max(64).optional(),
+  Name: z.string().min(1, 'Name is required').max(255),
+  Description: z.string().max(4000).optional(),
+  OverheadPercent: z.number().min(0).max(100).optional(),
+  ContingencyPercent: z.number().min(0).max(100).optional(),
+  Items: z.array(z.object({
+    Id: z.string().max(64).optional(),
+    id: z.string().max(64).optional(),
+    CatalogItemId: z.string().max(64).optional(),
+    catalogItemId: z.string().max(64).optional(),
+    Quantity: z.number().min(0).optional(),
+    quantity: z.number().min(0).optional(),
+    HoursPerUnit: z.number().min(0).optional(),
+    hoursPerUnit: z.number().min(0).optional(),
+    RatePerHour: z.number().min(0).optional(),
+    ratePerHour: z.number().min(0).optional(),
+    GroupName: z.string().max(255).optional(),
+    groupName: z.string().max(255).optional(),
+    SortOrder: z.number().min(0).optional(),
+    sortOrder: z.number().min(0).optional(),
+  })).optional(),
+});
+
+export const updateLaborSolutionSchema = createLaborSolutionSchema.partial();

@@ -28,11 +28,20 @@ export const sqlConfig = {
 let pool: sql.ConnectionPool | null = null;
 
 /**
- * Initialize and return SQL Server connection pool
+ * Initialize and return SQL Server connection pool.
+ * Automatically reconnects if the pool is closed or broken.
  */
 export async function getConnectionPool(): Promise<sql.ConnectionPool> {
-  if (pool) {
+  // Reconnect if pool is null, not connected, or in a broken state
+  if (pool && (pool as any).connected) {
     return pool;
+  }
+
+  // If pool exists but is not connected, close it gracefully first
+  if (pool) {
+    console.warn('⚠️  Pool exists but is not connected — reconnecting...');
+    try { await pool.close(); } catch { /* ignore close errors */ }
+    pool = null;
   }
 
   try {
@@ -40,13 +49,14 @@ export async function getConnectionPool(): Promise<sql.ConnectionPool> {
 
     pool.on('error', (err: Error) => {
       console.error('SQL Server Connection Pool Error:', err);
-      pool = null; // Reset pool on error
+      pool = null; // Reset pool on error so next call reconnects
     });
 
     await pool.connect();
     console.log('✅ Connected to SQL Server:', sqlConfig.server);
     return pool;
   } catch (error) {
+    pool = null;
     console.error('❌ Failed to connect to SQL Server:', error);
     throw error;
   }

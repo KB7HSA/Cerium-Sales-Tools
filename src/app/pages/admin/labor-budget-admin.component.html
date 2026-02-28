@@ -213,24 +213,38 @@
         />
       </div>
       <div>
-        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Overhead %</label>
-        <input
-          [(ngModel)]="blueprintOverheadPercent"
-          type="number"
-          min="0"
-          step="0.1"
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Reference Architecture</label>
+        <select
+          [(ngModel)]="blueprintReferenceArchitecture"
           class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2 text-gray-900 dark:text-white"
-        />
+        >
+          <option value="">— None —</option>
+          @for (tag of referenceArchitectureTags; track tag) {
+            <option [value]="tag">{{ tag }}</option>
+          }
+        </select>
       </div>
-      <div>
-        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Contingency %</label>
-        <input
-          [(ngModel)]="blueprintContingencyPercent"
-          type="number"
-          min="0"
-          step="0.1"
-          class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2 text-gray-900 dark:text-white"
-        />
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Overhead %</label>
+          <input
+            [(ngModel)]="blueprintOverheadPercent"
+            type="number"
+            min="0"
+            step="0.1"
+            class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2 text-gray-900 dark:text-white"
+          />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Contingency %</label>
+          <input
+            [(ngModel)]="blueprintContingencyPercent"
+            type="number"
+            min="0"
+            step="0.1"
+            class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2 text-gray-900 dark:text-white"
+          />
+        </div>
       </div>
     </div>
 
@@ -412,6 +426,9 @@
               <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <div>
                   <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ blueprint.name }}</p>
+                  @if (blueprint.referenceArchitecture) {
+                    <span class="inline-block rounded bg-indigo-100 dark:bg-indigo-900/40 px-2 py-0.5 text-xs font-medium text-indigo-700 dark:text-indigo-300 mb-1">{{ blueprint.referenceArchitecture }}</span>
+                  }
                   <p class="text-xs text-gray-500 dark:text-gray-400">
                     {{ blueprint.items.length }} item(s) • Overhead {{ blueprint.overheadPercent }}% • Contingency {{ blueprint.contingencyPercent }}%
                   </p>

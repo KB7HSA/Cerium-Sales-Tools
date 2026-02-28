@@ -6,6 +6,7 @@ import { SafeHtmlPipe } from '../../pipe/safe-html.pipe';
 import { combineLatest, Subscription, Observable } from 'rxjs';
 import { MenuConfigService, MenuConfigItem } from '../../services/menu-config.service';
 import { RBACService } from '../../services/rbac.service';
+import { AuthService } from '../../services/auth.service';
 
 type NavItem = {
   name?: string;
@@ -313,7 +314,8 @@ export class AppSidebarComponent {
     private router: Router,
     private cdr: ChangeDetectorRef,
     private menuConfigService: MenuConfigService,
-    private rbacService: RBACService
+    private rbacService: RBACService,
+    private authService: AuthService
   ) {
     this.isExpanded$ = this.sidebarService.isExpanded$;
     this.isMobileOpen$ = this.sidebarService.isMobileOpen$;
@@ -336,6 +338,14 @@ export class AppSidebarComponent {
     // Subscribe to menu config changes to re-filter dynamically
     this.subscription.add(
       this.menuConfigService.menuConfig$.subscribe(() => {
+        this.applyMenuFilter();
+        this.cdr.detectChanges();
+      })
+    );
+
+    // Re-filter menus when user role changes (e.g., after syncMicrosoftUser completes)
+    this.subscription.add(
+      this.authService.currentUser$.subscribe(() => {
         this.applyMenuFilter();
         this.cdr.detectChanges();
       })

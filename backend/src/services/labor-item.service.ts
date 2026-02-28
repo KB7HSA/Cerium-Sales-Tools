@@ -71,6 +71,19 @@ export class LaborItemService {
   }
 
   /**
+   * Get distinct units of measure
+   */
+  static async getDistinctUnits(): Promise<string[]> {
+    const query = `
+      SELECT DISTINCT UnitOfMeasure FROM dbo.LaborItems
+      WHERE IsActive = 1 AND UnitOfMeasure IS NOT NULL AND UnitOfMeasure <> ''
+      ORDER BY UnitOfMeasure
+    `;
+    const rows = await executeQuery<{ UnitOfMeasure: string }>(query);
+    return rows.map(r => r.UnitOfMeasure);
+  }
+
+  /**
    * Create labor item
    */
   static async createLaborItem(item: Partial<LaborItem>): Promise<LaborItem> {

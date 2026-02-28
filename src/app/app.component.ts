@@ -99,14 +99,30 @@ export class AppComponent implements OnInit, OnDestroy {
       error: (error) => {
         console.error('MSAL redirect error:', error);
         sessionStorage.removeItem('msalLoginInProgress');
+        sessionStorage.removeItem('msalLoginTimestamp');
         this.isProcessingLogin = false;
 
-        // If MSAL is stuck in interaction_in_progress, clear its state and reload
-        if (error instanceof BrowserAuthError && error.errorCode === 'interaction_in_progress') {
-          console.warn('Clearing stuck MSAL interaction state...');
-          this.clearMsalBrowserStorage();
-          window.location.reload();
+        // If MSAL is stuck in interaction_in_progress or has any stale
+        // auth state, clear everything and reload to recover gracefully
+        if (error instanceof BrowserAuthError) {
+          const recoverableCodes = [
+            'interaction_in_progress',
+            'no_cached_authority_error',
+            'monitor_window_timeout',
+            'redirect_in_iframe',
+            'block_iframe_reload',
+          ];
+          if (recoverableCodes.includes(error.errorCode)) {
+            console.warn(`Recovering from MSAL error [${error.errorCode}] — clearing state and reloading`);
+            this.clearMsalBrowserStorage();
+            window.location.reload();
+            return;
+          }
         }
+
+        // For any other MSAL error, clear stale state to prevent
+        // the blank-page problem on subsequent loads
+        this.clearStaleInteractionState();
       }
     });
 

@@ -49,6 +49,7 @@ export class LaborBudgetComponent implements OnInit, OnDestroy {
   blueprints: SolutionBlueprint[] = [];
   addedBlueprints: { id: string; name: string; itemCount: number }[] = [];
   showBlueprintPicker: boolean = false;
+  blueprintArchFilter: string = 'All';
   // Grouping and reorder state.
   collapsedGroups: Set<string> = new Set();
   editingGroupName: string | null = null;
@@ -235,6 +236,16 @@ export class LaborBudgetComponent implements OnInit, OnDestroy {
   // Blueprint picker controls.
   toggleBlueprintPicker(): void {
     this.showBlueprintPicker = !this.showBlueprintPicker;
+    if (this.showBlueprintPicker) {
+      this.blueprintArchFilter = 'All';
+    }
+  }
+
+  get filteredBlueprints(): SolutionBlueprint[] {
+    if (this.blueprintArchFilter === 'All') return this.blueprints;
+    return this.blueprints.filter(bp =>
+      bp.referenceArchitecture === this.blueprintArchFilter
+    );
   }
 
   addFromBlueprint(blueprint: SolutionBlueprint): void {

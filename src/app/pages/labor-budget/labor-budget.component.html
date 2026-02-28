@@ -406,9 +406,19 @@
         @if (showBlueprintPicker) {
           <div class="mt-3 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 p-3">
             <p class="text-xs font-semibold text-blue-700 dark:text-blue-300 mb-2">Select a Blueprint</p>
-            @if (blueprints.length > 0) {
+            <!-- Reference Architecture filter -->
+            <select
+              [(ngModel)]="blueprintArchFilter"
+              class="mb-2 w-full rounded-lg border border-blue-200 dark:border-blue-700 bg-white dark:bg-gray-700 px-3 py-1.5 text-xs text-gray-900 dark:text-white"
+            >
+              <option value="All">All Architectures</option>
+              @for (tag of referenceArchitectureTags; track tag) {
+                <option [value]="tag">{{ tag }}</option>
+              }
+            </select>
+            @if (filteredBlueprints.length > 0) {
               <div class="space-y-1.5 max-h-60 overflow-y-auto">
-                @for (bp of blueprints; track bp.id) {
+                @for (bp of filteredBlueprints; track bp.id) {
                   <button
                     type="button"
                     (click)="addFromBlueprint(bp)"
@@ -417,6 +427,9 @@
                     <div>
                       <p class="font-semibold text-gray-900 dark:text-white">{{ bp.name }}</p>
                       <p class="text-xs text-gray-500 dark:text-gray-400">{{ bp.items.length }} work item(s) · OH {{ bp.overheadPercent }}% · Cont {{ bp.contingencyPercent }}%</p>
+                      @if (bp.referenceArchitecture) {
+                        <span class="inline-block rounded bg-indigo-100 dark:bg-indigo-900/40 px-1.5 py-0.5 text-[10px] font-medium text-indigo-700 dark:text-indigo-300 mt-0.5">{{ bp.referenceArchitecture }}</span>
+                      }
                       @if (bp.description) {
                         <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{{ bp.description }}</p>
                       }

@@ -1,6 +1,8 @@
 import { Injectable } from '@angular/core';
 import Docxtemplater from 'docxtemplater';
 import PizZip from 'pizzip';
+// @ts-ignore – no type declarations for the free image module
+import ImageModule from 'docxtemplater-image-module-free';
 
 /**
  * SOW data structure for document generation
@@ -23,6 +25,7 @@ export interface SOWDocumentData {
   aiFindings?: string;
   aiRecommendations?: string;
   aiScope?: string;
+  contentSections?: { name: string; type: 'text' | 'image'; content: string; imageFileName?: string; templateTag?: string }[];
 }
 
 /**
@@ -41,7 +44,7 @@ export class SOWDocumentGeneratorService {
    * Load the Word template file
    */
   private async loadTemplate(templateFileName?: string): Promise<ArrayBuffer> {
-    const filename = templateFileName || 'SOW-Template.docx';
+    const filename = templateFileName || 'Cerium_SOW_Master_v1.docx';
     const templateUrl = `/templates/${filename}`;
 
     // Check cache first
@@ -53,9 +56,9 @@ export class SOWDocumentGeneratorService {
       const response = await fetch(templateUrl);
       if (!response.ok) {
         // Fall back to default template if specific template not found
-        if (templateFileName && templateFileName !== 'SOW-Template.docx') {
+        if (templateFileName && templateFileName !== 'Cerium_SOW_Master_v1.docx') {
           console.warn(`[SOWDocumentGeneratorService] Template "${filename}" not found, using default template`);
-          return this.loadTemplate('SOW-Template.docx');
+          return this.loadTemplate('Cerium_SOW_Master_v1.docx');
         }
         // If default not found either, try Assessment template
         console.warn(`[SOWDocumentGeneratorService] SOW template not found, falling back to Assessment template`);
@@ -111,28 +114,154 @@ export class SOWDocumentGeneratorService {
    * Prepare template data from SOW input
    */
   private prepareTemplateData(data: SOWDocumentData): Record<string, any> {
-    return {
+    const templateData: Record<string, any> = {
+      // Core customer/project fields
       companyName: data.customerName || 'Customer',
       customerName: data.customerName || 'Customer',
       customerContact: data.customerContact || data.customerName || '',
       assessmentTitle: data.sowTitle || 'Statement of Work',
       sowTitle: data.sowTitle || 'Statement of Work',
+      title: data.sowTitle || 'Statement of Work',
       practiceArea: data.practiceArea || '',
       assessmentType: data.sowType || '',
       sowType: data.sowType || '',
+      serviceName: data.sowType || '',
       currentDate: this.formatDate(),
+      createdDate: this.formatDate(),
+      // Content sections
       executiveSummary: data.executiveSummary || '',
       scope: data.scope || '',
       methodology: data.methodology || '',
       recommendations: data.recommendations || '',
+      findings: data.aiFindings || '',
+      nextSteps: data.recommendations || '',
+      // Pricing fields
       estimatedHours: data.estimatedHours?.toString() || '0',
       hourlyRate: this.formatCurrency(data.hourlyRate),
       totalPrice: this.formatCurrency(data.totalPrice),
+      monthlyPrice: this.formatCurrency((data.totalPrice || 0) / 12),
+      // AI content fields
       AI_Summary: data.aiSummary || data.executiveSummary || '',
       AI_Findings: data.aiFindings || '',
       AI_Recommendations: data.aiRecommendations || data.recommendations || '',
       AI_Scope: data.aiScope || data.scope || '',
+      // Customer notes
+      notes: '',
     };
+
+    // Add content sections as template variables
+    if (data.contentSections && data.contentSections.length > 0) {
+      data.contentSections.forEach((section, index) => {
+        // Use templateTag if specified, otherwise fall back to sanitized name
+        const tag = section.templateTag?.trim() || section.name.replace(/[^a-zA-Z0-9]/g, '_');
+
+        if (section.type === 'image' && section.content?.startsWith('data:image')) {
+          // For images: the value is the data-URL; the image module resolves it
+          // via {%tag} syntax in the DOCX template
+          templateData[tag] = section.content;
+          templateData[`section_${index}`] = section.content;
+        } else {
+          const value = section.content || '';
+          templateData[tag] = value;
+          templateData[`section_${index}`] = value;
+        }
+      });
+
+      // Add a combined 'contentSections' array for loop templates (text only)
+      templateData['contentSections'] = data.contentSections
+        .filter(s => s.type === 'text')
+        .map(s => ({ name: s.name, tag: s.templateTag || s.name.replace(/[^a-zA-Z0-9]/g, '_'), content: s.content || '' }));
+    }
+
+    return templateData;
+  }
+
+  /**
+   * Decode a base64 data-URL to a Uint8Array for the image module.
+   */
+  private base64DataUrlToBuffer(dataUrl: string): Uint8Array {
+    const base64 = dataUrl.split(',')[1] || '';
+    const bin = atob(base64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) {
+      bytes[i] = bin.charCodeAt(i);
+    }
+    return bytes;
+  }
+
+  /**
+   * Resolve image natural dimensions from a data-URL using an HTML Image.
+   * Returns dimensions scaled to fit within 6"×8" at 96 DPI.
+   * Falls back to 500×375 if the image cannot be decoded.
+   */
+  private getImageSize(dataUrl: string): Promise<[number, number]> {
+    return new Promise(resolve => {
+      const img = new Image();
+      img.onload = () => {
+        let w = img.naturalWidth;
+        let h = img.naturalHeight;
+        const MAX_W = 576; // 6 inches × 96 DPI
+        const MAX_H = 768; // 8 inches × 96 DPI
+        if (w > MAX_W) { h = Math.round(h * MAX_W / w); w = MAX_W; }
+        if (h > MAX_H) { w = Math.round(w * MAX_H / h); h = MAX_H; }
+        resolve([w, h]);
+      };
+      img.onerror = () => resolve([500, 375]);
+      img.src = dataUrl;
+    });
+  }
+
+  /**
+   * Build the image module configuration.
+   * Caches resolved sizes so the synchronous getSize callback works.
+   */
+  private buildImageModule(sizeCache: Map<string, [number, number]>): any {
+    const self = this;
+    return new ImageModule({
+      centered: false,
+      fileType: 'docx',
+      getImage(tagValue: string) {
+        if (typeof tagValue === 'string' && tagValue.startsWith('data:image')) {
+          return self.base64DataUrlToBuffer(tagValue);
+        }
+        // Return 1×1 transparent PNG as fallback
+        return self.base64DataUrlToBuffer(
+          'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVQI12NgAAIABQABNjN9GQAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAAA0lEQVQI12P4z8BQDwAEgAF/QualzQAAAABJRU5ErkJggg=='
+        );
+      },
+      getSize(img: any, tagValue: string, tagName: string) {
+        return sizeCache.get(tagName) || sizeCache.get(tagValue) || [500, 375];
+      }
+    });
+  }
+
+  /**
+   * Pre-resolve all image sizes before rendering (async → sync bridge).
+   */
+  private async preloadImageSizes(
+    templateData: Record<string, any>,
+    sections?: SOWDocumentData['contentSections']
+  ): Promise<Map<string, [number, number]>> {
+    const cache = new Map<string, [number, number]>();
+    if (!sections) return cache;
+
+    const promises: Promise<void>[] = [];
+    for (const section of sections) {
+      if (section.type !== 'image' || !section.content?.startsWith('data:image')) continue;
+
+      const tag = section.templateTag?.trim() || section.name.replace(/[^a-zA-Z0-9]/g, '_');
+      const dataUrl = section.content;
+
+      promises.push(
+        this.getImageSize(dataUrl).then(size => {
+          cache.set(tag, size);
+          cache.set(dataUrl, size);
+        })
+      );
+    }
+
+    await Promise.all(promises);
+    return cache;
   }
 
   /**
@@ -144,20 +273,37 @@ export class SOWDocumentGeneratorService {
     try {
       // Load template
       const templateBuffer = await this.loadTemplate(data.templateFileName);
-      const zip = new PizZip(templateBuffer);
 
-      // Create Docxtemplater instance
+      // Prepare template data
+      const templateData = this.prepareTemplateData(data);
+
+      // Pre-resolve image sizes (async) so the sync getSize callback works
+      const sizeCache = await this.preloadImageSizes(templateData, data.contentSections);
+
+      // Build image module
+      const imageModule = this.buildImageModule(sizeCache);
+
+      // Create zip and docxtemplater with image module attached
+      const zip = new PizZip(templateBuffer);
       const doc = new Docxtemplater(zip, {
         paragraphLoop: true,
         linebreaks: true,
-        delimiters: { start: '{', end: '}' }
+        delimiters: { start: '{', end: '}' },
+        modules: [imageModule],
+        // Gracefully handle missing placeholders instead of throwing errors
+        nullGetter(part: any) {
+          if (!part.module) {
+            return '';
+          }
+          if (part.module === 'rawxml') {
+            return '';
+          }
+          return '';
+        }
       });
 
-      // Prepare and set data
-      const templateData = this.prepareTemplateData(data);
+      // Set data and render
       doc.setData(templateData);
-
-      // Render the document
       doc.render();
 
       // Generate output
@@ -167,9 +313,11 @@ export class SOWDocumentGeneratorService {
       });
 
       return outputBuffer;
-    } catch (error) {
+    } catch (error: any) {
       console.error('[SOWDocumentGeneratorService] Error generating document:', error);
-      throw new Error('Failed to generate SOW document. Please check the template file.');
+      // Preserve detailed error info for debugging
+      const detail = error?.properties?.errors?.map((e: any) => e.message).join('; ') || error?.message || String(error);
+      throw new Error(`Failed to generate SOW document: ${detail}`);
     }
   }
 
