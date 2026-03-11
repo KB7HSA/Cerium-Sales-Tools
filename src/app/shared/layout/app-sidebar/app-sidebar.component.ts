@@ -77,6 +77,12 @@ export class AppSidebarComponent {
       path: "/sow-generator",
     },
     {
+      name: "Document Conversion",
+      menuKey: "document-conversion",
+      icon: `<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M4 4a2 2 0 012-2h8l6 6v12a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2-.5h7v5.5h5.5V20a.5.5 0 01-.5.5H6a.5.5 0 01-.5-.5V4a.5.5 0 01.5-.5z" fill="currentColor"/><path d="M12 11l-3 3h2v4h2v-4h2l-3-3z" fill="currentColor" opacity=".7"/></svg>`,
+      path: "/document-conversion",
+    },
+    {
       name: "Cisco Renewals",
       menuKey: "cisco-renewals",
       icon: `<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M4 4a2 2 0 012-2h12a2 2 0 012 2v16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2-.5h12a.5.5 0 01.5.5v16a.5.5 0 01-.5.5H6a.5.5 0 01-.5-.5V4a.5.5 0 01.5-.5z" fill="currentColor"/><path d="M8 7h8v1.5H8V7zm0 3h8v1.5H8V10zm0 3h5v1.5H8V13z" fill="currentColor"/><circle cx="16" cy="16" r="3" fill="currentColor" opacity=".5"/><path d="M15.2 16l.5-.5.8.8 1.7-1.7.5.5-2.2 2.2-.5-.5-.8-.8z" fill="white"/></svg>`,
@@ -84,6 +90,14 @@ export class AppSidebarComponent {
         { name: "Renewals Summary", path: "/cisco-renewals/summary", pro: false, menuKey: "cisco-renewals-summary" },
         { name: "Hardware Renewals", path: "/cisco-renewals/hardware", pro: false, menuKey: "cisco-renewals-hardware" },
         { name: "Software Renewals", path: "/cisco-renewals/software", pro: false, menuKey: "cisco-renewals-software" },
+      ],
+    },
+    {
+      name: "Vendor Quotes",
+      menuKey: "vendor-quotes",
+      icon: `<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M3.25 5.5C3.25 4.25736 4.25736 3.25 5.5 3.25H18.5C19.7426 3.25 20.75 4.25736 20.75 5.5V18.5C20.75 19.7426 19.7426 20.75 18.5 20.75H5.5C4.25736 20.75 3.25 19.7426 3.25 18.5V5.5ZM5.5 4.75C5.08579 4.75 4.75 5.08579 4.75 5.5V18.5C4.75 18.9142 5.08579 19.25 5.5 19.25H18.5C18.9142 19.25 19.25 18.9142 19.25 18.5V5.5C19.25 5.08579 18.9142 4.75 18.5 4.75H5.5Z" fill="currentColor"/><path d="M7 8.5H17V10H7V8.5ZM7 11.5H14V13H7V11.5ZM7 14.5H17V16H7V14.5Z" fill="currentColor" opacity=".7"/><path d="M15.5 12.5L17.5 14.5L15.5 16.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity=".5"/></svg>`,
+      subItems: [
+        { name: "TD Synnex / Cisco", path: "/vendor-quotes/tdsynnex", pro: false, menuKey: "vendor-quotes-tdsynnex" },
       ],
     },
     {
@@ -114,6 +128,7 @@ export class AppSidebarComponent {
         { name: "MSP Offerings", path: "/admin/offerings", pro: false, menuKey: "admin-msp-offerings" },
         { name: "Assessment Types", path: "/admin/assessment-types", pro: false, menuKey: "admin-assessment-types" },
         { name: "SOW Types", path: "/admin/sow-types", pro: false, menuKey: "admin-sow-types" },
+        { name: "Doc Conversion Types", path: "/admin/document-conversion-types", pro: false, menuKey: "admin-doc-conversion-types" },
         { name: "Labor Budget Admin", path: "/admin/labor-budget", pro: false, menuKey: "admin-labor-budget" },
         { name: "Export Schemas", path: "/admin/export-schemas", pro: false, menuKey: "admin-export-schemas" },
         { name: "E-Rate Settings", path: "/admin/erate-settings", pro: false, menuKey: "admin-erate-settings" },

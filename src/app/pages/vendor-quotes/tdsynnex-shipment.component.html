@@ -1,0 +1,263 @@
+<!-- TD SYNNEX / Cisco — Shipment Status Lookup -->
+<div class="p-4 sm:p-6 space-y-6">
+
+  <!-- ── Header ── -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div>
+      <h2 class="text-xl font-semibold text-gray-900 dark:text-white">TD Synnex / Cisco — Shipment Tracking</h2>
+      <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Look up order shipment status from the TD SYNNEX Partner API.</p>
+    </div>
+
+    <!-- API status badge -->
+    <div *ngIf="!statusLoading" class="flex items-center gap-2">
+      <span class="inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium"
+            [ngClass]="apiStatus?.configured
+              ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+              : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'">
+        <span class="h-1.5 w-1.5 rounded-full"
+              [ngClass]="apiStatus?.configured ? 'bg-green-500' : 'bg-yellow-500'"></span>
+        {{ apiStatus?.configured ? 'API Connected' : 'API Not Configured' }}
+      </span>
+    </div>
+  </div>
+
+  <!-- ── Search Card ── -->
+  <div class="rounded-xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-800">
+    <div class="flex flex-col sm:flex-row gap-3 items-end">
+      <div class="flex-1 w-full">
+        <label for="orderNo" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          Order Number
+        </label>
+        <input
+          type="text"
+          id="orderNo"
+          [(ngModel)]="orderNo"
+          (keydown.enter)="lookupShipment()"
+          placeholder="Enter TD SYNNEX order number..."
+          class="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-gray-600 dark:bg-gray-900 dark:text-white dark:placeholder-gray-500 dark:focus:border-blue-400"
+        />
+      </div>
+      <div class="flex gap-2">
+        <button
+          (click)="lookupShipment()"
+          [disabled]="isLoading || !orderNo.trim()"
+          class="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500/50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+          <svg *ngIf="!isLoading" class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+          </svg>
+          <svg *ngIf="isLoading" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+          </svg>
+          {{ isLoading ? 'Searching...' : 'Look Up' }}
+        </button>
+        <button
+          *ngIf="shipmentData || errorMessage"
+          (click)="clearResults()"
+          class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 transition-colors">
+          Clear
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Error Message ── -->
+  <div *ngIf="errorMessage" class="rounded-xl border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-900/20">
+    <div class="flex items-start gap-3">
+      <svg class="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+      </svg>
+      <p class="text-sm text-red-700 dark:text-red-400">{{ errorMessage }}</p>
+    </div>
+  </div>
+
+  <!-- ── API Not Configured Warning ── -->
+  <div *ngIf="!statusLoading && !apiStatus?.configured && !shipmentData && !errorMessage"
+       class="rounded-xl border border-yellow-200 bg-yellow-50 p-5 dark:border-yellow-800 dark:bg-yellow-900/20">
+    <div class="flex items-start gap-3">
+      <svg class="h-5 w-5 text-yellow-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+      </svg>
+      <div>
+        <h3 class="text-sm font-medium text-yellow-800 dark:text-yellow-300">TD SYNNEX API Not Configured</h3>
+        <p class="mt-1 text-sm text-yellow-700 dark:text-yellow-400">
+          Set <code class="rounded bg-yellow-100 px-1.5 py-0.5 text-xs font-mono dark:bg-yellow-900/50">TDSYNNEX_CLIENT_ID</code> and
+          <code class="rounded bg-yellow-100 px-1.5 py-0.5 text-xs font-mono dark:bg-yellow-900/50">TDSYNNEX_CLIENT_SECRET</code>
+          in the backend <code class="rounded bg-yellow-100 px-1.5 py-0.5 text-xs font-mono dark:bg-yellow-900/50">.env</code> file to enable shipment lookups.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Results ── -->
+  <div *ngIf="shipmentData" class="space-y-5">
+
+    <!-- Order Summary Card -->
+    <div class="rounded-xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-800">
+      <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Order Summary</h3>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div>
+          <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Order Number</p>
+          <p class="mt-1 text-sm font-semibold text-gray-900 dark:text-white">{{ shipmentData.orderNumber || '—' }}</p>
+        </div>
+        <div>
+          <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Purchase Order</p>
+          <p class="mt-1 text-sm font-semibold text-gray-900 dark:text-white">{{ shipmentData.purchaseOrder || '—' }}</p>
+        </div>
+        <div>
+          <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Order Status</p>
+          <span class="inline-flex items-center mt-1 rounded-full px-2.5 py-0.5 text-xs font-medium"
+                [ngClass]="getStatusClass(shipmentData.orderStatus)">
+            {{ shipmentData.orderStatus || '—' }}
+          </span>
+        </div>
+        <div>
+          <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total Lines</p>
+          <p class="mt-1 text-sm font-semibold text-gray-900 dark:text-white">{{ shipmentData.lines?.length || 0 }}</p>
+        </div>
+      </div>
+
+      <div *ngIf="shipmentData.errorMessage"
+           class="mt-4 rounded-lg bg-red-50 p-3 dark:bg-red-900/20">
+        <p class="text-sm text-red-700 dark:text-red-400">
+          <strong>API Error:</strong> {{ shipmentData.errorMessage }}
+        </p>
+      </div>
+    </div>
+
+    <!-- Line Items -->
+    <div *ngIf="shipmentData.lines?.length" class="rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+      <div class="px-5 py-4 border-b border-gray-200 dark:border-gray-700">
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Shipment Lines</h3>
+      </div>
+
+      <!-- Desktop table -->
+      <div class="hidden lg:block overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Line #</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Part Number</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">MFG Part #</th>
+              <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Qty</th>
+              <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Warehouse</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Ship Date</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tracking</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+            <ng-container *ngFor="let line of shipmentData.lines">
+              <!-- Main line -->
+              <tr class="hover:bg-gray-50 dark:hover:bg-gray-900/30 transition-colors">
+                <td class="px-4 py-3 font-medium text-gray-900 dark:text-white">{{ line.lineNumber }}</td>
+                <td class="px-4 py-3 text-gray-700 dark:text-gray-300 font-mono text-xs">{{ line.partNumber }}</td>
+                <td class="px-4 py-3 text-gray-700 dark:text-gray-300 font-mono text-xs">{{ line.manufacturerPartNumber }}</td>
+                <td class="px-4 py-3 text-center text-gray-700 dark:text-gray-300">{{ line.totalQuantity }}</td>
+                <td class="px-4 py-3 text-center">
+                  <span class="inline-flex rounded-full px-2 py-0.5 text-xs font-medium"
+                        [ngClass]="getStatusClass(line.lineStatus)">
+                    {{ line.lineStatus || '—' }}
+                  </span>
+                </td>
+                <td class="px-4 py-3 text-gray-500 dark:text-gray-400" colspan="3">&nbsp;</td>
+              </tr>
+              <!-- Sub-lines -->
+              <tr *ngFor="let sub of line.subLines"
+                  class="bg-gray-50/50 dark:bg-gray-900/20 hover:bg-gray-100/50 dark:hover:bg-gray-900/40 transition-colors">
+                <td class="px-4 py-2 pl-8 text-gray-400 dark:text-gray-500 text-xs">↳ {{ sub.displayLineNumber }}</td>
+                <td class="px-4 py-2" colspan="2">&nbsp;</td>
+                <td class="px-4 py-2 text-center text-gray-600 dark:text-gray-400 text-xs">{{ sub.quantity }}</td>
+                <td class="px-4 py-2 text-center">
+                  <span class="inline-flex rounded-full px-2 py-0.5 text-xs font-medium"
+                        [ngClass]="getStatusClass(sub.lineStatus)">
+                    {{ sub.lineStatus || '—' }}
+                  </span>
+                </td>
+                <td class="px-4 py-2 text-gray-600 dark:text-gray-400 text-xs">{{ sub.warehouse || '—' }}</td>
+                <td class="px-4 py-2 text-gray-600 dark:text-gray-400 text-xs">{{ sub.shipDate || '—' }}</td>
+                <td class="px-4 py-2">
+                  <span *ngIf="!sub.tracking?.length" class="text-xs text-gray-400 dark:text-gray-500">—</span>
+                  <div *ngFor="let t of sub.tracking" class="text-xs">
+                    <span class="text-blue-600 dark:text-blue-400 font-mono">{{ t.trackingNumber }}</span>
+                    <span *ngIf="t.carrierDescription" class="text-gray-400 dark:text-gray-500 ml-1">({{ t.carrierDescription }})</span>
+                  </div>
+                </td>
+              </tr>
+            </ng-container>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Mobile cards -->
+      <div class="lg:hidden divide-y divide-gray-200 dark:divide-gray-700">
+        <div *ngFor="let line of shipmentData.lines" class="p-4 space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="text-sm font-semibold text-gray-900 dark:text-white">Line {{ line.lineNumber }}</span>
+            <span class="inline-flex rounded-full px-2 py-0.5 text-xs font-medium"
+                  [ngClass]="getStatusClass(line.lineStatus)">
+              {{ line.lineStatus || '—' }}
+            </span>
+          </div>
+          <div class="grid grid-cols-2 gap-2 text-xs">
+            <div>
+              <span class="text-gray-500 dark:text-gray-400">Part #</span>
+              <p class="font-mono text-gray-900 dark:text-white">{{ line.partNumber }}</p>
+            </div>
+            <div>
+              <span class="text-gray-500 dark:text-gray-400">MFG Part #</span>
+              <p class="font-mono text-gray-900 dark:text-white">{{ line.manufacturerPartNumber }}</p>
+            </div>
+            <div>
+              <span class="text-gray-500 dark:text-gray-400">Qty</span>
+              <p class="text-gray-900 dark:text-white">{{ line.totalQuantity }}</p>
+            </div>
+          </div>
+          <!-- Sub-lines mobile -->
+          <div *ngFor="let sub of line.subLines"
+               class="ml-3 pl-3 border-l-2 border-gray-200 dark:border-gray-600 space-y-1">
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-gray-500 dark:text-gray-400">Sub-line {{ sub.displayLineNumber }}</span>
+              <span class="inline-flex rounded-full px-2 py-0.5 text-xs font-medium"
+                    [ngClass]="getStatusClass(sub.lineStatus)">
+                {{ sub.lineStatus || '—' }}
+              </span>
+            </div>
+            <div class="grid grid-cols-3 gap-2 text-xs">
+              <div>
+                <span class="text-gray-500 dark:text-gray-400">Qty</span>
+                <p class="text-gray-900 dark:text-white">{{ sub.quantity }}</p>
+              </div>
+              <div>
+                <span class="text-gray-500 dark:text-gray-400">Warehouse</span>
+                <p class="text-gray-900 dark:text-white">{{ sub.warehouse || '—' }}</p>
+              </div>
+              <div>
+                <span class="text-gray-500 dark:text-gray-400">Ship Date</span>
+                <p class="text-gray-900 dark:text-white">{{ sub.shipDate || '—' }}</p>
+              </div>
+            </div>
+            <div *ngFor="let t of sub.tracking" class="text-xs">
+              <span class="text-gray-500 dark:text-gray-400">Tracking:</span>
+              <span class="text-blue-600 dark:text-blue-400 font-mono ml-1">{{ t.trackingNumber }}</span>
+              <span *ngIf="t.carrierDescription" class="text-gray-400 ml-1">({{ t.carrierDescription }})</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── Empty state (no search yet) ── -->
+  <div *ngIf="!shipmentData && !errorMessage && !isLoading && apiStatus?.configured"
+       class="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-8 text-center dark:border-gray-600 dark:bg-gray-800/50">
+    <svg class="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+            d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+    </svg>
+    <h3 class="mt-3 text-sm font-medium text-gray-900 dark:text-white">No Shipment Loaded</h3>
+    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Enter a TD SYNNEX order number above to look up shipment details.</p>
+  </div>
+
+</div>

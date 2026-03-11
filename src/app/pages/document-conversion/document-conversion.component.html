@@ -1,0 +1,279 @@
+<div class="space-y-6">
+  <!-- Page Header -->
+  <div class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <h2 class="text-xl font-semibold text-gray-800 dark:text-white/90">Document Conversion</h2>
+        <p class="text-sm text-gray-500 dark:text-gray-400">Upload a document and convert it using a selected template</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
+    <div class="flex border-b border-gray-200 dark:border-gray-800">
+      <button
+        (click)="activeTab = 'convert'"
+        class="relative px-6 py-3 text-sm font-medium transition-colors"
+        [ngClass]="activeTab === 'convert' 
+          ? 'text-brand-500 after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-full after:bg-brand-500' 
+          : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'">
+        Convert Document
+      </button>
+      <button
+        (click)="activeTab = 'history'; loadData()"
+        class="relative px-6 py-3 text-sm font-medium transition-colors"
+        [ngClass]="activeTab === 'history' 
+          ? 'text-brand-500 after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-full after:bg-brand-500' 
+          : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'">
+        Conversion History
+        <span *ngIf="convertedDocuments.length > 0" class="ml-2 inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-400">
+          {{ convertedDocuments.length }}
+        </span>
+      </button>
+    </div>
+
+    <!-- Convert Document Tab -->
+    <div *ngIf="activeTab === 'convert'" class="p-6">
+      <div class="mx-auto max-w-2xl space-y-6">
+        
+        <!-- Step 1: Select Conversion Type -->
+        <div>
+          <label class="mb-2 block text-sm font-semibold text-gray-800 dark:text-white/90">
+            <span class="mr-2 inline-flex h-6 w-6 items-center justify-center rounded-full bg-brand-500 text-xs font-bold text-white">1</span>
+            Select Conversion Type
+          </label>
+          <select
+            [(ngModel)]="selectedTypeId"
+            (ngModelChange)="onTypeChange()"
+            class="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-700 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
+            <option value="">Choose a conversion type...</option>
+            <option *ngFor="let type of conversionTypes" [value]="type.Id">
+              {{ type.Name }}{{ type.Category ? ' (' + type.Category + ')' : '' }}
+            </option>
+          </select>
+          <p *ngIf="selectedType?.Description" class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+            {{ selectedType!.Description }}
+          </p>
+          <div *ngIf="selectedType?.TemplateFileName" class="mt-2 flex items-center gap-2">
+            <svg class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <span class="text-xs text-gray-500 dark:text-gray-400">Template: <span class="font-mono">{{ selectedType!.TemplateFileName }}</span></span>
+          </div>
+          <div *ngIf="selectedType" class="mt-2 flex items-center gap-3">
+            <span class="inline-flex items-center rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
+              Accepts: {{ getAcceptedFileLabel() }}
+            </span>
+            <span *ngIf="selectedType.ConversionMethod" class="inline-flex items-center rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400">
+              Method: {{ selectedType.ConversionMethod }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Step 2: Upload Document -->
+        <div>
+          <label class="mb-2 block text-sm font-semibold text-gray-800 dark:text-white/90">
+            <span class="mr-2 inline-flex h-6 w-6 items-center justify-center rounded-full bg-brand-500 text-xs font-bold text-white">2</span>
+            Upload Document
+          </label>
+          
+          <!-- Drag & Drop Zone -->
+          <div
+            (dragover)="onDragOver($event)"
+            (dragleave)="onDragLeave($event)"
+            (drop)="onDrop($event)"
+            class="relative rounded-xl border-2 border-dashed p-8 text-center transition-colors"
+            [ngClass]="isDragOver 
+              ? 'border-brand-500 bg-brand-50 dark:bg-brand-900/10' 
+              : 'border-gray-300 bg-gray-50 hover:border-gray-400 dark:border-gray-700 dark:bg-gray-800/50 dark:hover:border-gray-600'">
+            
+            <div *ngIf="!selectedFile">
+              <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              </svg>
+              <p class="mt-3 text-sm text-gray-600 dark:text-gray-400">
+                <span class="font-medium text-brand-500">Click to upload</span> or drag and drop
+              </p>
+              <p class="mt-1 text-xs text-gray-500 dark:text-gray-500">{{ getAcceptedFileLabel() }}</p>
+              <input
+                type="file"
+                [accept]="getAcceptedExtensions()"
+                (change)="onFileSelected($event)"
+                class="absolute inset-0 cursor-pointer opacity-0">
+            </div>
+            
+            <div *ngIf="selectedFile" class="flex items-center justify-center gap-4">
+              <div class="flex items-center gap-3">
+                <div class="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/30">
+                  <svg class="h-6 w-6 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
+                <div class="text-left">
+                  <p class="text-sm font-medium text-gray-800 dark:text-white/90">{{ selectedFileName }}</p>
+                  <p class="text-xs text-gray-500 dark:text-gray-400">{{ formatFileSize(selectedFile.size) }}</p>
+                </div>
+              </div>
+              <button
+                (click)="clearFile()"
+                class="rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-200 hover:text-gray-600 dark:hover:bg-gray-700 dark:hover:text-gray-300">
+                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Messages -->
+        <div *ngIf="errorMessage" class="rounded-lg bg-red-50 p-4 text-sm text-red-700 dark:bg-red-900/20 dark:text-red-400">
+          <div class="flex items-center gap-2">
+            <svg class="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            {{ errorMessage }}
+          </div>
+        </div>
+
+        <div *ngIf="successMessage" class="rounded-lg bg-green-50 p-4 text-sm text-green-700 dark:bg-green-900/20 dark:text-green-400">
+          <div class="flex items-center gap-2">
+            <svg class="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            {{ successMessage }}
+          </div>
+        </div>
+
+        <!-- Step 3: Convert Button -->
+        <div>
+          <button
+            (click)="convertDocument()"
+            [disabled]="!selectedFile || !selectedTypeId || isConverting"
+            class="w-full rounded-lg bg-brand-500 px-6 py-3 text-sm font-medium text-white shadow-sm transition-all hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-50">
+            <span *ngIf="!isConverting" class="flex items-center justify-center gap-2">
+              <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              Convert & Download
+            </span>
+            <span *ngIf="isConverting" class="flex items-center justify-center gap-2">
+              <svg class="h-5 w-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Converting...
+            </span>
+          </button>
+        </div>
+
+        <!-- How it works info -->
+        <div class="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/50">
+          <h4 class="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">How it works</h4>
+          <ol class="space-y-1.5 text-xs text-gray-500 dark:text-gray-400">
+            <li class="flex items-start gap-2">
+              <span class="mt-0.5 inline-flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-gray-200 text-[10px] font-bold text-gray-600 dark:bg-gray-700 dark:text-gray-400">1</span>
+              Select a conversion type that defines the output template (headers, footers, branding)
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="mt-0.5 inline-flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-gray-200 text-[10px] font-bold text-gray-600 dark:bg-gray-700 dark:text-gray-400">2</span>
+              Upload your document — Word (.docx) or PDF depending on the conversion type selected
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="mt-0.5 inline-flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-gray-200 text-[10px] font-bold text-gray-600 dark:bg-gray-700 dark:text-gray-400">3</span>
+              The system applies the template's headers and footers to your content and produces a new document
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="mt-0.5 inline-flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-gray-200 text-[10px] font-bold text-gray-600 dark:bg-gray-700 dark:text-gray-400">4</span>
+              Download the converted document — your original content with the new template applied
+            </li>
+          </ol>
+        </div>
+      </div>
+    </div>
+
+    <!-- History Tab -->
+    <div *ngIf="activeTab === 'history'">
+      <!-- Search -->
+      <div class="border-b border-gray-200 p-5 dark:border-gray-800">
+        <div class="relative max-w-md">
+          <input
+            type="text"
+            [(ngModel)]="searchTerm"
+            (ngModelChange)="onSearchChange()"
+            placeholder="Search converted documents..."
+            class="w-full rounded-lg border border-gray-300 bg-white py-2 pl-10 pr-4 text-sm text-gray-700 placeholder-gray-400 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
+          <svg class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+        </div>
+      </div>
+
+      <!-- Loading State -->
+      <div *ngIf="isLoading" class="flex items-center justify-center py-12">
+        <svg class="h-8 w-8 animate-spin text-brand-500" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+      </div>
+
+      <!-- Documents List -->
+      <div *ngIf="!isLoading" class="divide-y divide-gray-200 dark:divide-gray-800">
+        <div
+          *ngFor="let doc of filteredDocuments"
+          class="flex items-center justify-between gap-4 p-5 transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50">
+          <div class="flex items-center gap-4 min-w-0 flex-1">
+            <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/30">
+              <svg class="h-5 w-5 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </div>
+            <div class="min-w-0 flex-1">
+              <h4 class="truncate text-sm font-medium text-gray-800 dark:text-white/90">{{ doc.OriginalFileName }}</h4>
+              <div class="mt-1 flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
+                <span *ngIf="doc.ConversionTypeName" class="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                  {{ doc.ConversionTypeName }}
+                </span>
+                <span>{{ formatDate(doc.CreatedAt) }}</span>
+                <span *ngIf="doc.FileSizeBytes">{{ formatFileSize(doc.FileSizeBytes) }}</span>
+              </div>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <button
+              (click)="downloadDocument(doc)"
+              class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm transition-all hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+              title="Download">
+              <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              Download
+            </button>
+            <button
+              (click)="deleteDocument(doc, $event)"
+              class="rounded-lg p-2 text-red-500 transition-colors hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-900/20"
+              title="Delete">
+              <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Empty State -->
+        <div *ngIf="filteredDocuments.length === 0 && !isLoading" class="py-12 text-center">
+          <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white/90">No converted documents</h3>
+          <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Documents will appear here after conversion.</p>
+          <button
+            (click)="activeTab = 'convert'"
+            class="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-600">
+            Convert a Document
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

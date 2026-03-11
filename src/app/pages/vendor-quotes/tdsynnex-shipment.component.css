@@ -1,0 +1,5 @@
+/* TD Synnex Shipment Component - minimal custom styles (Tailwind handles most) */
+
+:host {
+  display: block;
+}

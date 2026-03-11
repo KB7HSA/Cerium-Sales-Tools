@@ -98,6 +98,8 @@ import { CustomerManagementComponent } from './pages/admin/customer-management.c
 import { AssessmentGeneratorComponent } from './pages/assessments/assessment-generator.component';
 import { AssessmentTypesComponent } from './pages/admin/assessment-types.component';
 import { SOWTypesComponent } from './pages/admin/sow-types.component';
+import { DocumentConversionComponent } from './pages/document-conversion/document-conversion.component';
+import { DocumentConversionTypesComponent } from './pages/admin/document-conversion-types.component';
 import { ERateComponent } from './pages/e-rate/e-rate.component';
 import { ERateDashboardComponent } from './pages/e-rate/e-rate-dashboard.component';
 import { FRNStatusComponent } from './pages/e-rate/frn-status.component';
@@ -110,6 +112,7 @@ import { CiscoRenewalsSummaryComponent } from './pages/cisco-renewals/cisco-rene
 import { RenewalStatusAdminComponent } from './pages/admin/renewal-status-admin.component';
 import { RenewalsAdminComponent } from './pages/admin/renewals-admin.component';
 import { AuthCallbackComponent } from './pages/auth-pages/auth-callback/auth-callback.component';
+import { TDSynnexShipmentComponent } from './pages/vendor-quotes/tdsynnex-shipment.component';
 
 export const routes: Routes = [
   {
@@ -317,6 +320,11 @@ export const routes: Routes = [
         title:'SOW Documents | Cerium Sales Tools'
       },
       {
+        path:'document-conversion',
+        component:DocumentConversionComponent,
+        title:'Document Conversion | Cerium Sales Tools'
+      },
+      {
         path:'assessment-generator',
         component:AssessmentGeneratorComponent,
         title:'Assessment Generator | Cerium Sales Tools'
@@ -415,6 +423,12 @@ export const routes: Routes = [
         title:'SOW Types | Cerium Sales Tools'
       },
       {
+        path:'admin/document-conversion-types',
+        component:DocumentConversionTypesComponent,
+        canActivate: [superAdminGuard],
+        title:'Document Conversion Types | Cerium Sales Tools'
+      },
+      {
         path:'admin/erate-settings',
         component:ERateSettingsComponent,
         canActivate: [superAdminGuard],
@@ -441,6 +455,12 @@ export const routes: Routes = [
         path:'cisco-renewals/software',
         component:SoftwareRenewalsComponent,
         title:'Software Renewals | Cerium Sales Tools'
+      },
+      // Vendor Quotes
+      {
+        path:'vendor-quotes/tdsynnex',
+        component:TDSynnexShipmentComponent,
+        title:'TD Synnex Shipment Tracking | Cerium Sales Tools'
       },
       {
         path:'admin/renewal-statuses',

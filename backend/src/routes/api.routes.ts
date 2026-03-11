@@ -20,6 +20,7 @@ import { ExportSchemaService } from '../services/export-schema.service';
 import { SOWDocumentService } from '../services/sow-document.service';
 import { ReferenceArchitectureService, AssessmentTypeService, GeneratedAssessmentService } from '../services/assessment.service';
 import { SOWTypeService, GeneratedSOWService } from '../services/sow.service';
+import { DocumentConversionTypeService, ConvertedDocumentService } from '../services/document-conversion.service';
 import { USACForm470Service } from '../services/usac470.service';
 import { USACFRNStatusService } from '../services/usac-frn.service';
 import { ERateSettingsService } from '../services/erate-settings.service';
@@ -30,6 +31,7 @@ import { userService } from '../services/user.service';
 import { executeQuery } from '../config/database';
 import { SolutionBlueprintService } from '../services/solution-blueprint.service';
 import { LaborSolutionService } from '../services/labor-solution.service';
+import { TDSynnexService } from '../services/tdsynnex.service';
 
 const router = Router();
 
@@ -1212,6 +1214,395 @@ router.delete('/generated-sows/:id', requireRole('admin', 'manager'), async (req
   }
 });
 
+// ===== DOCUMENT CONVERSION TYPES =====
+
+// ConvertAPI status check
+router.get('/convert-api-status', async (req: Request, res: Response) => {
+  try {
+    const { ConvertApiService } = await import('../services/convertapi.service');
+    const configured = ConvertApiService.isConfigured();
+
+    if (!configured) {
+      sendSuccess(res, {
+        configured: false,
+        connected: false,
+        message: 'ConvertAPI secret not configured. Set CONVERTAPI_SECRET in backend .env file.',
+        estimatedTime: null,
+      }, 200, 'ConvertAPI status');
+      return;
+    }
+
+    // Try a lightweight connectivity test — check account info
+    const startTime = Date.now();
+    try {
+      const health = await ConvertApiService.checkHealth();
+      const elapsed = Date.now() - startTime;
+
+      if (health.success) {
+        sendSuccess(res, {
+          configured: true,
+          connected: true,
+          message: 'ConvertAPI is configured and connected successfully.',
+          estimatedTime: '2-10 seconds per document (depends on PDF complexity)',
+          initTimeMs: elapsed,
+          secondsLeft: health.secondsLeft,
+        }, 200, 'ConvertAPI status');
+      } else {
+        sendSuccess(res, {
+          configured: true,
+          connected: false,
+          message: `ConvertAPI secret is set but connection failed: ${health.error}`,
+          estimatedTime: null,
+          error: health.error,
+        }, 200, 'ConvertAPI status');
+      }
+    } catch (sdkError: any) {
+      sendSuccess(res, {
+        configured: true,
+        connected: false,
+        message: `ConvertAPI secret is set but health check failed: ${sdkError.message}`,
+        estimatedTime: null,
+        error: sdkError.message,
+      }, 200, 'ConvertAPI status');
+    }
+  } catch (error: any) {
+    sendError(res, 'Failed to check ConvertAPI status', 500, error.message);
+  }
+});
+
+// Extract header/footer XML from a template file (for admin UI)
+router.get('/extract-header-footer/:templateFileName', async (req: Request, res: Response) => {
+  try {
+    const { DocxTemplateService } = await import('../services/docx-template.service');
+    const result = await DocxTemplateService.extractHeaderFooterFromTemplate(req.params.templateFileName);
+    sendSuccess(res, result, 200, 'Header/footer XML extracted');
+  } catch (error: any) {
+    sendError(res, 'Failed to extract header/footer from template', 500, error.message);
+  }
+});
+
+router.get('/document-conversion-types', async (req: Request, res: Response) => {
+  try {
+    const activeOnly = req.query.activeOnly === 'true';
+    const types = await DocumentConversionTypeService.getAll(activeOnly);
+    sendSuccess(res, types, 200, 'Document conversion types retrieved');
+  } catch (error: any) {
+    sendError(res, 'Failed to fetch document conversion types', 500, error.message);
+  }
+});
+
+router.get('/document-conversion-types/:id', async (req: Request, res: Response) => {
+  try {
+    const type = await DocumentConversionTypeService.getById(req.params.id);
+    if (!type) {
+      sendError(res, 'Document conversion type not found', 404);
+      return;
+    }
+    sendSuccess(res, type, 200, 'Document conversion type retrieved');
+  } catch (error: any) {
+    sendError(res, 'Failed to fetch document conversion type', 500, error.message);
+  }
+});
+
+router.post('/document-conversion-types', async (req: Request, res: Response) => {
+  try {
+    const created = await DocumentConversionTypeService.create(req.body);
+    sendSuccess(res, created, 201, 'Document conversion type created');
+  } catch (error: any) {
+    sendError(res, 'Failed to create document conversion type', 500, error.message);
+  }
+});
+
+router.put('/document-conversion-types/:id', async (req: Request, res: Response) => {
+  try {
+    const updated = await DocumentConversionTypeService.update(req.params.id, req.body);
+    if (!updated) {
+      sendError(res, 'Document conversion type not found', 404);
+      return;
+    }
+    sendSuccess(res, updated, 200, 'Document conversion type updated');
+  } catch (error: any) {
+    sendError(res, 'Failed to update document conversion type', 500, error.message);
+  }
+});
+
+router.delete('/document-conversion-types/:id', requireRole('admin'), async (req: Request, res: Response) => {
+  try {
+    await DocumentConversionTypeService.delete(req.params.id);
+    sendSuccess(res, { id: req.params.id }, 200, 'Document conversion type deleted');
+  } catch (error: any) {
+    sendError(res, 'Failed to delete document conversion type', 500, error.message);
+  }
+});
+
+// ===== CONVERTED DOCUMENTS =====
+
+router.get('/converted-documents', async (req: Request, res: Response) => {
+  try {
+    const docs = await ConvertedDocumentService.getAll();
+    sendSuccess(res, docs, 200, 'Converted documents retrieved');
+  } catch (error: any) {
+    sendError(res, 'Failed to fetch converted documents', 500, error.message);
+  }
+});
+
+router.get('/converted-documents/:id/download', async (req: Request, res: Response) => {
+  try {
+    const file = await ConvertedDocumentService.getFile(req.params.id);
+    if (!file || !file.FileData) {
+      sendError(res, 'Converted document not found', 404);
+      return;
+    }
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+    res.setHeader('Content-Disposition', `attachment; filename="${file.FileName}"`);
+    res.send(file.FileData);
+  } catch (error: any) {
+    sendError(res, 'Failed to download converted document', 500, error.message);
+  }
+});
+
+// Download debug files — raw ConvertAPI output and template-merged output
+router.get('/converted-documents/debug/:filename', async (req: Request, res: Response) => {
+  try {
+    const fs = await import('fs');
+    const path = await import('path');
+    const filename = req.params.filename;
+    // Sanitize — only allow alphanumeric, dashes, underscores, dots
+    if (!/^[a-zA-Z0-9_.-]+\.docx$/.test(filename)) {
+      sendError(res, 'Invalid filename', 400);
+      return;
+    }
+    const debugDir = path.resolve(__dirname, '..', '..', '..', 'public', 'converted_debug');
+    const filePath = path.join(debugDir, filename);
+    if (!fs.existsSync(filePath)) {
+      sendError(res, 'Debug file not found', 404);
+      return;
+    }
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(fs.readFileSync(filePath));
+  } catch (error: any) {
+    sendError(res, 'Failed to download debug file', 500, error.message);
+  }
+});
+
+// List available debug files
+router.get('/converted-documents/debug', async (req: Request, res: Response) => {
+  try {
+    const fs = await import('fs');
+    const path = await import('path');
+    const debugDir = path.resolve(__dirname, '..', '..', '..', 'public', 'converted_debug');
+    if (!fs.existsSync(debugDir)) {
+      sendSuccess(res, [], 200, 'No debug files');
+      return;
+    }
+    const files = fs.readdirSync(debugDir)
+      .filter((f: string) => f.endsWith('.docx'))
+      .map((f: string) => {
+        const stats = fs.statSync(path.join(debugDir, f));
+        return {
+          filename: f,
+          size: stats.size,
+          modified: stats.mtime,
+          downloadUrl: `/api/converted-documents/debug/${encodeURIComponent(f)}`
+        };
+      });
+    sendSuccess(res, files, 200, 'Debug files listed');
+  } catch (error: any) {
+    sendError(res, 'Failed to list debug files', 500, error.message);
+  }
+});
+
+router.post('/converted-documents', async (req: Request, res: Response) => {
+  try {
+    const data = req.body;
+    // Handle base64 file data - this is the uploaded source document
+    if (data.FileDataBase64) {
+      data.FileData = Buffer.from(data.FileDataBase64, 'base64');
+      data.FileSizeBytes = data.FileData.length;
+      delete data.FileDataBase64;
+    }
+
+    // Get the conversion type to determine output file name and conversion method
+    const conversionType = await DocumentConversionTypeService.getById(data.ConversionTypeId);
+    if (conversionType) {
+      const originalName = data.OriginalFileName?.replace(/\.[^/.]+$/, '') || 'document';
+      const pattern = conversionType.OutputFileNamePattern || '{originalName}_converted';
+      const conversionMethod = conversionType.ConversionMethod || 'template-apply';
+      const originalExt = data.OriginalFileName?.split('.').pop()?.toLowerCase() || '';
+
+      // Route to appropriate conversion method
+      if ((conversionMethod === 'pdf-to-docx' || conversionMethod === 'pdf-extract') && originalExt === 'pdf') {
+        const { ConvertApiService } = await import('../services/convertapi.service');
+        const { PdfConversionService } = await import('../services/pdf-conversion.service');
+        const { DocxTemplateService } = await import('../services/docx-template.service');
+
+        // Determine if we can use ConvertAPI for high-fidelity conversion
+        const useConvertApi = conversionType.UseAdobeApi && ConvertApiService.isConfigured();
+
+        if (useConvertApi) {
+          // ── HIGH-FIDELITY PATH (with fallback) ──
+          // ConvertAPI converts PDF → DOCX directly, preserving formatting
+          // Then the converted content is merged into the template (if configured)
+          let convertApiSuccess = false;
+          try {
+            console.log(`[DocConvert] High-fidelity conversion: ${data.OriginalFileName} (ConvertAPI)`);
+
+            const docxBuffer = await ConvertApiService.convertPdfToDocx(data.FileData);
+            console.log(`[DocConvert] Got DOCX (${docxBuffer.length} bytes) from ConvertAPI`);
+
+            // Save the raw ConvertAPI output for debugging / download
+            const fs = await import('fs');
+            const path = await import('path');
+            const debugDir = path.resolve(__dirname, '..', '..', '..', 'public', 'converted_debug');
+            if (!fs.existsSync(debugDir)) fs.mkdirSync(debugDir, { recursive: true });
+            const safeOriginal = originalName.replace(/[^a-zA-Z0-9_-]/g, '_');
+            const rawPath = path.join(debugDir, `${safeOriginal}_convertapi_raw.docx`);
+            fs.writeFileSync(rawPath, docxBuffer);
+            console.log(`[DocConvert] DEBUG: Raw ConvertAPI DOCX saved → ${rawPath}`);
+
+            // Apply branded header/footer from template or XML strings
+            // Priority: 1) Template file (copies all h/f parts directly) 2) HeaderXml/FooterXml strings 3) Raw output
+            const hasHeaderFooterXml = (conversionType as any).HeaderXml || (conversionType as any).FooterXml;
+            const hasTemplate = !!conversionType.TemplateFileName;
+
+            if (hasTemplate || hasHeaderFooterXml) {
+              // ── BRANDED HEADER/FOOTER PATH ──
+              // When a template file exists, all header/footer parts (first/default/even)
+              // are copied directly from it — preserving images, types, and layout.
+              // Falls back to XML strings if no template file is available.
+              try {
+                console.log(`[DocConvert] Applying branded header/footer (template=${hasTemplate}, xmlStrings=${!!hasHeaderFooterXml})`);
+                data.FileData = await DocxTemplateService.applyHeaderFooterToDocx(
+                  docxBuffer,
+                  (conversionType as any).HeaderXml || null,
+                  (conversionType as any).FooterXml || null,
+                  conversionType.TemplateFileName || undefined,
+                );
+                data.Notes = hasTemplate
+                  ? `Converted via ConvertAPI + header/footer from template: ${conversionType.TemplateFileName}`
+                  : `Converted via ConvertAPI + custom header/footer XML applied`;
+
+                // Save the branded output for debugging / download
+                const brandedPath = path.join(debugDir, `${safeOriginal}_branded.docx`);
+                fs.writeFileSync(brandedPath, data.FileData);
+                console.log(`[DocConvert] DEBUG: Branded DOCX saved → ${brandedPath}`);
+              } catch (hfErr: any) {
+                console.warn(`[DocConvert] Header/footer apply failed, using raw ConvertAPI output: ${hfErr.message}`);
+                data.FileData = docxBuffer;
+                data.Notes = `Converted via ConvertAPI (header/footer apply skipped: ${hfErr.message})`;
+              }
+            } else {
+              data.FileData = docxBuffer;
+              data.Notes = `Converted via ConvertAPI (high-fidelity PDF → DOCX)`;
+            }
+
+            data.FileSizeBytes = data.FileData.length;
+            data.ConvertedFileName = pattern.replace('{originalName}', originalName) + '.docx';
+            convertApiSuccess = true;
+
+          } catch (convertApiError: any) {
+            console.warn(`[DocConvert] ConvertAPI failed, falling back to text extraction: ${convertApiError.message}`);
+            // Fall through to text-based path below
+          }
+
+          if (!convertApiSuccess) {
+            // ── FALLBACK: text-based extraction after ConvertAPI failure ──
+            console.log(`[DocConvert] Fallback text-based conversion: ${data.OriginalFileName}`);
+            const extracted = await PdfConversionService.extractForTemplate(data.FileData);
+            console.log(`[DocConvert] Extracted ${extracted.paragraphs.length} paragraphs from ${extracted.pageCount} pages`);
+
+            const variables: Record<string, string> = {
+              EAMP_Summary: extracted.text,
+              Content: extracted.text,
+              Summary: extracted.text,
+              Body: extracted.text,
+              PageCount: String(extracted.pageCount),
+              OriginalFileName: data.OriginalFileName || '',
+              ConversionDate: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+            };
+
+            if (conversionType.TemplateFileName) {
+              data.FileData = await DocxTemplateService.replaceVariables(
+                conversionType.TemplateFileName,
+                variables
+              );
+            } else {
+              const { createDocxFromParagraphs } = await import('../services/docx-builder');
+              data.FileData = createDocxFromParagraphs(extracted.paragraphs);
+            }
+
+            data.FileSizeBytes = data.FileData.length;
+            data.ConvertedFileName = pattern.replace('{originalName}', originalName) + '.docx';
+            data.Notes = `Text extracted from ${extracted.pageCount} page PDF (ConvertAPI unavailable)` +
+              (conversionType.TemplateFileName ? ` → template: ${conversionType.TemplateFileName}` : '');
+          }
+
+        } else {
+          // ── TEXT-BASED FALLBACK PATH ──
+          // Extract text from PDF and insert into template (or build basic DOCX)
+          console.log(`[DocConvert] Text-based conversion: ${data.OriginalFileName}` + 
+            (!useConvertApi ? ' (ConvertAPI not configured — using text extraction)' : ' (no template configured)'));
+          
+          const extracted = await PdfConversionService.extractForTemplate(data.FileData);
+          console.log(`[DocConvert] Extracted ${extracted.paragraphs.length} paragraphs from ${extracted.pageCount} pages`);
+
+          if (conversionType.TemplateFileName) {
+            const variables: Record<string, string> = {
+              EAMP_Summary: extracted.text,
+              Content: extracted.text,
+              Summary: extracted.text,
+              Body: extracted.text,
+              PageCount: String(extracted.pageCount),
+              OriginalFileName: data.OriginalFileName || '',
+              ConversionDate: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+            };
+
+            data.FileData = await DocxTemplateService.replaceVariables(
+              conversionType.TemplateFileName,
+              variables
+            );
+          } else {
+            const { createDocxFromParagraphs } = await import('../services/docx-builder');
+            data.FileData = createDocxFromParagraphs(extracted.paragraphs);
+          }
+
+          data.FileSizeBytes = data.FileData.length;
+          data.ConvertedFileName = pattern.replace('{originalName}', originalName) + '.docx';
+          data.Notes = `Text extracted from ${extracted.pageCount} page PDF` + 
+            (conversionType.TemplateFileName ? ` → template: ${conversionType.TemplateFileName}` : '');
+        }
+      } else if (conversionMethod === 'template-apply' && conversionType.TemplateFileName && originalExt === 'docx') {
+        // DOCX template-apply: read the uploaded DOCX content and inject into template
+        // For now, this is a passthrough — future enhancement could merge DOCX content
+        data.ConvertedFileName = pattern.replace('{originalName}', originalName) + '.docx';
+      } else {
+        // Default: passthrough with naming
+        data.ConvertedFileName = pattern.replace('{originalName}', originalName) + '.' + (originalExt || 'docx');
+      }
+    } else {
+      data.ConvertedFileName = data.OriginalFileName;
+    }
+
+    data.Status = 'completed';
+    const created = await ConvertedDocumentService.create(data);
+    sendSuccess(res, created, 201, 'Document converted successfully');
+  } catch (error: any) {
+    console.error('[DocConvert] Error:', error);
+    const detail = error.message || 'Unknown error';
+    sendError(res, `Failed to convert document: ${detail}`, 500, detail);
+  }
+});
+
+router.delete('/converted-documents/:id', requireRole('admin', 'manager'), async (req: Request, res: Response) => {
+  try {
+    await ConvertedDocumentService.delete(req.params.id);
+    sendSuccess(res, { id: req.params.id }, 200, 'Converted document deleted');
+  } catch (error: any) {
+    sendError(res, 'Failed to delete converted document', 500, error.message);
+  }
+});
+
 // ===== E-RATE FORM 470 =====
 
 // Clear all Form 470 data (for fresh start — admin only)
@@ -2389,6 +2780,42 @@ function buildRenewalsUserPrompt(customerName: string, data: any): string {
 
   return parts.join('\n');
 }
+
+// ===== TD SYNNEX / VENDOR QUOTES =====
+
+// Check if TD SYNNEX API is configured
+router.get('/vendor-quotes/tdsynnex/status', async (req: Request, res: Response) => {
+  try {
+    const configured = TDSynnexService.isConfigured();
+    sendSuccess(res, {
+      configured,
+      provider: 'TD SYNNEX',
+      apiUrl: process.env.TDSYNNEX_API_URL || 'https://api-uat.us.tdsynnex.com',
+    }, 200, configured ? 'TD SYNNEX API is configured' : 'TD SYNNEX API credentials not configured');
+  } catch (err: any) {
+    sendError(res, 'Failed to check TD SYNNEX status', 500, err.message);
+  }
+});
+
+// Get shipment details by order number
+router.get('/vendor-quotes/tdsynnex/shipment/:orderNo', async (req: Request, res: Response) => {
+  try {
+    const { orderNo } = req.params;
+    if (!orderNo || !orderNo.trim()) {
+      return sendError(res, 'Order number is required', 400);
+    }
+
+    const shipmentDetails = await TDSynnexService.getOrderShipmentDetails(orderNo);
+    sendSuccess(res, shipmentDetails, 200, `Shipment details retrieved for order ${orderNo}`);
+  } catch (err: any) {
+    console.error('[API] TD SYNNEX shipment query error:', err.message);
+    const statusCode = err.message?.includes('credentials not configured') ? 503
+      : err.message?.includes('authentication failed') ? 502
+      : err.message?.includes('(404)') ? 404
+      : 500;
+    sendError(res, err.message || 'Failed to retrieve shipment details', statusCode);
+  }
+});
 
 // ===== DASHBOARD STATS =====
 
