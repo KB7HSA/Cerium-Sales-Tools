@@ -36,9 +36,20 @@ if [[ -z "${main_js}" ]]; then
 fi
 
 bundle="$(curl -ksS "${BASE}/${main_js}")"
-baked_uri="$(printf '%s' "${bundle}" | grep -oE 'redirectUri:"[^"]*"' | head -1 | cut -d'"' -f2 || true)"
-baked_logout="$(printf '%s' "${bundle}" | grep -oE 'postLogoutRedirectUri:"[^"]*"' | head -1 | cut -d'"' -f2 || true)"
+# MSAL library contains empty redirectUri defaults — pick the https:// app value, not head -1
+mapfile -t uri_matches < <(printf '%s' "${bundle}" | grep -oE 'redirectUri:"[^"]*"' | cut -d'"' -f2 | sort -u)
+baked_uri=""
+for candidate in "${uri_matches[@]}"; do
+  if [[ "${candidate}" =~ ^https?:// ]]; then
+    baked_uri="${candidate}"
+  fi
+done
+baked_logout="$(printf '%s' "${bundle}" | grep -oE 'postLogoutRedirectUri:"https?://[^"]*"' | head -1 | cut -d'"' -f2 || true)"
 baked_client="$(printf '%s' "${bundle}" | grep -oE 'clientId:"[0-9a-f-]{36}"' | head -1 | cut -d'"' -f2 || true)"
+
+if [[ ${#uri_matches[@]} -gt 0 ]]; then
+  log "All redirectUri strings in bundle: ${uri_matches[*]}"
+fi
 
 if [[ -z "${baked_uri}" ]]; then
   warn "Could not find redirectUri in ${main_js}"
