@@ -7,7 +7,7 @@ import { AuthService } from '../services/auth.service';
 
 /**
  * Protects app routes — requires a cached MSAL account.
- * Redirect handling runs once in APP_INITIALIZER (app.config.ts), not here.
+ * Redirect handling runs on /auth-callback only (auth-callback.component.ts).
  */
 export const msAuthGuard: CanActivateFn = (route, state) => {
   const msalService = inject(MsalService);
