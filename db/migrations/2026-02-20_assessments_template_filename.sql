@@ -1,0 +1,33 @@
+/*
+  Migration: Add TemplateFileName to AssessmentTypes
+  Date: 2026-02-20
+  Description: Adds template file name field to allow custom DOCX templates per assessment type
+  Note: Filename sorts after 2026-02-20_assessments.sql (creates AssessmentTypes).
+*/
+
+USE CeriumSalesTools;
+GO
+
+IF EXISTS (SELECT * FROM sys.tables WHERE name = 'AssessmentTypes' AND schema_id = SCHEMA_ID('dbo'))
+BEGIN
+    -- Add TemplateFileName column if it doesn't exist
+    IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('dbo.AssessmentTypes') AND name = 'TemplateFileName')
+    BEGIN
+        ALTER TABLE dbo.AssessmentTypes
+        ADD TemplateFileName NVARCHAR(255) NULL DEFAULT 'Assessment-Template.docx';
+
+        PRINT 'TemplateFileName column added to AssessmentTypes table.';
+    END
+
+    -- Update existing assessment types with default template
+    UPDATE dbo.AssessmentTypes
+    SET TemplateFileName = 'Assessment-Template.docx'
+    WHERE TemplateFileName IS NULL;
+
+    PRINT 'Default template filename set for existing assessment types.';
+END
+ELSE
+BEGIN
+    PRINT 'AssessmentTypes table not found — skipping TemplateFileName migration.';
+END
+GO

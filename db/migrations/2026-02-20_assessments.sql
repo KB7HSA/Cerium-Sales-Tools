@@ -67,6 +67,9 @@ BEGIN
         AIPromptOverview NVARCHAR(MAX) NULL,
         AIPromptFindings NVARCHAR(MAX) NULL,
         AIPromptRecommendations NVARCHAR(MAX) NULL,
+
+        -- Document template
+        TemplateFileName NVARCHAR(255) NULL DEFAULT 'Assessment-Template.docx',
         
         -- Pricing defaults
         DefaultHours DECIMAL(10,2) NULL DEFAULT 0,
