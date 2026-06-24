@@ -16,11 +16,23 @@ import {
   MSALInterceptorConfigFactory 
 } from './shared/config/msal.config';
 import { BackendAuthInterceptor } from './shared/interceptors/backend-auth.interceptor';
+import { concatMap, firstValueFrom, map } from 'rxjs';
 
 import { routes } from './app.routes';
 
+/** Process the Microsoft redirect hash once before any route/guard runs. */
 function initializeMsal(msalService: MsalService) {
-  return () => msalService.initialize();
+  return () =>
+    firstValueFrom(
+      msalService.initialize().pipe(
+        concatMap(() => msalService.handleRedirectObservable()),
+        map((result) => {
+          if (result?.account) {
+            msalService.instance.setActiveAccount(result.account);
+          }
+        })
+      )
+    );
 }
 
 export const appConfig: ApplicationConfig = {

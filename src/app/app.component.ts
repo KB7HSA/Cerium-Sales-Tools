@@ -2,7 +2,7 @@ import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { Router, RouterModule } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { MsalModule, MsalService, MsalBroadcastService } from '@azure/msal-angular';
-import { InteractionStatus, BrowserAuthError } from '@azure/msal-browser';
+import { InteractionStatus } from '@azure/msal-browser';
 import { Subject, filter, takeUntil } from 'rxjs';
 import { AuthService } from './shared/services/auth.service';
 
@@ -56,50 +56,7 @@ export class AppComponent implements OnInit, OnDestroy {
       }
     }
 
-    // MSAL redirect is handled on /auth-callback (see AuthCallbackComponent).
-    // Keep a lightweight listener here only to clear stale session flags.
-    this.msalService.handleRedirectObservable().subscribe({
-      next: (result) => {
-        if (!result) {
-          this.clearStaleInteractionState();
-          if (this.isProcessingLogin) {
-            sessionStorage.removeItem('msalLoginInProgress');
-            sessionStorage.removeItem('msalLoginTimestamp');
-            this.isProcessingLogin = false;
-          }
-        }
-      },
-      error: (error) => {
-        console.error('MSAL redirect error:', error);
-        sessionStorage.removeItem('msalLoginInProgress');
-        sessionStorage.removeItem('msalLoginTimestamp');
-        this.isProcessingLogin = false;
-
-        // If MSAL is stuck in interaction_in_progress or has any stale
-        // auth state, clear everything and reload to recover gracefully
-        if (error instanceof BrowserAuthError) {
-          const recoverableCodes = [
-            'interaction_in_progress',
-            'no_cached_authority_error',
-            'monitor_window_timeout',
-            'redirect_in_iframe',
-            'block_iframe_reload',
-          ];
-          if (recoverableCodes.includes(error.errorCode)) {
-            console.warn(`Recovering from MSAL error [${error.errorCode}] — clearing state and reloading`);
-            this.clearMsalBrowserStorage();
-            window.location.reload();
-            return;
-          }
-        }
-
-        // For any other MSAL error, clear stale state to prevent
-        // the blank-page problem on subsequent loads
-        this.clearStaleInteractionState();
-      }
-    });
-
-    // Monitor interaction status
+    // MSAL redirect is handled once in APP_INITIALIZER (see app.config.ts).
     this.msalBroadcastService.inProgress$
       .pipe(
         filter((status: InteractionStatus) => status === InteractionStatus.None),
