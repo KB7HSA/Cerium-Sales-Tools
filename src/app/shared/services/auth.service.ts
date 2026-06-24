@@ -46,6 +46,23 @@ export interface SyncResponse {
   message: string;
 }
 
+const DEV_BYPASS_STORAGE_KEY = 'auth.devBypass';
+const DEV_BYPASS_USER: CurrentUser = {
+  id: 'dev-bypass-user',
+  name: 'Development Bypass User',
+  email: 'dev-bypass@localhost',
+  role: 'admin',
+  status: 'active',
+  department: 'Engineering',
+  profile: {
+    firstName: 'Development',
+    lastName: 'Bypass',
+    jobTitle: 'Local Tester',
+    location: 'Local Environment',
+    phone: 'N/A'
+  }
+};
+
 @Injectable({
   providedIn: 'root'
 })
@@ -92,6 +109,7 @@ export class AuthService {
   private clearUserFromStorage(): void {
     localStorage.removeItem('currentUser');
     localStorage.removeItem('tailadmin.profile'); // Clear profile store
+    localStorage.removeItem(DEV_BYPASS_STORAGE_KEY);
     sessionStorage.removeItem('msalLoginInProgress');
     this.currentUserSubject.next(null);
   }
@@ -108,6 +126,27 @@ export class AuthService {
    */
   isLoggedIn(): boolean {
     return this.currentUserSubject.value !== null;
+  }
+
+  /**
+   * Allow local UI testing without a Microsoft login in non-production builds.
+   */
+  enableDevelopmentBypass(): boolean {
+    if (environment.production) {
+      return false;
+    }
+
+    localStorage.setItem(DEV_BYPASS_STORAGE_KEY, 'true');
+    this.saveUserToStorage(DEV_BYPASS_USER);
+    return true;
+  }
+
+  isDevelopmentBypassEnabled(): boolean {
+    return !environment.production && localStorage.getItem(DEV_BYPASS_STORAGE_KEY) === 'true';
+  }
+
+  disableDevelopmentBypass(): void {
+    localStorage.removeItem(DEV_BYPASS_STORAGE_KEY);
   }
 
   /**

@@ -56,8 +56,8 @@ export interface MSPOffering {
   Description?: string;
   imageUrl?: string;
   ImageUrl?: string;
-  category?: 'backup' | 'support' | 'database' | 'consulting';
-  Category?: 'backup' | 'support' | 'database' | 'consulting';
+  category?: string;
+  Category?: string;
   basePrice?: number;
   BasePrice?: number;
   pricingUnit?: PricingUnit;

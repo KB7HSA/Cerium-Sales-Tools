@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, ActivatedRoute, Router } from '@angular/router';
 import { MSPOfferingsService, MSPOffering, MSPOption, MSPServiceLevel, MSPAddOn, PricingUnit } from '../../shared/services/msp-offerings.service';
+import { MSPCategoriesService, MSPCategory } from '../../shared/services/msp-categories.service';
 import { PricingUnitOption, PricingUnitsService } from '../../shared/services/pricing-units.service';
 
 @Component({
@@ -30,7 +31,7 @@ export class MSPOfferingFormComponent implements OnInit {
   name: string = '';
   description: string = '';
   imageUrl: string = '';
-  category: 'backup' | 'support' | 'database' | 'consulting' = 'backup';
+  category: string = '';
   setupFee: number = 0;
   setupFeeCost: number = 0;
   setupFeeMargin: number = 0;
@@ -77,17 +78,13 @@ export class MSPOfferingFormComponent implements OnInit {
   newOptionMargin: number = 0;
   newOptionPricingUnit: PricingUnit = 'per-user';
 
-  categories = [
-    { value: 'backup', label: 'Backup Solutions' },
-    { value: 'support', label: 'Support Services' },
-    { value: 'database', label: 'Database Management' },
-    { value: 'consulting', label: 'Consulting' }
-  ];
+  categories: MSPCategory[] = [];
 
   pricingUnits: PricingUnitOption[] = [];
 
   constructor(
     private offeringsService: MSPOfferingsService,
+    private categoriesService: MSPCategoriesService,
     private pricingUnitsService: PricingUnitsService,
     private route: ActivatedRoute,
     private router: Router
@@ -96,6 +93,19 @@ export class MSPOfferingFormComponent implements OnInit {
   ngOnInit(): void {
     this.pricingUnits = this.pricingUnitsService.getUnits();
     this.syncPricingUnitSelections();
+
+    this.categoriesService.getCategories(true).subscribe({
+      next: categories => {
+        this.categories = categories;
+        if (!this.category && categories.length > 0) {
+          this.category = categories[0].slug;
+        }
+      },
+      error: () => {
+        this.categories = [];
+      }
+    });
+
     this.route.paramMap.subscribe(params => {
       const id = params.get('id');
       if (id) {
@@ -117,7 +127,7 @@ export class MSPOfferingFormComponent implements OnInit {
           this.name = (offering.name || offering.Name) ?? '';
           this.description = (offering.description || offering.Description) ?? '';
           this.imageUrl = (offering.imageUrl || offering.ImageUrl) || '';
-          this.category = (offering.category || offering.Category) as 'backup' | 'support' | 'database' | 'consulting' || 'backup';
+          this.category = (offering.category || offering.Category || this.category || this.categories[0]?.slug || '').toString();
           this.setupFeeCost = offering.setupFeeCost ?? offering.SetupFeeCost ?? 0;
           this.setupFeeMargin = offering.setupFeeMargin ?? offering.SetupFeeMargin ?? 0;
           this.setupFee = this.calculatePrice(this.setupFeeCost, this.setupFeeMargin);

@@ -2,6 +2,7 @@ import { inject } from '@angular/core';
 import { Router, CanActivateFn } from '@angular/router';
 import { MsalService } from '@azure/msal-angular';
 import { concatMap, map } from 'rxjs';
+import { AuthService } from '../services/auth.service';
 
 /**
  * Auth guard that waits for MSAL initialization AND redirect processing
@@ -20,6 +21,11 @@ import { concatMap, map } from 'rxjs';
 export const msAuthGuard: CanActivateFn = (route, state) => {
   const msalService = inject(MsalService);
   const router = inject(Router);
+  const authService = inject(AuthService);
+
+  if (authService.isDevelopmentBypassEnabled()) {
+    return true;
+  }
 
   return msalService.initialize().pipe(
     concatMap(() => msalService.handleRedirectObservable()),

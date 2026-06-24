@@ -16,6 +16,7 @@ import { CustomerService } from '../services/customer.service';
 import { QuoteService } from '../services/quote.service';
 import { LaborItemService } from '../services/labor-item.service';
 import { MSPOfferingService } from '../services/msp-offering.service';
+import { MSPCategoryService } from '../services/msp-category.service';
 import { ExportSchemaService } from '../services/export-schema.service';
 import { SOWDocumentService } from '../services/sow-document.service';
 import { ReferenceArchitectureService, AssessmentTypeService, GeneratedAssessmentService } from '../services/assessment.service';
@@ -139,6 +140,75 @@ router.get('/menu-config/visible', async (req: Request, res: Response) => {
 
 // ===== AUTHENTICATED ROUTES (JWT required from here on) =====
 router.use(authMiddleware);
+
+// ===== SYSTEM STATUS (admin only) =====
+router.get('/system-status', requireRole('admin'), async (req: Request, res: Response) => {
+  const status: {
+    server: { status: string; uptime: number; environment: string; nodeVersion: string; timestamp: string };
+    database: { status: string; server: string; database: string; latencyMs: number | null; error: string | null };
+    apis: Array<{ name: string; table: string; status: string; count: number | null; latencyMs: number | null; error: string | null }>;
+  } = {
+    server: {
+      status: 'healthy',
+      uptime: process.uptime(),
+      environment: process.env.NODE_ENV || 'development',
+      nodeVersion: process.version,
+      timestamp: new Date().toISOString(),
+    },
+    database: { status: 'unknown', server: process.env.DB_HOST || '', database: process.env.DB_NAME || '', latencyMs: null, error: null },
+    apis: [],
+  };
+
+  // --- Database connectivity ---
+  try {
+    const dbStart = Date.now();
+    await executeQuery('SELECT 1 AS ok');
+    status.database.latencyMs = Date.now() - dbStart;
+    status.database.status = 'connected';
+  } catch (err: any) {
+    status.database.status = 'disconnected';
+    status.database.error = err.message || String(err);
+  }
+
+  // --- Probe each major service table ---
+  const probes: Array<{ name: string; table: string }> = [
+    { name: 'Customers', table: 'dbo.Customers' },
+    { name: 'Quotes', table: 'dbo.Quotes' },
+    { name: 'Labor Items', table: 'dbo.LaborItems' },
+    { name: 'MSP Offerings', table: 'dbo.MSPOfferings' },
+    { name: 'Export Schemas', table: 'dbo.ExportSchemas' },
+    { name: 'SOW Documents', table: 'dbo.SOWDocuments' },
+    { name: 'Assessment Types', table: 'dbo.AssessmentTypes' },
+    { name: 'SOW Types', table: 'dbo.SOWTypes' },
+    { name: 'Document Conversion Types', table: 'dbo.DocumentConversionTypes' },
+    { name: 'USAC Form 470', table: 'dbo.USACForm470' },
+    { name: 'FRN Status', table: 'dbo.USACFRNStatus' },
+    { name: 'E-Rate Settings', table: 'dbo.ERateSettings' },
+    { name: 'Technical Resources', table: 'dbo.TechnicalResources' },
+    { name: 'Admin Users', table: 'dbo.AdminUsers' },
+    { name: 'Solution Blueprints', table: 'dbo.SolutionBlueprints' },
+    { name: 'Labor Solutions', table: 'dbo.LaborSolutions' },
+    { name: 'Menu Configuration', table: 'dbo.MenuConfiguration' },
+  ];
+
+  for (const probe of probes) {
+    const entry: typeof status.apis[number] = { name: probe.name, table: probe.table, status: 'unknown', count: null, latencyMs: null, error: null };
+    try {
+      const start = Date.now();
+      const rows = await executeQuery<{ cnt: number }>(`SELECT COUNT(*) AS cnt FROM ${probe.table}`);
+      entry.latencyMs = Date.now() - start;
+      entry.count = rows[0]?.cnt ?? 0;
+      entry.status = 'ok';
+    } catch (err: any) {
+      entry.status = 'error';
+      entry.error = err.message || String(err);
+    }
+    status.apis.push(entry);
+  }
+
+  const overallOk = status.database.status === 'connected' && status.apis.every(a => a.status === 'ok');
+  sendSuccess(res, status, overallOk ? 200 : 503, overallOk ? 'All systems operational' : 'Some systems have issues');
+});
 
 // ===== DATABASE MIGRATIONS (temporary endpoint — admin only) =====
 router.post('/run-migration/add-template-filename', requireRole('admin'), async (req: Request, res: Response) => {
@@ -532,6 +602,47 @@ router.put('/labor-solutions-bulk', async (req: Request, res: Response) => {
 });
 
 // ===== MSP OFFERINGS =====
+
+router.get('/msp-categories', async (req: Request, res: Response) => {
+  try {
+    const activeOnly = req.query.activeOnly === 'true';
+    const categories = await MSPCategoryService.getAllCategories(activeOnly);
+    sendSuccess(res, categories, 200, 'MSP categories retrieved successfully');
+  } catch (error: any) {
+    sendError(res, 'Failed to retrieve MSP categories', 500, error.message);
+  }
+});
+
+router.post('/msp-categories', requireRole('admin'), async (req: Request, res: Response) => {
+  try {
+    const created = await MSPCategoryService.createCategory(req.body);
+    sendSuccess(res, created, 201, 'MSP category created successfully');
+  } catch (error: any) {
+    sendError(res, 'Failed to create MSP category', 400, error.message);
+  }
+});
+
+router.put('/msp-categories/:id', requireRole('admin'), async (req: Request, res: Response) => {
+  try {
+    const updated = await MSPCategoryService.updateCategory(req.params.id, req.body);
+    if (!updated) {
+      sendError(res, 'MSP category not found', 404);
+    } else {
+      sendSuccess(res, updated, 200, 'MSP category updated successfully');
+    }
+  } catch (error: any) {
+    sendError(res, 'Failed to update MSP category', 400, error.message);
+  }
+});
+
+router.delete('/msp-categories/:id', requireRole('admin'), async (req: Request, res: Response) => {
+  try {
+    await MSPCategoryService.deleteCategory(req.params.id);
+    sendSuccess(res, { id: req.params.id }, 200, 'MSP category deleted successfully');
+  } catch (error: any) {
+    sendError(res, 'Failed to delete MSP category', 400, error.message);
+  }
+});
 
 router.get('/msp-offerings', async (req: Request, res: Response) => {
   try {
@@ -2974,15 +3085,16 @@ router.post('/menu-config/migrate', requireRole('admin'), async (req: Request, r
         ('admin-customers', 'Customers', 'admin', 1, 0, 2),
         ('admin-create-user', 'Create User', 'admin', 1, 1, 3),
         ('admin-msp-offerings', 'MSP Offerings', 'admin', 1, 0, 4),
-        ('admin-assessment-types', 'Assessment Types', 'admin', 1, 0, 5),
-        ('admin-sow-types', 'SOW Types', 'admin', 1, 0, 6),
-        ('admin-labor-budget', 'Labor Budget Admin', 'admin', 1, 0, 7),
-        ('admin-export-schemas', 'Export Schemas', 'admin', 1, 0, 7),
-        ('admin-erate-settings', 'E-Rate Settings', 'admin', 1, 0, 8),
-        ('admin-settings', 'Settings', 'admin', 1, 0, 9),
-        ('admin-menu-admin', 'Menu Admin', 'admin', 1, 1, 10),
-        ('admin-renewal-statuses', 'Renewal Statuses', 'admin', 1, 0, 11),
-        ('admin-renewals-ai', 'Renewals AI Admin', 'admin', 1, 0, 12),
+        ('admin-msp-categories', 'MSP Categories', 'admin', 1, 0, 5),
+        ('admin-assessment-types', 'Assessment Types', 'admin', 1, 0, 6),
+        ('admin-sow-types', 'SOW Types', 'admin', 1, 0, 7),
+        ('admin-labor-budget', 'Labor Budget Admin', 'admin', 1, 0, 8),
+        ('admin-export-schemas', 'Export Schemas', 'admin', 1, 0, 9),
+        ('admin-erate-settings', 'E-Rate Settings', 'admin', 1, 0, 10),
+        ('admin-settings', 'Settings', 'admin', 1, 0, 11),
+        ('admin-menu-admin', 'Menu Admin', 'admin', 1, 1, 12),
+        ('admin-renewal-statuses', 'Renewal Statuses', 'admin', 1, 0, 13),
+        ('admin-renewals-ai', 'Renewals AI Admin', 'admin', 1, 0, 14),
         ('cisco-renewals', 'Cisco Renewals', NULL, 1, 0, 8),
         ('cisco-renewals-summary', 'Renewals Summary', 'cisco-renewals', 1, 0, 0),
         ('cisco-renewals-hardware', 'Hardware Renewals', 'cisco-renewals', 1, 0, 1),
@@ -2996,6 +3108,7 @@ router.post('/menu-config/migrate', requireRole('admin'), async (req: Request, r
       const ensureItems: { key: string; name: string; parent: string | null; isProtected: number; sort: number }[] = [
         { key: 'admin-menu-admin', name: 'Menu Admin', parent: 'admin', isProtected: 1, sort: 10 },
         { key: 'admin-renewal-statuses', name: 'Renewal Statuses', parent: 'admin', isProtected: 0, sort: 11 },
+        { key: 'admin-msp-categories', name: 'MSP Categories', parent: 'admin', isProtected: 0, sort: 5 },
         { key: 'cisco-renewals', name: 'Cisco Renewals', parent: null, isProtected: 0, sort: 8 },
         { key: 'cisco-renewals-summary', name: 'Renewals Summary', parent: 'cisco-renewals', isProtected: 0, sort: 0 },
         { key: 'cisco-renewals-hardware', name: 'Hardware Renewals', parent: 'cisco-renewals', isProtected: 0, sort: 1 },

@@ -1,0 +1,11 @@
+node_modules
+dist
+.angular
+npm-debug.log
+.env
+*.md
+backend
+db
+Figma
+test-*.ps1
+test-*.json

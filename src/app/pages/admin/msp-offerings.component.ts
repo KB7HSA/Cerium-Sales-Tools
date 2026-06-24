@@ -1,10 +1,11 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
-import { MSPOfferingsService, MSPOffering, PricingUnit } from '../../shared/services/msp-offerings.service';
-import { PricingUnitOption, PricingUnitsService } from '../../shared/services/pricing-units.service';
 import { Subscription } from 'rxjs';
+import { MSPOfferingsService, MSPOffering, PricingUnit } from '../../shared/services/msp-offerings.service';
+import { MSPCategoriesService, MSPCategory } from '../../shared/services/msp-categories.service';
+import { PricingUnitOption, PricingUnitsService } from '../../shared/services/pricing-units.service';
 
 @Component({
   selector: 'app-msp-offerings',
@@ -16,32 +17,43 @@ import { Subscription } from 'rxjs';
 export class MSPOfferingsComponent implements OnInit, OnDestroy {
   offerings: MSPOffering[] = [];
   filteredOfferings: MSPOffering[] = [];
-  activeFilter: string = 'all';
-  searchTerm: string = '';
+  activeFilter = 'all';
+  searchTerm = '';
   pricingUnits: PricingUnitOption[] = [];
-  isLoading: boolean = false;
-  errorMessage: string = '';
+  categories: MSPCategory[] = [];
+  isLoading = false;
+  errorMessage = '';
   private subscription: Subscription = new Subscription();
 
   constructor(
     public offeringsService: MSPOfferingsService,
+    private categoriesService: MSPCategoriesService,
     private pricingUnitsService: PricingUnitsService
   ) {}
 
   ngOnInit(): void {
-    console.log('[MSPOfferingsComponent] ngOnInit: subscribing to offerings$');
     this.pricingUnits = this.pricingUnitsService.getUnits();
+
     this.subscription.add(
       this.offeringsService.getOfferings().subscribe(offerings => {
-        console.log('[MSPOfferingsComponent] Received offerings from service:', offerings);
         this.offerings = offerings;
         this.applyFilters();
         this.isLoading = false;
       })
     );
-    
-    // Load offerings from backend
-    console.log('[MSPOfferingsComponent] ngOnInit: calling refreshOfferings');
+
+    this.subscription.add(
+      this.categoriesService.getCategories(true).subscribe({
+        next: categories => {
+          this.categories = categories;
+          this.applyFilters();
+        },
+        error: () => {
+          this.categories = [];
+        }
+      })
+    );
+
     this.refreshOfferings();
   }
 
@@ -50,7 +62,6 @@ export class MSPOfferingsComponent implements OnInit, OnDestroy {
   }
 
   refreshOfferings(): void {
-    console.log('[MSPOfferingsComponent] refreshOfferings called');
     this.isLoading = true;
     this.errorMessage = '';
     this.offeringsService.refreshOfferings();
@@ -59,12 +70,10 @@ export class MSPOfferingsComponent implements OnInit, OnDestroy {
   applyFilters(): void {
     let filtered = this.offerings;
 
-    // Filter by category
     if (this.activeFilter !== 'all') {
       filtered = filtered.filter(o => (o.category || o.Category) === this.activeFilter);
     }
 
-    // Filter by search term
     if (this.searchTerm.trim()) {
       const term = this.searchTerm.toLowerCase();
       filtered = filtered.filter(o =>
@@ -87,7 +96,6 @@ export class MSPOfferingsComponent implements OnInit, OnDestroy {
 
   toggleOfferingStatus(id: string | undefined, event: Event): void {
     if (!id) {
-      console.error('[MSPOfferingsComponent] Cannot toggle status: ID is undefined');
       return;
     }
     event.stopPropagation();
@@ -96,7 +104,6 @@ export class MSPOfferingsComponent implements OnInit, OnDestroy {
 
   deleteOffering(id: string | undefined, event: Event): void {
     if (!id) {
-      console.error('[MSPOfferingsComponent] Cannot delete: ID is undefined');
       return;
     }
     event.stopPropagation();
@@ -105,9 +112,6 @@ export class MSPOfferingsComponent implements OnInit, OnDestroy {
     }
   }
 
-  /**
-   * Safe getter for offering ID (handles both camelCase and PascalCase)
-   */
   getOfferingId(offering: MSPOffering): string {
     return (offering.id || offering.Id) || '';
   }
@@ -121,33 +125,29 @@ export class MSPOfferingsComponent implements OnInit, OnDestroy {
   }
 
   getServicesByCategory(category: string): number {
-    return this.offerings.filter(o => o.category === category).length;
-  }
-
-  getTotalMonthlyRevenue(offering: MSPOffering): number {
-    const level = this.getDefaultLevel(offering);
-    if (!level) return 0;
-    return level.basePrice + level.options.reduce((sum, opt) => sum + opt.monthlyPrice, 0);
+    return this.offerings.filter(o => (o.category || o.Category) === category).length;
   }
 
   getCategoryLabel(category: string | undefined): string {
-    const labels: { [key: string]: string } = {
-      backup: 'Backup Solutions',
-      support: 'Support Services',
-      database: 'Database Management',
-      consulting: 'Consulting'
-    };
-    return labels[category as string] || (category || 'Unknown');
+    if (!category) {
+      return 'Unknown';
+    }
+    const match = this.categories.find(c => c.slug === category);
+    return match?.name || category;
   }
 
   getCategoryColor(category: string | undefined): string {
     const colors: { [key: string]: string } = {
       backup: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
       support: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-      database: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
-      consulting: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
+      database: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200',
+      consulting: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200'
     };
     return colors[category as string] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200';
+  }
+
+  getFilterCategories(): MSPCategory[] {
+    return this.categories;
   }
 
   getPricingUnitLabel(unit: PricingUnit): string {
