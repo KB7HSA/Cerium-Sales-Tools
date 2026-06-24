@@ -11,7 +11,7 @@ export const sqlConfig = {
   password: process.env.DB_PASSWORD || '',
   database: process.env.DB_NAME || '',
   options: {
-    encrypt: true, // Azure requires encryption
+    encrypt: process.env.DB_ENCRYPT !== 'false',
     trustServerCertificate: process.env.DB_TRUST_CERT === 'true', // Default false for production security
     enableKeepAlive: true,
     keepAliveInitialDelaySeconds: 30,

@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import { executeQuery, executeTransaction } from '../config/database';
+import { MSPCategoryService } from './msp-category.service';
 
 export interface MSPOffering {
   Id?: string;
@@ -76,6 +77,34 @@ export interface MSPOption {
 }
 
 export class MSPOfferingService {
+  private static async ensureCategoryReady(rawCategory: string): Promise<string> {
+    const slug = (rawCategory || '').toString().trim().toLowerCase();
+    if (!slug) {
+      throw new Error('Category is required');
+    }
+
+    // Ensures table exists and legacy category check constraint is removed.
+    await MSPCategoryService.getAllCategories(false);
+
+    const exists = await executeQuery<{ cnt: number }>(
+      'SELECT COUNT(*) as cnt FROM dbo.MspOfferingCategories WHERE Slug = @slug',
+      { slug }
+    );
+
+    if ((exists[0]?.cnt || 0) === 0) {
+      await executeQuery(
+        `INSERT INTO dbo.MspOfferingCategories (Id, Name, Slug, Description, IsActive, DisplayOrder)
+         VALUES (@id, @name, @slug, NULL, 1, 999)`,
+        {
+          id: uuidv4(),
+          name: slug.replace(/-/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()),
+          slug,
+        }
+      );
+    }
+
+    return slug;
+  }
   /**
    * Get all MSP offerings
    */
@@ -275,7 +304,7 @@ export class MSPOfferingService {
       const name = offering.name || offering.Name || '';
       const description = offering.description || offering.Description || null;
       const imageUrl = offering.imageUrl || offering.ImageUrl || null;
-      const category = (offering.category || offering.Category || 'backup');
+      const category = await this.ensureCategoryReady(offering.category || offering.Category || 'backup');
       
       // First, insert the offering
       const offeringQuery = `
@@ -535,7 +564,7 @@ export class MSPOfferingService {
     }
     if (updates.Category !== undefined) {
       fields.push('Category = @category');
-      params.category = updates.Category.toLowerCase();
+      params.category = await this.ensureCategoryReady(updates.Category);
     }
     if (updates.BasePrice !== undefined) {
       fields.push('BasePrice = @basePrice');
@@ -903,3 +932,4 @@ export class MSPOfferingService {
     }
   }
 }
+

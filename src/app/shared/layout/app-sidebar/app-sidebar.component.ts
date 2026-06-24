@@ -126,6 +126,7 @@ export class AppSidebarComponent {
         { name: "Customers", path: "/admin/customers", pro: false, menuKey: "admin-customers" },
         { name: "Create User", path: "/admin/create-user", pro: false, menuKey: "admin-create-user" },
         { name: "MSP Offerings", path: "/admin/offerings", pro: false, menuKey: "admin-msp-offerings" },
+        { name: "MSP Categories", path: "/admin/msp-categories", pro: false, menuKey: "admin-msp-categories" },
         { name: "Assessment Types", path: "/admin/assessment-types", pro: false, menuKey: "admin-assessment-types" },
         { name: "SOW Types", path: "/admin/sow-types", pro: false, menuKey: "admin-sow-types" },
         { name: "Doc Conversion Types", path: "/admin/document-conversion-types", pro: false, menuKey: "admin-doc-conversion-types" },
@@ -136,6 +137,7 @@ export class AppSidebarComponent {
         { name: "Menu Admin", path: "/admin/menu-admin", pro: false, menuKey: "admin-menu-admin" },
         { name: "Renewal Statuses", path: "/admin/renewal-statuses", pro: false, menuKey: "admin-renewal-statuses" },
         { name: "Renewals AI Admin", path: "/admin/renewals-ai", pro: false, menuKey: "admin-renewals-ai" },
+        { name: "System Status", path: "/admin/system-status", pro: false, menuKey: "admin-system-status" },
       ],
     },
     {

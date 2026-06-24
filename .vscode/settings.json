@@ -1,0 +1,8 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "/^cd \"d:\\\\Github\\\\Tailadmin - Copy\\\\backend\" ; Start-Process powershell -ArgumentList \"-NoExit\", \"-Command\", \"npm run dev\" -WindowStyle Normal$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
+}

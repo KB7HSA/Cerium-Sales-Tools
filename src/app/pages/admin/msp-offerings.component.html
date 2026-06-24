@@ -5,15 +5,23 @@
       <h1 class="text-3xl font-bold text-gray-900 dark:text-white">MSP Offerings</h1>
       <p class="mt-2 text-gray-600 dark:text-gray-400">Manage your service offerings, pricing, and options</p>
     </div>
-    <a
-      routerLink="/admin/create-offering"
-      class="inline-flex items-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 transition-colors"
-    >
-      <svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
-      </svg>
-      Create Offering
-    </a>
+    <div class="flex items-center gap-3">
+      <a
+        routerLink="/admin/msp-categories"
+        class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-5 py-3 font-semibold text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+      >
+        Manage Categories
+      </a>
+      <a
+        routerLink="/admin/create-offering"
+        class="inline-flex items-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 transition-colors"
+      >
+        <svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+        </svg>
+        Create Offering
+      </a>
+    </div>
   </div>
 
   <!-- Stats -->
@@ -47,54 +55,20 @@
       >
         All Services
       </button>
-      <button
-        (click)="setFilter('backup')"
-        [class.bg-blue-600]="activeFilter === 'backup'"
-        [class.text-white]="activeFilter === 'backup'"
-        [class.bg-gray-200]="activeFilter !== 'backup'"
-        [class.dark:bg-gray-700]="activeFilter !== 'backup'"
-        [class.text-gray-900]="activeFilter !== 'backup'"
-        [class.dark:text-gray-300]="activeFilter !== 'backup'"
-        class="px-4 py-2 rounded-lg font-medium transition-colors"
-      >
-        Backup ({{ getServicesByCategory('backup') }})
-      </button>
-      <button
-        (click)="setFilter('support')"
-        [class.bg-blue-600]="activeFilter === 'support'"
-        [class.text-white]="activeFilter === 'support'"
-        [class.bg-gray-200]="activeFilter !== 'support'"
-        [class.dark:bg-gray-700]="activeFilter !== 'support'"
-        [class.text-gray-900]="activeFilter !== 'support'"
-        [class.dark:text-gray-300]="activeFilter !== 'support'"
-        class="px-4 py-2 rounded-lg font-medium transition-colors"
-      >
-        Support ({{ getServicesByCategory('support') }})
-      </button>
-      <button
-        (click)="setFilter('database')"
-        [class.bg-blue-600]="activeFilter === 'database'"
-        [class.text-white]="activeFilter === 'database'"
-        [class.bg-gray-200]="activeFilter !== 'database'"
-        [class.dark:bg-gray-700]="activeFilter !== 'database'"
-        [class.text-gray-900]="activeFilter !== 'database'"
-        [class.dark:text-gray-300]="activeFilter !== 'database'"
-        class="px-4 py-2 rounded-lg font-medium transition-colors"
-      >
-        Database ({{ getServicesByCategory('database') }})
-      </button>
-      <button
-        (click)="setFilter('consulting')"
-        [class.bg-blue-600]="activeFilter === 'consulting'"
-        [class.text-white]="activeFilter === 'consulting'"
-        [class.bg-gray-200]="activeFilter !== 'consulting'"
-        [class.dark:bg-gray-700]="activeFilter !== 'consulting'"
-        [class.text-gray-900]="activeFilter !== 'consulting'"
-        [class.dark:text-gray-300]="activeFilter !== 'consulting'"
-        class="px-4 py-2 rounded-lg font-medium transition-colors"
-      >
-        Consulting ({{ getServicesByCategory('consulting') }})
-      </button>
+      @for (category of getFilterCategories(); track category.id) {
+        <button
+          (click)="setFilter(category.slug)"
+          [class.bg-blue-600]="activeFilter === category.slug"
+          [class.text-white]="activeFilter === category.slug"
+          [class.bg-gray-200]="activeFilter !== category.slug"
+          [class.dark:bg-gray-700]="activeFilter !== category.slug"
+          [class.text-gray-900]="activeFilter !== category.slug"
+          [class.dark:text-gray-300]="activeFilter !== category.slug"
+          class="px-4 py-2 rounded-lg font-medium transition-colors"
+        >
+          {{ category.name }} ({{ getServicesByCategory(category.slug) }})
+        </button>
+      }
     </div>
 
     <!-- Search -->
