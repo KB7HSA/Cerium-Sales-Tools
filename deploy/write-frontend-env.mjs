@@ -11,6 +11,9 @@ const strip = (value) => (value ?? '').trim().replace(/^["']|["']$/g, '');
 const appUrl = strip(process.env.APP_URL).replace(/\/$/, '');
 const clientId = strip(process.env.AZURE_AD_CLIENT_ID);
 const tenantId = strip(process.env.AZURE_AD_TENANT_ID);
+const redirectPath = strip(process.env.MSAL_REDIRECT_PATH || '/auth-callback').replace(/\/$/, '') || '/auth-callback';
+const redirectUri = redirectPath === '/' ? appUrl : `${appUrl}${redirectPath.startsWith('/') ? redirectPath : `/${redirectPath}`}`;
+const postLogoutRedirectUri = `${appUrl}/signin`;
 const outFile = process.argv[2] ?? 'src/environments/environment.prod.ts';
 
 if (!/^https?:\/\/[^\s/?#]+/.test(appUrl)) {
@@ -36,7 +39,8 @@ export const environment = {
   azureAd: {
     clientId: '${escape(clientId)}',
     tenantId: '${escape(tenantId)}',
-    redirectUri: '${escape(appUrl)}',
+    redirectUri: '${escape(redirectUri)}',
+    postLogoutRedirectUri: '${escape(postLogoutRedirectUri)}',
   },
 };
 `;
@@ -44,5 +48,6 @@ export const environment = {
 fs.mkdirSync(path.dirname(outFile), { recursive: true });
 fs.writeFileSync(outFile, content);
 console.log(`Wrote ${outFile}`);
-console.log(`  redirectUri: ${appUrl}`);
+console.log(`  redirectUri: ${redirectUri}`);
+console.log(`  postLogoutRedirectUri: ${postLogoutRedirectUri}`);
 console.log(`  clientId:    ${clientId.slice(0, 8)}...`);

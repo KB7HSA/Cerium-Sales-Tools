@@ -7,7 +7,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib/common.sh"
 
 require_docker
-load_env 2>/dev/null || true
+load_app_env 2>/dev/null || true
 PORT="${HTTP_PORT:-80}"
 BASE="http://127.0.0.1:${PORT}"
 if [[ -f "${PROJECT_ROOT}/deploy/ssl/server.crt" ]]; then

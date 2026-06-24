@@ -1,4 +1,4 @@
-import { ApplicationConfig, provideZoneChangeDetection } from '@angular/core';
+import { ApplicationConfig, APP_INITIALIZER, provideZoneChangeDetection } from '@angular/core';
 import { provideRouter } from '@angular/router';
 import { provideHttpClient, withInterceptorsFromDi, HTTP_INTERCEPTORS } from '@angular/common/http';
 import { 
@@ -19,11 +19,21 @@ import { BackendAuthInterceptor } from './shared/interceptors/backend-auth.inter
 
 import { routes } from './app.routes';
 
+function initializeMsal(msalService: MsalService) {
+  return () => msalService.initialize();
+}
+
 export const appConfig: ApplicationConfig = {
   providers: [
     provideZoneChangeDetection({ eventCoalescing: true }), 
     provideRouter(routes),
     provideHttpClient(withInterceptorsFromDi()),
+    {
+      provide: APP_INITIALIZER,
+      useFactory: initializeMsal,
+      deps: [MsalService],
+      multi: true,
+    },
     {
       provide: MSAL_INSTANCE,
       useFactory: MSALInstanceFactory
