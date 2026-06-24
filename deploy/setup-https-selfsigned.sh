@@ -98,7 +98,7 @@ if [[ "${HTTP_PORT:-80}" != "80" ]]; then
 fi
 
 if grep -q '^APP_URL=' "${PROJECT_ROOT}/.env"; then
-  sed -i "s|^APP_URL=.*|APP_URL=${NEW_APP_URL}|" "${PROJECT_ROOT}/.env"
+  set_env_value "${PROJECT_ROOT}/.env" APP_URL "${NEW_APP_URL}"
 else
   printf 'APP_URL=%s\n' "${NEW_APP_URL}" >> "${PROJECT_ROOT}/.env"
 fi

@@ -79,9 +79,18 @@ if [[ "${INIT_DB}" == true ]]; then
   bash "${SCRIPT_DIR}/init-database.sh"
 fi
 
+[[ -n "${AZURE_AD_CLIENT_ID:-}" ]] || die "AZURE_AD_CLIENT_ID missing in .env"
+[[ -n "${AZURE_AD_TENANT_ID:-}" ]] || die "AZURE_AD_TENANT_ID missing in .env"
+if [[ ! "${APP_URL}" =~ ^https?:// ]]; then
+  die "APP_URL must be an absolute URL (e.g. https://your-server) — got: ${APP_URL}"
+fi
+
 if [[ "${SKIP_BUILD}" == false ]]; then
   log "Building Docker images (APP_URL=${APP_URL})..."
-  compose build --build-arg "APP_URL=${APP_URL}"
+  compose build \
+    --build-arg "APP_URL=${APP_URL}" \
+    --build-arg "AZURE_AD_CLIENT_ID=${AZURE_AD_CLIENT_ID}" \
+    --build-arg "AZURE_AD_TENANT_ID=${AZURE_AD_TENANT_ID}"
 fi
 
 log "Starting application stack..."
