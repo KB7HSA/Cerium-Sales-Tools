@@ -14,7 +14,10 @@ GO
 -- ================================================================
 
 PRINT 'Deleting assessment type architecture mappings...';
-DELETE FROM dbo.AssessmentTypeArchitectures;
+IF EXISTS (SELECT * FROM sys.tables WHERE name = 'AssessmentTypeArchitectures' AND schema_id = SCHEMA_ID('dbo'))
+    DELETE FROM dbo.AssessmentTypeArchitectures;
+ELSE
+    PRINT 'AssessmentTypeArchitectures table not found — skipping delete.';
 GO
 
 -- ================================================================
@@ -22,9 +25,14 @@ GO
 -- ================================================================
 
 PRINT 'Clearing existing reference architectures...';
-DELETE FROM dbo.AssessmentReferenceArchitectures;
+IF EXISTS (SELECT * FROM sys.tables WHERE name = 'AssessmentReferenceArchitectures' AND schema_id = SCHEMA_ID('dbo'))
+    DELETE FROM dbo.AssessmentReferenceArchitectures;
+ELSE
+    PRINT 'AssessmentReferenceArchitectures table not found — skipping delete.';
 GO
 
+IF EXISTS (SELECT * FROM sys.tables WHERE name = 'AssessmentReferenceArchitectures' AND schema_id = SCHEMA_ID('dbo'))
+BEGIN
 PRINT 'Inserting new reference architectures (Practice Areas)...';
 INSERT INTO dbo.AssessmentReferenceArchitectures (Id, Name, Description, Category, SortOrder) VALUES
 (NEWID(), 'Data & AI', 'Data management, analytics, artificial intelligence and machine learning solutions', 'Technology', 1),
@@ -33,6 +41,11 @@ INSERT INTO dbo.AssessmentReferenceArchitectures (Id, Name, Description, Categor
 (NEWID(), 'Collaboration', 'Unified communications, teamwork platforms, and productivity tools', 'Productivity', 4),
 (NEWID(), 'Contact Center', 'Customer engagement, call center, and omnichannel communication solutions', 'Customer Experience', 5),
 (NEWID(), 'Data Center', 'Server infrastructure, virtualization, storage, and hybrid cloud environments', 'Infrastructure', 6);
+END
+ELSE
+BEGIN
+    PRINT 'AssessmentReferenceArchitectures table not found — skipping insert.';
+END
 GO
 
 -- ================================================================
@@ -40,9 +53,14 @@ GO
 -- ================================================================
 
 PRINT 'Clearing existing assessment types...';
-DELETE FROM dbo.AssessmentTypes;
+IF EXISTS (SELECT * FROM sys.tables WHERE name = 'AssessmentTypes' AND schema_id = SCHEMA_ID('dbo'))
+    DELETE FROM dbo.AssessmentTypes;
+ELSE
+    PRINT 'AssessmentTypes table not found — skipping delete.';
 GO
 
+IF EXISTS (SELECT * FROM sys.tables WHERE name = 'AssessmentTypes' AND schema_id = SCHEMA_ID('dbo'))
+BEGIN
 PRINT 'Inserting new assessment types (Technology Platforms)...';
 
 -- Microsoft 365
@@ -66,7 +84,6 @@ INSERT INTO dbo.AssessmentTypes (
     'Generate prioritized Microsoft 365 recommendations for configuration, security, and adoption improvements.',
     16, 175.00, 1
 );
-GO
 
 -- Azure Infrastructure
 INSERT INTO dbo.AssessmentTypes (
@@ -89,7 +106,6 @@ INSERT INTO dbo.AssessmentTypes (
     'Provide Azure recommendations including right-sizing, security hardening, and architecture improvements.',
     24, 175.00, 2
 );
-GO
 
 -- On-Premises Active Directory
 INSERT INTO dbo.AssessmentTypes (
@@ -112,7 +128,6 @@ INSERT INTO dbo.AssessmentTypes (
     'Recommend AD improvements including security hardening, performance optimization, and hybrid identity preparation.',
     16, 175.00, 3
 );
-GO
 
 -- Hybrid Identity
 INSERT INTO dbo.AssessmentTypes (
@@ -135,7 +150,6 @@ INSERT INTO dbo.AssessmentTypes (
     'Recommend hybrid identity improvements including security enhancements and cloud identity modernization.',
     20, 175.00, 4
 );
-GO
 
 -- Network Infrastructure
 INSERT INTO dbo.AssessmentTypes (
@@ -158,7 +172,6 @@ INSERT INTO dbo.AssessmentTypes (
     'Recommend network improvements including hardware upgrades, configuration changes, and SD-WAN opportunities.',
     16, 175.00, 5
 );
-GO
 
 -- Endpoint Management
 INSERT INTO dbo.AssessmentTypes (
@@ -181,7 +194,6 @@ INSERT INTO dbo.AssessmentTypes (
     'Recommend endpoint management improvements including Intune optimization, security hardening, and automation.',
     16, 175.00, 6
 );
-GO
 
 -- Backup & Disaster Recovery
 INSERT INTO dbo.AssessmentTypes (
@@ -204,7 +216,6 @@ INSERT INTO dbo.AssessmentTypes (
     'Recommend backup and DR improvements including technology updates, policy changes, and DR testing procedures.',
     20, 175.00, 7
 );
-GO
 
 -- Security & Compliance
 INSERT INTO dbo.AssessmentTypes (
@@ -227,13 +238,24 @@ INSERT INTO dbo.AssessmentTypes (
     'Generate prioritized security and compliance recommendations with effort estimates and timeline.',
     32, 175.00, 8
 );
+END
+ELSE
+BEGIN
+    PRINT 'AssessmentTypes table not found — skipping insert.';
+END
 GO
 
 PRINT 'Assessment data fix complete!';
-PRINT '';
-PRINT 'Reference Architectures (Practice Areas):';
-SELECT Name FROM dbo.AssessmentReferenceArchitectures ORDER BY SortOrder;
-PRINT '';
-PRINT 'Assessment Types (Technology Platforms):';
-SELECT Name FROM dbo.AssessmentTypes ORDER BY SortOrder;
+IF EXISTS (SELECT * FROM sys.tables WHERE name = 'AssessmentReferenceArchitectures' AND schema_id = SCHEMA_ID('dbo'))
+BEGIN
+    PRINT '';
+    PRINT 'Reference Architectures (Practice Areas):';
+    SELECT Name FROM dbo.AssessmentReferenceArchitectures ORDER BY SortOrder;
+END
+IF EXISTS (SELECT * FROM sys.tables WHERE name = 'AssessmentTypes' AND schema_id = SCHEMA_ID('dbo'))
+BEGIN
+    PRINT '';
+    PRINT 'Assessment Types (Technology Platforms):';
+    SELECT Name FROM dbo.AssessmentTypes ORDER BY SortOrder;
+END
 GO

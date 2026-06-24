@@ -672,6 +672,8 @@ BEGIN
         AcceptedAt DATETIME2(7) NULL,
         CreatedDate DATE NULL,
         CreatedTime NVARCHAR(32) NULL,
+        CreatedBy NVARCHAR(255) NULL,
+        CreatedByEmail NVARCHAR(255) NULL,
         CreatedAt DATETIME2(7) NOT NULL DEFAULT GETUTCDATE(),
         UpdatedAt DATETIME2(7) NOT NULL DEFAULT GETUTCDATE(),
         CONSTRAINT PK_Quotes PRIMARY KEY CLUSTERED (Id),

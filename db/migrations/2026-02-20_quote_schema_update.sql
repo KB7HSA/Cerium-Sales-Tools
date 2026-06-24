@@ -14,14 +14,16 @@ GO
 -- ================================================================
 
 -- Service Level and Pricing Information
-IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.Quotes') AND name = 'ServiceLevelName')
+IF EXISTS (SELECT * FROM sys.tables WHERE name = 'Quotes' AND schema_id = SCHEMA_ID('dbo'))
+   AND NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.Quotes') AND name = 'ServiceLevelName')
 BEGIN
     ALTER TABLE dbo.Quotes ADD ServiceLevelName NVARCHAR(255) NULL;
     PRINT 'Added ServiceLevelName column to Quotes table';
 END
 GO
 
-IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.Quotes') AND name = 'PricingUnitLabel')
+IF EXISTS (SELECT * FROM sys.tables WHERE name = 'Quotes' AND schema_id = SCHEMA_ID('dbo'))
+   AND NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.Quotes') AND name = 'PricingUnitLabel')
 BEGIN
     ALTER TABLE dbo.Quotes ADD PricingUnitLabel NVARCHAR(50) NULL;
     PRINT 'Added PricingUnitLabel column to Quotes table';
@@ -29,28 +31,32 @@ END
 GO
 
 -- Per-unit pricing breakdown
-IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.Quotes') AND name = 'BasePricePerUnit')
+IF EXISTS (SELECT * FROM sys.tables WHERE name = 'Quotes' AND schema_id = SCHEMA_ID('dbo'))
+   AND NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.Quotes') AND name = 'BasePricePerUnit')
 BEGIN
     ALTER TABLE dbo.Quotes ADD BasePricePerUnit DECIMAL(12,2) NOT NULL DEFAULT 0;
     PRINT 'Added BasePricePerUnit column to Quotes table';
 END
 GO
 
-IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.Quotes') AND name = 'ProfessionalServicesPrice')
+IF EXISTS (SELECT * FROM sys.tables WHERE name = 'Quotes' AND schema_id = SCHEMA_ID('dbo'))
+   AND NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.Quotes') AND name = 'ProfessionalServicesPrice')
 BEGIN
     ALTER TABLE dbo.Quotes ADD ProfessionalServicesPrice DECIMAL(12,2) NOT NULL DEFAULT 0;
     PRINT 'Added ProfessionalServicesPrice column to Quotes table';
 END
 GO
 
-IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.Quotes') AND name = 'ProfessionalServicesTotal')
+IF EXISTS (SELECT * FROM sys.tables WHERE name = 'Quotes' AND schema_id = SCHEMA_ID('dbo'))
+   AND NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.Quotes') AND name = 'ProfessionalServicesTotal')
 BEGIN
     ALTER TABLE dbo.Quotes ADD ProfessionalServicesTotal DECIMAL(12,2) NOT NULL DEFAULT 0;
     PRINT 'Added ProfessionalServicesTotal column to Quotes table';
 END
 GO
 
-IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.Quotes') AND name = 'PerUnitTotal')
+IF EXISTS (SELECT * FROM sys.tables WHERE name = 'Quotes' AND schema_id = SCHEMA_ID('dbo'))
+   AND NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.Quotes') AND name = 'PerUnitTotal')
 BEGIN
     ALTER TABLE dbo.Quotes ADD PerUnitTotal DECIMAL(12,2) NOT NULL DEFAULT 0;
     PRINT 'Added PerUnitTotal column to Quotes table';
@@ -58,21 +64,24 @@ END
 GO
 
 -- Add-on pricing totals
-IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.Quotes') AND name = 'AddOnMonthlyTotal')
+IF EXISTS (SELECT * FROM sys.tables WHERE name = 'Quotes' AND schema_id = SCHEMA_ID('dbo'))
+   AND NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.Quotes') AND name = 'AddOnMonthlyTotal')
 BEGIN
     ALTER TABLE dbo.Quotes ADD AddOnMonthlyTotal DECIMAL(12,2) NOT NULL DEFAULT 0;
     PRINT 'Added AddOnMonthlyTotal column to Quotes table';
 END
 GO
 
-IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.Quotes') AND name = 'AddOnOneTimeTotal')
+IF EXISTS (SELECT * FROM sys.tables WHERE name = 'Quotes' AND schema_id = SCHEMA_ID('dbo'))
+   AND NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.Quotes') AND name = 'AddOnOneTimeTotal')
 BEGIN
     ALTER TABLE dbo.Quotes ADD AddOnOneTimeTotal DECIMAL(12,2) NOT NULL DEFAULT 0;
     PRINT 'Added AddOnOneTimeTotal column to Quotes table';
 END
 GO
 
-IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.Quotes') AND name = 'AddOnPerUnitTotal')
+IF EXISTS (SELECT * FROM sys.tables WHERE name = 'Quotes' AND schema_id = SCHEMA_ID('dbo'))
+   AND NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.Quotes') AND name = 'AddOnPerUnitTotal')
 BEGIN
     ALTER TABLE dbo.Quotes ADD AddOnPerUnitTotal DECIMAL(12,2) NOT NULL DEFAULT 0;
     PRINT 'Added AddOnPerUnitTotal column to Quotes table';
@@ -80,7 +89,8 @@ END
 GO
 
 -- Discount tracking
-IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.Quotes') AND name = 'AnnualDiscountApplied')
+IF EXISTS (SELECT * FROM sys.tables WHERE name = 'Quotes' AND schema_id = SCHEMA_ID('dbo'))
+   AND NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.Quotes') AND name = 'AnnualDiscountApplied')
 BEGIN
     ALTER TABLE dbo.Quotes ADD AnnualDiscountApplied BIT NOT NULL DEFAULT 0;
     PRINT 'Added AnnualDiscountApplied column to Quotes table';
@@ -126,7 +136,9 @@ GO
 -- ================================================================
 
 -- Display current Quotes table schema
-SELECT 
+IF EXISTS (SELECT * FROM sys.tables WHERE name = 'Quotes' AND schema_id = SCHEMA_ID('dbo'))
+BEGIN
+SELECT
     c.name AS ColumnName,
     t.name AS DataType,
     c.max_length AS MaxLength,
@@ -137,6 +149,7 @@ INNER JOIN sys.types t ON c.user_type_id = t.user_type_id
 LEFT JOIN sys.default_constraints dc ON c.default_object_id = dc.object_id
 WHERE c.object_id = OBJECT_ID('dbo.Quotes')
 ORDER BY c.column_id;
+END
 GO
 
 PRINT 'Quote schema migration completed successfully';
