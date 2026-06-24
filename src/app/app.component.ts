@@ -1,10 +1,9 @@
 import { Component, OnInit, OnDestroy, inject } from '@angular/core';
-import { Router, RouterModule } from '@angular/router';
+import { RouterModule } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { MsalModule, MsalService, MsalBroadcastService } from '@azure/msal-angular';
 import { InteractionStatus } from '@azure/msal-browser';
 import { Subject, filter, takeUntil } from 'rxjs';
-import { AuthService } from './shared/services/auth.service';
 
 @Component({
   selector: 'app-root',
@@ -19,44 +18,12 @@ import { AuthService } from './shared/services/auth.service';
 })
 export class AppComponent implements OnInit, OnDestroy {
   title = 'Cerium Sales Tools';
-  isProcessingLogin = false;
-  
+
   private readonly _destroying$ = new Subject<void>();
   private msalService = inject(MsalService);
   private msalBroadcastService = inject(MsalBroadcastService);
-  private authService = inject(AuthService);
-  private router = inject(Router);
-  private loginTimeoutId: any;
 
   ngOnInit(): void {
-    // If a login redirect is in progress, show the loading overlay —
-    // but only if the timestamp is recent (< 2 minutes). Stale flags from
-    // interrupted redirects or dev-server restarts are auto-cleared.
-    const loginInProgress = sessionStorage.getItem('msalLoginInProgress');
-    const loginTimestamp = sessionStorage.getItem('msalLoginTimestamp');
-    if (loginInProgress) {
-      const elapsed = loginTimestamp ? Date.now() - parseInt(loginTimestamp, 10) : Infinity;
-      if (elapsed < 120_000) { // 2 minutes
-        this.isProcessingLogin = true;
-        // Safety net: auto-dismiss the overlay after 30 seconds if MSAL
-        // redirect handling never completes (e.g., network issue, MSAL bug)
-        this.loginTimeoutId = setTimeout(() => {
-          if (this.isProcessingLogin) {
-            console.warn('MSAL login overlay stuck for 30s — auto-dismissing');
-            this.isProcessingLogin = false;
-            sessionStorage.removeItem('msalLoginInProgress');
-            sessionStorage.removeItem('msalLoginTimestamp');
-          }
-        }, 30_000);
-      } else {
-        // Stale login flag — clear it so the user isn't stuck on a blank page
-        console.warn('Clearing stale msalLoginInProgress flag (age:', Math.round(elapsed / 1000), 's)');
-        sessionStorage.removeItem('msalLoginInProgress');
-        sessionStorage.removeItem('msalLoginTimestamp');
-      }
-    }
-
-    // MSAL redirect is handled once in APP_INITIALIZER (see app.config.ts).
     this.msalBroadcastService.inProgress$
       .pipe(
         filter((status: InteractionStatus) => status === InteractionStatus.None),
@@ -65,56 +32,6 @@ export class AppComponent implements OnInit, OnDestroy {
       .subscribe(() => {
         this.checkAndSetActiveAccount();
       });
-  }
-
-  /**
-   * Clear stale MSAL interaction-in-progress markers from sessionStorage.
-   * These can persist when the dev server restarts mid-redirect, preventing
-   * the login page from loading until the user manually clears the cache.
-   * 
-   * This is ONLY called after handleRedirectObservable() returns null,
-   * confirming there's no legitimate redirect to process.
-   */
-  private clearStaleInteractionState(): void {
-    // MSAL v5 stores interaction state keys with the clientId prefix
-    // e.g., "msal.712b4eda-bfde-4a28-90d2-aa645d4c6977.interaction.status"
-    const keysToCheck: string[] = [];
-    for (let i = 0; i < sessionStorage.length; i++) {
-      const key = sessionStorage.key(i);
-      if (key && (
-        key.includes('interaction.status') ||
-        key.includes('interaction_in_progress') ||
-        key.includes('interaction_status') ||
-        key.includes('.request.') ||           // MSAL v5 in-flight request state
-        key.includes('.request.params') ||
-        key.includes('.temp.cache')            // MSAL v5 temporary cache entries
-      )) {
-        keysToCheck.push(key);
-      }
-    }
-
-    if (keysToCheck.length > 0) {
-      console.warn('Clearing stale MSAL interaction keys (no redirect pending):', keysToCheck);
-      keysToCheck.forEach(key => sessionStorage.removeItem(key));
-    }
-  }
-
-  /**
-   * Emergency cleanup: remove all MSAL-related keys from sessionStorage
-   * to recover from a completely stuck state.
-   */
-  private clearMsalBrowserStorage(): void {
-    const keysToRemove: string[] = [];
-    for (let i = 0; i < sessionStorage.length; i++) {
-      const key = sessionStorage.key(i);
-      if (key && key.startsWith('msal.')) {
-        keysToRemove.push(key);
-      }
-    }
-    keysToRemove.forEach(key => sessionStorage.removeItem(key));
-    sessionStorage.removeItem('msalLoginInProgress');
-    sessionStorage.removeItem('msalLoginTimestamp');
-    console.log('Cleared', keysToRemove.length, 'MSAL sessionStorage entries');
   }
 
   private checkAndSetActiveAccount(): void {
@@ -128,9 +45,6 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    if (this.loginTimeoutId) {
-      clearTimeout(this.loginTimeoutId);
-    }
     this._destroying$.next(undefined);
     this._destroying$.complete();
   }

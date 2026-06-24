@@ -44,9 +44,6 @@ export class SigninFormComponent implements OnInit {
   signInWithMicrosoft(): void {
     this.loginError = null;
     this.isLoggingIn = true;
-    // Store state in sessionStorage so we can restore it after redirect
-    sessionStorage.setItem('msalLoginInProgress', 'true');
-    sessionStorage.setItem('msalLoginTimestamp', Date.now().toString());
     this.microsoftAuthService.loginRedirect();
   }
 

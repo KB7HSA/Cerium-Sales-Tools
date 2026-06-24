@@ -1,7 +1,9 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
-import { MsalService } from '@azure/msal-angular';
+import { MsalService, MsalBroadcastService } from '@azure/msal-angular';
+import { InteractionStatus } from '@azure/msal-browser';
+import { filter, switchMap, take } from 'rxjs';
 import { AuthService } from '../../../shared/services/auth.service';
 
 @Component({
@@ -36,14 +38,36 @@ import { AuthService } from '../../../shared/services/auth.service';
 })
 export class AuthCallbackComponent implements OnInit {
   private readonly msalService = inject(MsalService);
+  private readonly msalBroadcastService = inject(MsalBroadcastService);
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
 
   ngOnInit(): void {
-    sessionStorage.removeItem('msalLoginInProgress');
-    sessionStorage.removeItem('msalLoginTimestamp');
+    // Sole subscriber — must run here (not APP_INITIALIZER) so the redirect
+    // hash is still in the URL when MSAL processes it.
+    this.msalService
+      .handleRedirectObservable()
+      .pipe(
+        switchMap((result) => {
+          if (result?.account) {
+            this.msalService.instance.setActiveAccount(result.account);
+          }
+          return this.msalBroadcastService.inProgress$.pipe(
+            filter((status: InteractionStatus) => status === InteractionStatus.None),
+            take(1)
+          );
+        })
+      )
+      .subscribe({
+        next: () => this.finishLogin(),
+        error: (err) => {
+          console.error('MSAL redirect handling failed:', err);
+          this.router.navigateByUrl('/signin');
+        },
+      });
+  }
 
-    // MSAL redirect is processed in APP_INITIALIZER before this component loads.
+  private finishLogin(): void {
     const accounts = this.msalService.instance.getAllAccounts();
     if (accounts.length === 0) {
       console.warn('Auth callback: no MSAL account in cache after redirect');
