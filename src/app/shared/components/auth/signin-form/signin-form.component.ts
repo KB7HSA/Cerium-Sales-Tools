@@ -1,53 +1,40 @@
 
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { inject } from '@angular/core';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import type { AuthenticationResult } from '@azure/msal-browser';
 import { CommonModule } from '@angular/common';
-import { LabelComponent } from '../../form/label/label.component';
-import { CheckboxComponent } from '../../form/input/checkbox.component';
-import { ButtonComponent } from '../../ui/button/button.component';
-import { InputFieldComponent } from '../../form/input/input-field.component';
 import { RouterModule } from '@angular/router';
-import { FormsModule } from '@angular/forms';
 import { MicrosoftAuthService } from '../../../services/microsoft-auth.service';
 import { AuthService } from '../../../services/auth.service';
+import { environment } from '../../../../../environments/environment';
 
 @Component({
   selector: 'app-signin-form',
   imports: [
-      CommonModule,
-    LabelComponent,
-    CheckboxComponent,
-    ButtonComponent,
-    InputFieldComponent,
+    CommonModule,
     RouterModule,
-    FormsModule
-],
+  ],
   templateUrl: './signin-form.component.html',
   styles: ``
 })
-export class SigninFormComponent {
+export class SigninFormComponent implements OnInit {
 
-  showPassword = false;
-  isChecked = false;
 
-  email = '';
-  password = '';
 
   private microsoftAuthService = inject(MicrosoftAuthService);
   private authService = inject(AuthService);
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
 
   isLoggingIn = false;
   loginError: string | null = null;
-  togglePasswordVisibility() {
-    this.showPassword = !this.showPassword;
-  }
+  readonly showDevelopmentBypass = !environment.production;
 
-  onSignIn() {
-    // TODO: Implement traditional email/password authentication
-    // Never log credentials - use secure auth service instead
+  ngOnInit(): void {
+    if (this.route.snapshot.queryParamMap.get('devBypass') === '1') {
+      this.useDevelopmentBypass();
+    }
   }
 
   /**
@@ -93,6 +80,16 @@ export class SigninFormComponent {
         this.handleMicrosoftLoginError(error);
       }
     });
+  }
+
+  useDevelopmentBypass(): void {
+    if (!this.authService.enableDevelopmentBypass()) {
+      this.loginError = 'Development bypass is not available in production.';
+      return;
+    }
+
+    const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl') || '/';
+    this.router.navigateByUrl(returnUrl);
   }
 
   private handleMicrosoftLoginError(error: unknown): void {

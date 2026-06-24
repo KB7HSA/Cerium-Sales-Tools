@@ -88,6 +88,7 @@ import { UserManagementComponent } from './pages/admin/user-management.component
 import { UserFormComponent } from './pages/admin/user-form.component';
 import { MSPOfferingsComponent } from './pages/admin/msp-offerings.component';
 import { MSPOfferingFormComponent } from './pages/admin/msp-offering-form.component';
+import { MSPCategoriesComponent } from './pages/admin/msp-categories.component';
 import { LaborBudgetComponent } from './pages/labor-budget/labor-budget.component';
 import { LaborBudgetWizardComponent } from './pages/labor-budget-wizard/labor-budget-wizard.component';
 import { LaborBudgetAdminComponent } from './pages/admin/labor-budget-admin.component';
@@ -111,6 +112,7 @@ import { SoftwareRenewalsComponent } from './pages/cisco-renewals/software-renew
 import { CiscoRenewalsSummaryComponent } from './pages/cisco-renewals/cisco-renewals-summary.component';
 import { RenewalStatusAdminComponent } from './pages/admin/renewal-status-admin.component';
 import { RenewalsAdminComponent } from './pages/admin/renewals-admin.component';
+import { SystemStatusComponent } from './pages/admin/system-status.component';
 import { AuthCallbackComponent } from './pages/auth-pages/auth-callback/auth-callback.component';
 import { TDSynnexShipmentComponent } from './pages/vendor-quotes/tdsynnex-shipment.component';
 
@@ -381,6 +383,12 @@ export const routes: Routes = [
         title:'MSP Offerings | Cerium Sales Tools'
       },
       {
+        path:'admin/msp-categories',
+        component:MSPCategoriesComponent,
+        canActivate: [superAdminGuard],
+        title:'MSP Categories | Cerium Sales Tools'
+      },
+      {
         path:'admin/create-offering',
         component:MSPOfferingFormComponent,
         canActivate: [superAdminGuard],
@@ -473,6 +481,12 @@ export const routes: Routes = [
         component:RenewalsAdminComponent,
         canActivate: [superAdminGuard],
         title:'Renewals AI Admin | Cerium Sales Tools'
+      },
+      {
+        path:'admin/system-status',
+        component:SystemStatusComponent,
+        canActivate: [superAdminGuard],
+        title:'System Status | Cerium Sales Tools'
       },
       {
         path:'blank',

@@ -20,8 +20,8 @@
               "zone.js"
             ],
             "allowedCommonJsDependencies": [
-               "prismjs",
-               "polylabel"
+              "prismjs",
+              "polylabel"
             ],
             "tsConfig": "tsconfig.app.json",
             "assets": [
@@ -39,6 +39,12 @@
           },
           "configurations": {
             "production": {
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.prod.ts"
+                }
+              ],
               "budgets": [
                 {
                   "type": "initial",
