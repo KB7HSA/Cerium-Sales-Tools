@@ -8,7 +8,7 @@ WORKDIR /app
 COPY package.json package-lock.json* ./
 RUN npm ci
 
-COPY angular.json tsconfig.json tsconfig.app.json ./
+COPY angular.json tsconfig.json tsconfig.app.json .postcssrc.json ./
 COPY src/ ./src/
 COPY public/ ./public/
 

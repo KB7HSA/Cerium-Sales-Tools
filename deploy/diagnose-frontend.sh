@@ -35,12 +35,15 @@ else
   log "stylesheet ${css_href}: HTTP ${code}, ${size} bytes"
   if [[ "${code}" != "200" ]]; then
     warn "Stylesheet failed — layout will be broken"
-  elif [[ "${size}" -lt 50000 ]]; then
-    warn "Stylesheet suspiciously small — Tailwind may be missing"
   elif head -c 20 /tmp/cerium-style-check.css | grep -q '<'; then
     warn "Stylesheet response looks like HTML (nginx returned index.html)"
+  elif [[ "${size}" -lt 200000 ]]; then
+    warn "Stylesheet only ${size} bytes (expected ~250KB+) — Tailwind did not compile"
+    warn "Ensure frontend.Dockerfile copies .postcssrc.json and rebuild: docker compose build --no-cache frontend"
+  elif grep -qE '\.flex\{|display:flex' /tmp/cerium-style-check.css 2>/dev/null; then
+    log "Stylesheet contains layout utilities (${size} bytes)"
   else
-    log "Stylesheet content looks valid"
+    warn "Stylesheet may be missing Tailwind utility classes (${size} bytes)"
   fi
 fi
 
