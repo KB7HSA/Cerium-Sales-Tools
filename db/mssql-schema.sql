@@ -700,6 +700,8 @@ BEGIN
         LineHours DECIMAL(10,2) NOT NULL DEFAULT 0,
         LineTotal DECIMAL(12,2) NOT NULL DEFAULT 0,
         SolutionName NVARCHAR(255) NULL,
+        GroupName NVARCHAR(255) NULL DEFAULT 'Default',
+        SortOrder INT NOT NULL DEFAULT 0,
         CreatedAt DATETIME2(7) NOT NULL DEFAULT GETUTCDATE(),
         CONSTRAINT PK_QuoteWorkItems PRIMARY KEY CLUSTERED (Id),
         CONSTRAINT FK_QuoteWorkItems_Quotes FOREIGN KEY (QuoteId)
