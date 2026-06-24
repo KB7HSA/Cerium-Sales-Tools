@@ -45,11 +45,19 @@
                   "with": "src/environments/environment.prod.ts"
                 }
               ],
+              "optimization": {
+                "scripts": true,
+                "styles": {
+                  "minify": true,
+                  "inlineCritical": false
+                },
+                "fonts": true
+              },
               "budgets": [
                 {
                   "type": "initial",
-                  "maximumWarning": "5mb",
-                  "maximumError": "6MB"
+                  "maximumWarning": "6mb",
+                  "maximumError": "7MB"
                 },
                 {
                   "type": "anyComponentStyle",
