@@ -2,7 +2,6 @@ import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { MsalService } from '@azure/msal-angular';
-import { concatMap } from 'rxjs';
 import { AuthService } from '../../../shared/services/auth.service';
 
 @Component({
@@ -44,24 +43,21 @@ export class AuthCallbackComponent implements OnInit {
     sessionStorage.removeItem('msalLoginInProgress');
     sessionStorage.removeItem('msalLoginTimestamp');
 
-    this.msalService.initialize().pipe(
-      concatMap(() => this.msalService.handleRedirectObservable()),
-    ).subscribe({
-      next: (result) => {
-        if (result?.account) {
-          this.msalService.instance.setActiveAccount(result.account);
-          this.authService.syncMicrosoftUser().subscribe({
-            next: () => this.router.navigateByUrl('/'),
-            error: () => this.router.navigateByUrl('/'),
-          });
-          return;
-        }
-        this.router.navigateByUrl('/signin');
-      },
-      error: (error) => {
-        console.error('MSAL auth-callback error:', error);
-        this.router.navigateByUrl('/signin');
-      },
+    // MSAL redirect is processed in APP_INITIALIZER before this component loads.
+    const accounts = this.msalService.instance.getAllAccounts();
+    if (accounts.length === 0) {
+      console.warn('Auth callback: no MSAL account in cache after redirect');
+      this.router.navigateByUrl('/signin');
+      return;
+    }
+
+    if (!this.msalService.instance.getActiveAccount()) {
+      this.msalService.instance.setActiveAccount(accounts[0]);
+    }
+
+    this.authService.syncMicrosoftUser().subscribe({
+      next: () => this.router.navigateByUrl('/'),
+      error: () => this.router.navigateByUrl('/'),
     });
   }
 }
