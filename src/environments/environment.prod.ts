@@ -1,6 +1,7 @@
 /**
  * Production Environment Configuration
  * This file is included when building with `ng build --configuration production`
+ * Docker builds overwrite this file via deploy/write-frontend-env.mjs
  */
 
 export const environment = {

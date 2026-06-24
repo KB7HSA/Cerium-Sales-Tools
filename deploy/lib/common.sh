@@ -83,6 +83,12 @@ load_env() {
   set +a
   export SA_PASSWORD="$(read_env_value "${env_file}" SA_PASSWORD)"
   [[ -n "${SA_PASSWORD}" ]] || die "SA_PASSWORD is not set in .env"
+  APP_URL="$(read_env_value "${env_file}" APP_URL 2>/dev/null || true)"
+  APP_URL="$(normalize_app_url "${APP_URL:-http://localhost}")"
+  export APP_URL
+  AZURE_AD_CLIENT_ID="$(read_env_value "${env_file}" AZURE_AD_CLIENT_ID 2>/dev/null || true)"
+  AZURE_AD_TENANT_ID="$(read_env_value "${env_file}" AZURE_AD_TENANT_ID 2>/dev/null || true)"
+  export AZURE_AD_CLIENT_ID AZURE_AD_TENANT_ID
 }
 
 # Align backend/.env DB_PASSWORD with root .env SA_PASSWORD; re-quote SA_PASSWORD in .env.
