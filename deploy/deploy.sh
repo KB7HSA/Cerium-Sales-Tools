@@ -94,7 +94,8 @@ Common fixes:
     then re-run ./deploy/deploy.sh
   - Align env files: ./deploy/sync-env-passwords.sh
   - Check password consistency: ./deploy/verify-db-password.sh
-  - Ensure you pulled the latest docker-compose.yml (healthcheck uses /healthcheck.sh)"
+  - Ensure you pulled the latest docker-compose.yml (healthcheck uses /healthcheck.sh)
+  - MSAL requires HTTPS when using an IP/hostname (not localhost): ./deploy/setup-https-selfsigned.sh"
 fi
 
 bash "${SCRIPT_DIR}/verify-db-password.sh" || warn "Password verification reported issues — run ./deploy/diagnose-sqlserver.sh"

@@ -18,7 +18,13 @@ fi
 
 ufw allow OpenSSH
 ufw allow "${PORT}/tcp"
+if [[ -n "${HTTPS_PORT:-}" && "${HTTPS_PORT}" != "0" ]] || [[ -f "${PROJECT_ROOT}/deploy/ssl/server.crt" ]]; then
+  ufw allow "${HTTPS_PORT:-443}/tcp"
+  log "Firewall configured — ports ${PORT}/tcp and ${HTTPS_PORT:-443}/tcp are open"
+else
+  log "Firewall configured — port ${PORT}/tcp is open"
+fi
 ufw --force enable
 
-log "Firewall configured — port ${PORT}/tcp is open"
+log "Firewall enabled"
 ufw status
