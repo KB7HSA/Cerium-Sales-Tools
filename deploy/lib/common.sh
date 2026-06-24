@@ -168,6 +168,12 @@ verify_db_passwords() {
     log "Testing SQL login with .env SA_PASSWORD..."
     if sqlcmd_exec -Q "SELECT 1" >/dev/null 2>&1; then
       log "SQL login succeeded"
+      if ! database_exists; then
+        warn "Database '${DB_NAME:-CeriumSalesTools}' does not exist — run: ./deploy/init-database.sh"
+        mismatches=$((mismatches + 1))
+      else
+        log "Database '${DB_NAME:-CeriumSalesTools}' exists"
+      fi
     else
       warn "SQL login FAILED with .env SA_PASSWORD"
       warn "  Env vars may match but the data volume was initialized with a different password."
@@ -208,6 +214,14 @@ wait_for_sqlserver() {
     sleep 5
   done
   die "SQL Server did not become ready within $((max_attempts * 5)) seconds"
+}
+
+# Returns 0 if the application database exists (login to master, not app DB).
+database_exists() {
+  local db_name="${1:-${DB_NAME:-CeriumSalesTools}}"
+  local result
+  result="$(sqlcmd_exec -d master -h -1 -W -Q "SET NOCOUNT ON; SELECT CASE WHEN DB_ID(N'${db_name}') IS NOT NULL THEN 1 ELSE 0 END" 2>/dev/null | tr -d '[:space:]' || true)"
+  [[ "${result}" == "1" ]]
 }
 
 generate_sa_password() {

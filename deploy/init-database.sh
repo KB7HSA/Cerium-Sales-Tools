@@ -26,8 +26,13 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ -f "${MARKER}" && "${FORCE}" == false ]]; then
-  log "Database already initialized (${MARKER}). Use --force to re-run."
-  exit 0
+  compose up -d sqlserver 2>/dev/null || true
+  wait_for_sqlserver 12 2>/dev/null || true
+  if database_exists; then
+    log "Database already initialized (${MARKER}). Use --force to re-run."
+    exit 0
+  fi
+  warn "Marker ${MARKER} exists but database '${DB_NAME:-CeriumSalesTools}' is missing — re-initializing"
 fi
 
 log "Starting SQL Server container..."
