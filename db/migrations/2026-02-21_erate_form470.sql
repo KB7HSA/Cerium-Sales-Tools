@@ -105,13 +105,17 @@ BEGIN
         MaintenanceTechnicalSupport NVARCHAR(100) NULL,
         Manufacturer NVARCHAR(500) NULL,
         OtherManufacturer NVARCHAR(500) NULL,
+
+        -- User-defined status for workflow tracking
+        UserStatus NVARCHAR(50) NULL,
         
         -- Indexes
         INDEX IX_ERateForm470_PrimaryKey UNIQUE NONCLUSTERED (PrimaryKey),
         INDEX IX_ERateForm470_BilledEntityState NONCLUSTERED (BilledEntityState),
         INDEX IX_ERateForm470_FundingYear NONCLUSTERED (FundingYear),
         INDEX IX_ERateForm470_AllowableContractDate NONCLUSTERED (AllowableContractDate),
-        INDEX IX_ERateForm470_LastRefreshId NONCLUSTERED (LastRefreshId)
+        INDEX IX_ERateForm470_LastRefreshId NONCLUSTERED (LastRefreshId),
+        INDEX IX_ERateForm470_UserStatus NONCLUSTERED (UserStatus)
     );
     
     PRINT 'Created table dbo.ERateForm470';
