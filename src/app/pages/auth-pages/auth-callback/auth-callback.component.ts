@@ -1,5 +1,9 @@
-import { Component } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
+import { MsalService } from '@azure/msal-angular';
+import { concatMap } from 'rxjs';
+import { AuthService } from '../../../shared/services/auth.service';
 
 @Component({
   selector: 'app-auth-callback',
@@ -8,21 +12,16 @@ import { CommonModule } from '@angular/common';
   template: `
     <div class="flex min-h-screen items-center justify-center bg-white dark:bg-gray-900">
       <div class="flex flex-col items-center space-y-8">
-        <!-- Logo -->
         <img
           src="/images/logo/Cerium_Large.png"
           alt="Cerium Sales Tools"
           class="h-16 w-auto"
         />
-
-        <!-- Spinner -->
         <div class="relative">
           <div
             class="h-12 w-12 animate-spin rounded-full border-4 border-brand-200 border-t-brand-600 dark:border-white/20 dark:border-t-brand-400"
           ></div>
         </div>
-
-        <!-- Text -->
         <div class="text-center">
           <h2 class="text-lg font-semibold text-gray-800 dark:text-white">
             Signing you in...
@@ -36,4 +35,33 @@ import { CommonModule } from '@angular/common';
   `,
   styles: ``
 })
-export class AuthCallbackComponent {}
+export class AuthCallbackComponent implements OnInit {
+  private readonly msalService = inject(MsalService);
+  private readonly authService = inject(AuthService);
+  private readonly router = inject(Router);
+
+  ngOnInit(): void {
+    sessionStorage.removeItem('msalLoginInProgress');
+    sessionStorage.removeItem('msalLoginTimestamp');
+
+    this.msalService.initialize().pipe(
+      concatMap(() => this.msalService.handleRedirectObservable()),
+    ).subscribe({
+      next: (result) => {
+        if (result?.account) {
+          this.msalService.instance.setActiveAccount(result.account);
+          this.authService.syncMicrosoftUser().subscribe({
+            next: () => this.router.navigateByUrl('/'),
+            error: () => this.router.navigateByUrl('/'),
+          });
+          return;
+        }
+        this.router.navigateByUrl('/signin');
+      },
+      error: (error) => {
+        console.error('MSAL auth-callback error:', error);
+        this.router.navigateByUrl('/signin');
+      },
+    });
+  }
+}

@@ -78,6 +78,8 @@ load_app_env() {
   APP_URL="$(read_env_value "${env_file}" APP_URL 2>/dev/null || true)"
   APP_URL="$(normalize_app_url "${APP_URL:-http://localhost}")"
   export APP_URL
+  MSAL_REDIRECT_URI="${APP_URL}/auth-callback"
+  export MSAL_REDIRECT_URI
   AZURE_AD_CLIENT_ID="$(read_env_value "${env_file}" AZURE_AD_CLIENT_ID 2>/dev/null || true)"
   AZURE_AD_TENANT_ID="$(read_env_value "${env_file}" AZURE_AD_TENANT_ID 2>/dev/null || true)"
   export AZURE_AD_CLIENT_ID AZURE_AD_TENANT_ID

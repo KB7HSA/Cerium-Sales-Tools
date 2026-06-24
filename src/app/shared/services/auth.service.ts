@@ -227,7 +227,6 @@ export class AuthService {
    */
   logoutRedirect(): void {
     this.clearUserFromStorage();
-    const redirectUri = window.location.origin + '/signin';
-    this.microsoftAuthService.logoutRedirect(redirectUri);
+    this.microsoftAuthService.logoutRedirect(environment.azureAd.postLogoutRedirectUri);
   }
 }

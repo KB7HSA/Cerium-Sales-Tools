@@ -56,39 +56,12 @@ export class AppComponent implements OnInit, OnDestroy {
       }
     }
 
-    // Handle redirect observable for MSAL redirect flow
-    // NOTE: Do NOT clear MSAL interaction state before this — MSAL needs
-    // those keys to complete legitimate redirects from Microsoft.
+    // MSAL redirect is handled on /auth-callback (see AuthCallbackComponent).
+    // Keep a lightweight listener here only to clear stale session flags.
     this.msalService.handleRedirectObservable().subscribe({
       next: (result) => {
-        if (result) {
-          console.log('MSAL redirect login successful:', result.account?.username);
-          this.msalService.instance.setActiveAccount(result.account);
-          
-          // Sync user profile to backend
-          sessionStorage.removeItem('msalLoginInProgress');
-          sessionStorage.removeItem('msalLoginTimestamp');
-          if (this.loginTimeoutId) { clearTimeout(this.loginTimeoutId); }
-          this.authService.syncMicrosoftUser().subscribe({
-            next: (syncResult) => {
-              if (syncResult) {
-                console.log('User profile synced after redirect:', syncResult.data?.user?.name);
-              }
-              this.isProcessingLogin = false;
-              this.router.navigate(['/']);
-            },
-            error: (error) => {
-              console.error('Profile sync failed after redirect:', error);
-              this.isProcessingLogin = false;
-              this.router.navigate(['/']);
-            }
-          });
-        } else {
-          // No redirect was processed — MSAL confirmed there's nothing pending.
-          // NOW it's safe to clear any stale interaction keys left from a
-          // previous session or server restart.
+        if (!result) {
           this.clearStaleInteractionState();
-
           if (this.isProcessingLogin) {
             sessionStorage.removeItem('msalLoginInProgress');
             sessionStorage.removeItem('msalLoginTimestamp');

@@ -3,6 +3,7 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { MsalService, MsalBroadcastService } from '@azure/msal-angular';
 import { InteractionStatus, AuthenticationResult, PopupRequest, RedirectRequest, EndSessionRequest } from '@azure/msal-browser';
 import { Observable, Subject, filter, takeUntil, switchMap, of, catchError } from 'rxjs';
+import { environment } from '../../../environments/environment';
 
 export interface MicrosoftUserProfile {
   id: string;
@@ -86,7 +87,8 @@ export class MicrosoftAuthService {
    */
   loginRedirect(): void {
     const loginRequest: RedirectRequest = {
-      scopes: ['User.Read', 'openid', 'profile', 'email']
+      scopes: ['User.Read', 'openid', 'profile', 'email'],
+      redirectUri: environment.azureAd.redirectUri,
     };
 
     this.authService.loginRedirect(loginRequest);
@@ -126,7 +128,7 @@ export class MicrosoftAuthService {
   logoutRedirect(postLogoutRedirectUri?: string): void {
     const logoutRequest: EndSessionRequest = {
       account: this.authService.instance.getActiveAccount(),
-      postLogoutRedirectUri: postLogoutRedirectUri || window.location.origin
+      postLogoutRedirectUri: postLogoutRedirectUri || environment.azureAd.postLogoutRedirectUri || window.location.origin + '/signin'
     };
     
     this.isAuthenticated = false;

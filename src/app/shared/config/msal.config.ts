@@ -21,7 +21,8 @@ export const msalConfig = {
     clientId: environment.azureAd.clientId,
     authority: `https://login.microsoftonline.com/${environment.azureAd.tenantId}`,
     redirectUri: environment.azureAd.redirectUri,
-    postLogoutRedirectUri: environment.azureAd.redirectUri
+    postLogoutRedirectUri: environment.azureAd.postLogoutRedirectUri ?? environment.azureAd.redirectUri,
+    navigateToLoginRequestUrl: false,
   },
   cache: {
     cacheLocation: BrowserCacheLocation.LocalStorage, // Use localStorage for persistent sessions
