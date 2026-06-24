@@ -70,6 +70,9 @@ BEGIN
 
         -- Document template
         TemplateFileName NVARCHAR(255) NULL DEFAULT 'Assessment-Template.docx',
+
+        -- AI generation settings
+        AITemperature FLOAT NULL DEFAULT 0.7,
         
         -- Pricing defaults
         DefaultHours DECIMAL(10,2) NULL DEFAULT 0,
