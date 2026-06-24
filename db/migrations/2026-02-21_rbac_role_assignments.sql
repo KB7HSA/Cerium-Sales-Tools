@@ -69,61 +69,75 @@ END
 GO
 
 -- Trigger to auto-assign default permissions for new users
-IF EXISTS (SELECT * FROM sys.triggers WHERE name = 'trg_AdminUsers_DefaultRoles')
-    DROP TRIGGER dbo.trg_AdminUsers_DefaultRoles;
-GO
-
-CREATE TRIGGER dbo.trg_AdminUsers_DefaultRoles
-ON dbo.AdminUsers
-AFTER INSERT
-AS
+IF EXISTS (SELECT * FROM sys.tables WHERE name = 'AdminUsers' AND schema_id = SCHEMA_ID('dbo'))
+   AND EXISTS (SELECT * FROM sys.tables WHERE name = 'UserRoleAssignments' AND schema_id = SCHEMA_ID('dbo'))
 BEGIN
-    SET NOCOUNT ON;
-    
-    -- Assign default permissions based on role
-    INSERT INTO dbo.UserRoleAssignments (UserId, ModuleName, Permissions)
-    SELECT 
-        i.Id,
-        module.ModuleName,
-        CASE 
-            WHEN i.RoleName = 'admin' THEN 'view,create,edit,delete,admin'
-            WHEN i.RoleName = 'manager' THEN 'view,create,edit,admin'
-            ELSE 'view,create,edit'
-        END as Permissions
-    FROM inserted i
-    CROSS JOIN (
-        SELECT 'labor-budget' as ModuleName
-        UNION SELECT 'msp-services'
-        UNION SELECT 'sow-documents'
-        UNION SELECT 'e-rate'
-        UNION SELECT 'quote-management'
-    ) module;
-END
-GO
+    IF EXISTS (SELECT * FROM sys.triggers WHERE name = 'trg_AdminUsers_DefaultRoles')
+        DROP TRIGGER dbo.trg_AdminUsers_DefaultRoles;
 
-PRINT 'Created trigger: trg_AdminUsers_DefaultRoles';
+    EXEC('
+    CREATE TRIGGER dbo.trg_AdminUsers_DefaultRoles
+    ON dbo.AdminUsers
+    AFTER INSERT
+    AS
+    BEGIN
+        SET NOCOUNT ON;
+
+        INSERT INTO dbo.UserRoleAssignments (UserId, ModuleName, Permissions)
+        SELECT
+            i.Id,
+            module.ModuleName,
+            CASE
+                WHEN i.RoleName = ''admin'' THEN ''view,create,edit,delete,admin''
+                WHEN i.RoleName = ''manager'' THEN ''view,create,edit,admin''
+                ELSE ''view,create,edit''
+            END as Permissions
+        FROM inserted i
+        CROSS JOIN (
+            SELECT ''labor-budget'' as ModuleName
+            UNION SELECT ''msp-services''
+            UNION SELECT ''sow-documents''
+            UNION SELECT ''e-rate''
+            UNION SELECT ''quote-management''
+        ) module;
+    END
+    ');
+
+    PRINT 'Created trigger: trg_AdminUsers_DefaultRoles';
+END
+ELSE
+BEGIN
+    PRINT 'AdminUsers or UserRoleAssignments not found — skipping default roles trigger.';
+END
 GO
 
 -- Update trigger for UserRoleAssignments
-IF EXISTS (SELECT * FROM sys.triggers WHERE name = 'trg_UserRoleAssignments_UpdateTimestamp')
-    DROP TRIGGER dbo.trg_UserRoleAssignments_UpdateTimestamp;
-GO
-
-CREATE TRIGGER dbo.trg_UserRoleAssignments_UpdateTimestamp
-ON dbo.UserRoleAssignments
-AFTER UPDATE
-AS
+IF EXISTS (SELECT * FROM sys.tables WHERE name = 'UserRoleAssignments' AND schema_id = SCHEMA_ID('dbo'))
 BEGIN
-    SET NOCOUNT ON;
-    
-    UPDATE dbo.UserRoleAssignments
-    SET UpdatedAt = GETUTCDATE()
-    FROM dbo.UserRoleAssignments ura
-    INNER JOIN inserted i ON ura.Id = i.Id;
-END
-GO
+    IF EXISTS (SELECT * FROM sys.triggers WHERE name = 'trg_UserRoleAssignments_UpdateTimestamp')
+        DROP TRIGGER dbo.trg_UserRoleAssignments_UpdateTimestamp;
 
-PRINT 'Created trigger: trg_UserRoleAssignments_UpdateTimestamp';
+    EXEC('
+    CREATE TRIGGER dbo.trg_UserRoleAssignments_UpdateTimestamp
+    ON dbo.UserRoleAssignments
+    AFTER UPDATE
+    AS
+    BEGIN
+        SET NOCOUNT ON;
+
+        UPDATE dbo.UserRoleAssignments
+        SET UpdatedAt = GETUTCDATE()
+        FROM dbo.UserRoleAssignments ura
+        INNER JOIN inserted i ON ura.Id = i.Id;
+    END
+    ');
+
+    PRINT 'Created trigger: trg_UserRoleAssignments_UpdateTimestamp';
+END
+ELSE
+BEGIN
+    PRINT 'UserRoleAssignments table not found — skipping update trigger.';
+END
 GO
 
 PRINT '✅ RBAC Schema Migration Completed Successfully';

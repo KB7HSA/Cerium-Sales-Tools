@@ -1,8 +1,12 @@
 -- 2026-05-06: Add MSP offering categories table and remove fixed category check constraint
 
 SET NOCOUNT ON;
+GO
 
-IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'MspOfferingCategories')
+USE CeriumSalesTools;
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'MspOfferingCategories' AND schema_id = SCHEMA_ID('dbo'))
 BEGIN
     CREATE TABLE dbo.MspOfferingCategories (
         Id NVARCHAR(64) NOT NULL PRIMARY KEY,
@@ -18,16 +22,21 @@ BEGIN
     CREATE NONCLUSTERED INDEX IX_MspOfferingCategories_IsActive
         ON dbo.MspOfferingCategories(IsActive);
 END
+GO
 
-IF EXISTS (
-    SELECT 1
-    FROM sys.check_constraints
-    WHERE parent_object_id = OBJECT_ID('dbo.MspOfferings')
-      AND name = 'CK_MspOfferings_Category'
-)
+IF EXISTS (SELECT * FROM sys.tables WHERE name = 'MspOfferings' AND schema_id = SCHEMA_ID('dbo'))
 BEGIN
-    ALTER TABLE dbo.MspOfferings DROP CONSTRAINT CK_MspOfferings_Category;
+    IF EXISTS (
+        SELECT 1
+        FROM sys.check_constraints
+        WHERE parent_object_id = OBJECT_ID('dbo.MspOfferings')
+          AND name = 'CK_MspOfferings_Category'
+    )
+    BEGIN
+        ALTER TABLE dbo.MspOfferings DROP CONSTRAINT CK_MspOfferings_Category;
+    END
 END
+GO
 
 INSERT INTO dbo.MspOfferingCategories (Id, Name, Slug, Description, IsActive, DisplayOrder)
 SELECT NEWID(), v.Name, v.Slug, v.Description, 1, v.DisplayOrder
@@ -40,21 +49,28 @@ FROM (
       ('Security', 'security', 'Security monitoring and protection services', 5),
       ('Cloud', 'cloud', 'Cloud migration and operations services', 6)
 ) v(Name, Slug, Description, DisplayOrder)
-WHERE NOT EXISTS (
+WHERE EXISTS (SELECT * FROM sys.tables WHERE name = 'MspOfferingCategories' AND schema_id = SCHEMA_ID('dbo'))
+  AND NOT EXISTS (
     SELECT 1 FROM dbo.MspOfferingCategories c WHERE c.Slug = v.Slug
 );
+GO
 
-INSERT INTO dbo.MspOfferingCategories (Id, Name, Slug, Description, IsActive, DisplayOrder)
-SELECT NEWID(),
-       CONCAT(UPPER(LEFT(o.Category, 1)), LOWER(SUBSTRING(o.Category, 2, 99))),
-       LOWER(o.Category),
-       NULL,
-       1,
-       100
-FROM dbo.MspOfferings o
-WHERE o.Category IS NOT NULL
-  AND LTRIM(RTRIM(o.Category)) <> ''
-  AND NOT EXISTS (
-    SELECT 1 FROM dbo.MspOfferingCategories c WHERE c.Slug = LOWER(o.Category)
-  )
-GROUP BY o.Category;
+IF EXISTS (SELECT * FROM sys.tables WHERE name = 'MspOfferings' AND schema_id = SCHEMA_ID('dbo'))
+   AND EXISTS (SELECT * FROM sys.tables WHERE name = 'MspOfferingCategories' AND schema_id = SCHEMA_ID('dbo'))
+BEGIN
+    INSERT INTO dbo.MspOfferingCategories (Id, Name, Slug, Description, IsActive, DisplayOrder)
+    SELECT NEWID(),
+           CONCAT(UPPER(LEFT(o.Category, 1)), LOWER(SUBSTRING(o.Category, 2, 99))),
+           LOWER(o.Category),
+           NULL,
+           1,
+           100
+    FROM dbo.MspOfferings o
+    WHERE o.Category IS NOT NULL
+      AND LTRIM(RTRIM(o.Category)) <> ''
+      AND NOT EXISTS (
+        SELECT 1 FROM dbo.MspOfferingCategories c WHERE c.Slug = LOWER(o.Category)
+      )
+    GROUP BY o.Category;
+END
+GO
