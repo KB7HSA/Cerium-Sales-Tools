@@ -12,7 +12,7 @@ load_env
 log "=== SQL Server diagnostics ==="
 echo
 
-log "Host .env SA_PASSWORD is set: $([[ -n "${SA_PASSWORD:-}" ]] && echo yes || echo NO)"
+bash "${SCRIPT_DIR}/verify-db-password.sh" || true
 echo
 
 log "Container status:"

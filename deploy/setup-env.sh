@@ -20,6 +20,7 @@ Options:
   --sa-password PASS     SQL Server SA password (generated if omitted)
   --tenant-id ID         Azure AD tenant ID
   --client-id ID         Azure AD application (client) ID
+  --sync                 Align backend/.env DB_PASSWORD with .env SA_PASSWORD
   --non-interactive      Skip prompts; use flags or defaults
   -h, --help             Show this help
 EOF
@@ -30,6 +31,7 @@ SA_PASSWORD=""
 AZURE_AD_TENANT_ID=""
 AZURE_AD_CLIENT_ID=""
 NON_INTERACTIVE=false
+SYNC_ONLY=false
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -37,14 +39,20 @@ while [[ $# -gt 0 ]]; do
     --sa-password) SA_PASSWORD="$2"; shift 2 ;;
     --tenant-id) AZURE_AD_TENANT_ID="$2"; shift 2 ;;
     --client-id) AZURE_AD_CLIENT_ID="$2"; shift 2 ;;
+    --sync) SYNC_ONLY=true; shift ;;
     --non-interactive) NON_INTERACTIVE=true; shift ;;
     -h|--help) usage; exit 0 ;;
     *) die "Unknown option: $1" ;;
   esac
 done
 
+if [[ "${SYNC_ONLY}" == true ]]; then
+  sync_db_passwords
+  exit 0
+fi
+
 if [[ -f "${ENV_FILE}" ]]; then
-  warn "${ENV_FILE} already exists — skipping creation"
+  warn "${ENV_FILE} already exists — skipping creation (use --sync to align DB_PASSWORD)"
   exit 0
 fi
 
@@ -85,7 +93,7 @@ cat > "${ENV_FILE}" <<EOF
 COMPOSE_PROJECT_NAME=cerium-sales
 APP_URL=${APP_URL}
 HTTP_PORT=80
-SA_PASSWORD=${SA_PASSWORD}
+SA_PASSWORD=$(escape_env_value "${SA_PASSWORD}")
 DB_NAME=CeriumSalesTools
 AZURE_AD_TENANT_ID=${AZURE_AD_TENANT_ID}
 AZURE_AD_CLIENT_ID=${AZURE_AD_CLIENT_ID}
@@ -103,7 +111,7 @@ LOG_LEVEL=info
 DB_HOST=sqlserver
 DB_PORT=1433
 DB_USER=sa
-DB_PASSWORD=${SA_PASSWORD}
+DB_PASSWORD=$(escape_env_value "${SA_PASSWORD}")
 DB_NAME=CeriumSalesTools
 DB_ENCRYPT=false
 DB_TRUST_CERT=true

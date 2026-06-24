@@ -72,6 +72,7 @@ if [[ ! -f "${PROJECT_ROOT}/.env" ]]; then
   bash "${SCRIPT_DIR}/setup-env.sh"
 fi
 
+bash "${SCRIPT_DIR}/sync-env-passwords.sh"
 load_env
 
 if [[ "${INIT_DB}" == true ]]; then
@@ -91,8 +92,12 @@ Common fixes:
   - If SA_PASSWORD was changed after first deploy, reset the data volume:
       docker compose down && docker volume rm cerium-sales_sqldata
     then re-run ./deploy/deploy.sh
+  - Align env files: ./deploy/sync-env-passwords.sh
+  - Check password consistency: ./deploy/verify-db-password.sh
   - Ensure you pulled the latest docker-compose.yml (healthcheck uses /healthcheck.sh)"
 fi
+
+bash "${SCRIPT_DIR}/verify-db-password.sh" || warn "Password verification reported issues — run ./deploy/diagnose-sqlserver.sh"
 
 log "Waiting for backend health check..."
 attempt=0
@@ -119,6 +124,8 @@ log "   docker compose logs -f          # stream logs"
 log "   docker compose ps               # container status"
 log "   ./deploy/deploy.sh --stop       # stop stack"
 log "   ./deploy/init-database.sh --force  # re-apply SQL scripts"
+log "   ./deploy/verify-db-password.sh   # check SQL password alignment"
+log "   ./deploy/sync-env-passwords.sh   # sync DB_PASSWORD from SA_PASSWORD"
 log "============================================"
 
 if curl -sf "${APP_URL}/api/health" 2>/dev/null | head -c 200; then
