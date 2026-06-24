@@ -49,13 +49,13 @@ services:
     volumes:
       - sqldata:/var/opt/mssql
       - ./db:/db:ro
+      - ./deploy/sqlserver-healthcheck.sh:/healthcheck.sh:ro
     healthcheck:
-      # Use MSSQL_SA_PASSWORD (set above) — SA_PASSWORD is not in this container env.
-      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -C -Q \"SELECT 1\" -b -o /dev/null"]
+      test: ["CMD", "/bin/bash", "/healthcheck.sh"]
       interval: 10s
-      timeout: 10s
-      retries: 18
-      start_period: 60s
+      timeout: 15s
+      retries: 30
+      start_period: 90s
     restart: unless-stopped
 
 volumes:

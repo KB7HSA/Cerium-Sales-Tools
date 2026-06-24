@@ -85,12 +85,13 @@ fi
 
 log "Starting application stack..."
 if ! compose up -d; then
-  die "Stack failed to start. If sqlserver is unhealthy, run: docker compose logs sqlserver
+  die "Stack failed to start. Run: ./deploy/diagnose-sqlserver.sh
 Common fixes:
-  - Ensure the host has at least 2 GB RAM for SQL Server
-  - If you changed SA_PASSWORD after first deploy, reset the data volume:
+  - Ensure the host has at least 2 GB RAM for SQL Server (free -h)
+  - If SA_PASSWORD was changed after first deploy, reset the data volume:
       docker compose down && docker volume rm cerium-sales_sqldata
-    then re-run ./deploy/deploy.sh"
+    then re-run ./deploy/deploy.sh
+  - Ensure you pulled the latest docker-compose.yml (healthcheck uses /healthcheck.sh)"
 fi
 
 log "Waiting for backend health check..."
