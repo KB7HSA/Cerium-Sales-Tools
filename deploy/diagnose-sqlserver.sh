@@ -38,6 +38,10 @@ if compose ps sqlserver 2>/dev/null | grep -qE 'Up|unhealthy'; then
     echo "  docker compose down"
     echo "  docker volume rm cerium-sales_sqldata"
     echo "  ./deploy/deploy.sh"
+    echo
+    warn "If login works but database is missing (error 18456 state 38), run:"
+    echo "  ./deploy/init-database.sh --force"
+    echo "  docker compose restart backend"
   fi
 else
   warn "sqlserver container is not running — check logs above for OOM or config errors"
