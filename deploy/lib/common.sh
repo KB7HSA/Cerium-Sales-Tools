@@ -55,9 +55,10 @@ wait_for_sqlserver() {
 }
 
 generate_sa_password() {
-  # SQL Server requires upper, lower, digit, and symbol.
-  openssl rand -base64 32 | tr -dc 'A-Za-z0-9!@#%^&*' | head -c 24
-  echo 'Aa1!'
+  # SQL Server requires upper, lower, digit, and symbol. Avoid shell metacharacters
+  # ($`"\\!& etc.) that break Docker healthchecks and compose interpolation.
+  openssl rand -base64 32 | tr -dc 'A-Za-z0-9@#%_' | head -c 20
+  echo 'Aa1@'
 }
 
 normalize_app_url() {
