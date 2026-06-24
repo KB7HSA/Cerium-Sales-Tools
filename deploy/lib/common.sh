@@ -72,9 +72,23 @@ password_fingerprint() {
   printf '%s' "$1" | sha256sum | awk '{print substr($1,1,12)}'
 }
 
+load_app_env() {
+  local env_file="${PROJECT_ROOT}/.env"
+  [[ -f "${env_file}" ]] || die "Missing ${env_file} — run ./deploy/setup-env.sh first"
+  APP_URL="$(read_env_value "${env_file}" APP_URL 2>/dev/null || true)"
+  APP_URL="$(normalize_app_url "${APP_URL:-http://localhost}")"
+  export APP_URL
+  AZURE_AD_CLIENT_ID="$(read_env_value "${env_file}" AZURE_AD_CLIENT_ID 2>/dev/null || true)"
+  AZURE_AD_TENANT_ID="$(read_env_value "${env_file}" AZURE_AD_TENANT_ID 2>/dev/null || true)"
+  export AZURE_AD_CLIENT_ID AZURE_AD_TENANT_ID
+  HTTP_PORT="$(read_env_value "${env_file}" HTTP_PORT 2>/dev/null || true)"
+  export HTTP_PORT="${HTTP_PORT:-80}"
+}
+
 load_env() {
   local env_file="${PROJECT_ROOT}/.env"
   [[ -f "${env_file}" ]] || die "Missing ${env_file} — run ./deploy/setup-env.sh first"
+  load_app_env
   SA_PASSWORD="$(read_env_value "${env_file}" SA_PASSWORD)" || die "SA_PASSWORD is not set in .env"
   export SA_PASSWORD
   # shellcheck disable=SC1091
@@ -83,12 +97,9 @@ load_env() {
   set +a
   export SA_PASSWORD="$(read_env_value "${env_file}" SA_PASSWORD)"
   [[ -n "${SA_PASSWORD}" ]] || die "SA_PASSWORD is not set in .env"
-  APP_URL="$(read_env_value "${env_file}" APP_URL 2>/dev/null || true)"
-  APP_URL="$(normalize_app_url "${APP_URL:-http://localhost}")"
-  export APP_URL
-  AZURE_AD_CLIENT_ID="$(read_env_value "${env_file}" AZURE_AD_CLIENT_ID 2>/dev/null || true)"
-  AZURE_AD_TENANT_ID="$(read_env_value "${env_file}" AZURE_AD_TENANT_ID 2>/dev/null || true)"
-  export AZURE_AD_CLIENT_ID AZURE_AD_TENANT_ID
+  export APP_URL="$(normalize_app_url "$(read_env_value "${env_file}" APP_URL 2>/dev/null || echo "${APP_URL}")")"
+  export AZURE_AD_CLIENT_ID="$(read_env_value "${env_file}" AZURE_AD_CLIENT_ID 2>/dev/null || echo "${AZURE_AD_CLIENT_ID:-}")"
+  export AZURE_AD_TENANT_ID="$(read_env_value "${env_file}" AZURE_AD_TENANT_ID 2>/dev/null || echo "${AZURE_AD_TENANT_ID:-}")"
 }
 
 # Align backend/.env DB_PASSWORD with root .env SA_PASSWORD; re-quote SA_PASSWORD in .env.
