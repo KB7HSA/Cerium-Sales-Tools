@@ -41,6 +41,9 @@ BEGIN
         -- Technical Resources folder path
         ResourceFolder NVARCHAR(500) NULL,
 
+        -- Customizable content sections (JSON array)
+        ContentSections NVARCHAR(MAX) NULL,
+
         -- Pricing defaults
         DefaultHours DECIMAL(10,2) NULL DEFAULT 0,
         DefaultRate DECIMAL(10,2) NULL DEFAULT 175.00,
@@ -67,21 +70,28 @@ GO
 
 IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'SOWTypeArchitectures')
 BEGIN
-    CREATE TABLE dbo.SOWTypeArchitectures (
-        Id BIGINT IDENTITY(1,1) NOT NULL,
-        SOWTypeId NVARCHAR(64) NOT NULL,
-        ReferenceArchitectureId NVARCHAR(64) NOT NULL,
-        CustomTemplate NVARCHAR(MAX) NULL,
-        CreatedAt DATETIME2(7) NOT NULL DEFAULT GETUTCDATE(),
-        CONSTRAINT PK_SOWTypeArchitectures PRIMARY KEY CLUSTERED (Id),
-        CONSTRAINT FK_SOWTypeArch_Type FOREIGN KEY (SOWTypeId)
-            REFERENCES dbo.SOWTypes(Id) ON DELETE CASCADE,
-        CONSTRAINT FK_SOWTypeArch_Arch FOREIGN KEY (ReferenceArchitectureId)
-            REFERENCES dbo.AssessmentReferenceArchitectures(Id) ON DELETE CASCADE,
-        CONSTRAINT UQ_SOWTypeArch UNIQUE (SOWTypeId, ReferenceArchitectureId)
-    );
+    IF EXISTS (SELECT * FROM sys.tables WHERE name = 'AssessmentReferenceArchitectures')
+    BEGIN
+        CREATE TABLE dbo.SOWTypeArchitectures (
+            Id BIGINT IDENTITY(1,1) NOT NULL,
+            SOWTypeId NVARCHAR(64) NOT NULL,
+            ReferenceArchitectureId NVARCHAR(64) NOT NULL,
+            CustomTemplate NVARCHAR(MAX) NULL,
+            CreatedAt DATETIME2(7) NOT NULL DEFAULT GETUTCDATE(),
+            CONSTRAINT PK_SOWTypeArchitectures PRIMARY KEY CLUSTERED (Id),
+            CONSTRAINT FK_SOWTypeArch_Type FOREIGN KEY (SOWTypeId)
+                REFERENCES dbo.SOWTypes(Id) ON DELETE CASCADE,
+            CONSTRAINT FK_SOWTypeArch_Arch FOREIGN KEY (ReferenceArchitectureId)
+                REFERENCES dbo.AssessmentReferenceArchitectures(Id) ON DELETE CASCADE,
+            CONSTRAINT UQ_SOWTypeArch UNIQUE (SOWTypeId, ReferenceArchitectureId)
+        );
 
-    PRINT 'SOWTypeArchitectures table created.';
+        PRINT 'SOWTypeArchitectures table created.';
+    END
+    ELSE
+    BEGIN
+        PRINT 'AssessmentReferenceArchitectures not found — skipping SOWTypeArchitectures creation.';
+    END
 END
 GO
 
@@ -91,59 +101,66 @@ GO
 
 IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'GeneratedSOWs')
 BEGIN
-    CREATE TABLE dbo.GeneratedSOWs (
-        Id NVARCHAR(64) NOT NULL,
-        SOWTypeId NVARCHAR(64) NOT NULL,
-        ReferenceArchitectureId NVARCHAR(64) NOT NULL,
+    IF EXISTS (SELECT * FROM sys.tables WHERE name = 'AssessmentReferenceArchitectures')
+    BEGIN
+        CREATE TABLE dbo.GeneratedSOWs (
+            Id NVARCHAR(64) NOT NULL,
+            SOWTypeId NVARCHAR(64) NOT NULL,
+            ReferenceArchitectureId NVARCHAR(64) NOT NULL,
 
-        -- Optional link to a quote
-        QuoteId NVARCHAR(64) NULL,
+            -- Optional link to a quote
+            QuoteId NVARCHAR(64) NULL,
 
-        -- Customer Information
-        CustomerName NVARCHAR(255) NOT NULL,
-        CustomerContact NVARCHAR(255) NULL,
-        CustomerEmail NVARCHAR(255) NULL,
+            -- Customer Information
+            CustomerName NVARCHAR(255) NOT NULL,
+            CustomerContact NVARCHAR(255) NULL,
+            CustomerEmail NVARCHAR(255) NULL,
 
-        -- SOW Details
-        Title NVARCHAR(500) NOT NULL,
-        ExecutiveSummary NVARCHAR(MAX) NULL,
-        Scope NVARCHAR(MAX) NULL,
-        Methodology NVARCHAR(MAX) NULL,
-        Findings NVARCHAR(MAX) NULL,
-        Recommendations NVARCHAR(MAX) NULL,
-        NextSteps NVARCHAR(MAX) NULL,
+            -- SOW Details
+            Title NVARCHAR(500) NOT NULL,
+            ExecutiveSummary NVARCHAR(MAX) NULL,
+            Scope NVARCHAR(MAX) NULL,
+            Methodology NVARCHAR(MAX) NULL,
+            Findings NVARCHAR(MAX) NULL,
+            Recommendations NVARCHAR(MAX) NULL,
+            NextSteps NVARCHAR(MAX) NULL,
 
-        -- Pricing
-        EstimatedHours DECIMAL(10,2) NULL DEFAULT 0,
-        HourlyRate DECIMAL(10,2) NULL DEFAULT 175.00,
-        TotalPrice DECIMAL(18,2) NULL DEFAULT 0,
+            -- Pricing
+            EstimatedHours DECIMAL(10,2) NULL DEFAULT 0,
+            HourlyRate DECIMAL(10,2) NULL DEFAULT 175.00,
+            TotalPrice DECIMAL(18,2) NULL DEFAULT 0,
 
-        -- Document
-        FileName NVARCHAR(255) NULL,
-        FileData VARBINARY(MAX) NULL,
-        FileSizeBytes BIGINT NULL DEFAULT 0,
+            -- Document
+            FileName NVARCHAR(255) NULL,
+            FileData VARBINARY(MAX) NULL,
+            FileSizeBytes BIGINT NULL DEFAULT 0,
 
-        -- Status
-        Status NVARCHAR(50) NOT NULL DEFAULT 'draft',
-        GeneratedBy NVARCHAR(255) NULL,
-        Notes NVARCHAR(MAX) NULL,
+            -- Status
+            Status NVARCHAR(50) NOT NULL DEFAULT 'draft',
+            GeneratedBy NVARCHAR(255) NULL,
+            Notes NVARCHAR(MAX) NULL,
 
-        CreatedAt DATETIME2(7) NOT NULL DEFAULT GETUTCDATE(),
-        UpdatedAt DATETIME2(7) NOT NULL DEFAULT GETUTCDATE(),
-        CONSTRAINT PK_GeneratedSOWs PRIMARY KEY CLUSTERED (Id),
-        CONSTRAINT FK_GeneratedSOWs_Type FOREIGN KEY (SOWTypeId)
-            REFERENCES dbo.SOWTypes(Id),
-        CONSTRAINT FK_GeneratedSOWs_Arch FOREIGN KEY (ReferenceArchitectureId)
-            REFERENCES dbo.AssessmentReferenceArchitectures(Id),
-        CONSTRAINT CK_GeneratedSOWs_Status CHECK (Status IN ('draft', 'generated', 'sent', 'completed', 'archived'))
-    );
+            CreatedAt DATETIME2(7) NOT NULL DEFAULT GETUTCDATE(),
+            UpdatedAt DATETIME2(7) NOT NULL DEFAULT GETUTCDATE(),
+            CONSTRAINT PK_GeneratedSOWs PRIMARY KEY CLUSTERED (Id),
+            CONSTRAINT FK_GeneratedSOWs_Type FOREIGN KEY (SOWTypeId)
+                REFERENCES dbo.SOWTypes(Id),
+            CONSTRAINT FK_GeneratedSOWs_Arch FOREIGN KEY (ReferenceArchitectureId)
+                REFERENCES dbo.AssessmentReferenceArchitectures(Id),
+            CONSTRAINT CK_GeneratedSOWs_Status CHECK (Status IN ('draft', 'generated', 'sent', 'completed', 'archived'))
+        );
 
-    CREATE NONCLUSTERED INDEX IX_GeneratedSOWs_Customer ON dbo.GeneratedSOWs(CustomerName);
-    CREATE NONCLUSTERED INDEX IX_GeneratedSOWs_Status ON dbo.GeneratedSOWs(Status);
-    CREATE NONCLUSTERED INDEX IX_GeneratedSOWs_CreatedAt ON dbo.GeneratedSOWs(CreatedAt DESC);
-    CREATE NONCLUSTERED INDEX IX_GeneratedSOWs_QuoteId ON dbo.GeneratedSOWs(QuoteId);
+        CREATE NONCLUSTERED INDEX IX_GeneratedSOWs_Customer ON dbo.GeneratedSOWs(CustomerName);
+        CREATE NONCLUSTERED INDEX IX_GeneratedSOWs_Status ON dbo.GeneratedSOWs(Status);
+        CREATE NONCLUSTERED INDEX IX_GeneratedSOWs_CreatedAt ON dbo.GeneratedSOWs(CreatedAt DESC);
+        CREATE NONCLUSTERED INDEX IX_GeneratedSOWs_QuoteId ON dbo.GeneratedSOWs(QuoteId);
 
-    PRINT 'GeneratedSOWs table created.';
+        PRINT 'GeneratedSOWs table created.';
+    END
+    ELSE
+    BEGIN
+        PRINT 'AssessmentReferenceArchitectures not found — skipping GeneratedSOWs creation.';
+    END
 END
 GO
 
@@ -152,7 +169,8 @@ GO
 -- ================================================================
 
 -- Managed Services SOW
-IF NOT EXISTS (SELECT 1 FROM dbo.SOWTypes WHERE Name = 'Managed Services SOW')
+IF EXISTS (SELECT * FROM sys.tables WHERE name = 'SOWTypes' AND schema_id = SCHEMA_ID('dbo'))
+   AND NOT EXISTS (SELECT 1 FROM dbo.SOWTypes WHERE Name = 'Managed Services SOW')
 BEGIN
     INSERT INTO dbo.SOWTypes (
         Id, Name, Description, Category,
@@ -180,7 +198,8 @@ END
 GO
 
 -- Project Implementation SOW
-IF NOT EXISTS (SELECT 1 FROM dbo.SOWTypes WHERE Name = 'Project Implementation SOW')
+IF EXISTS (SELECT * FROM sys.tables WHERE name = 'SOWTypes' AND schema_id = SCHEMA_ID('dbo'))
+   AND NOT EXISTS (SELECT 1 FROM dbo.SOWTypes WHERE Name = 'Project Implementation SOW')
 BEGIN
     INSERT INTO dbo.SOWTypes (
         Id, Name, Description, Category,
