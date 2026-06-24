@@ -3,8 +3,10 @@
 
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+# Resolve paths from this file's location (deploy/lib/). Callers set SCRIPT_DIR
+# to deploy/ before sourcing; do not overwrite it here.
+_COMMON_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "${_COMMON_LIB_DIR}/../.." && pwd)"
 
 log()  { printf '[%s] %s\n' "$(date +'%H:%M:%S')" "$*"; }
 warn() { printf '[%s] WARN: %s\n' "$(date +'%H:%M:%S')" "$*" >&2; }
