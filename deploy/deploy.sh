@@ -84,7 +84,14 @@ if [[ "${SKIP_BUILD}" == false ]]; then
 fi
 
 log "Starting application stack..."
-compose up -d
+if ! compose up -d; then
+  die "Stack failed to start. If sqlserver is unhealthy, run: docker compose logs sqlserver
+Common fixes:
+  - Ensure the host has at least 2 GB RAM for SQL Server
+  - If you changed SA_PASSWORD after first deploy, reset the data volume:
+      docker compose down && docker volume rm cerium-sales_sqldata
+    then re-run ./deploy/deploy.sh"
+fi
 
 log "Waiting for backend health check..."
 attempt=0
