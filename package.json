@@ -10,7 +10,11 @@
     "backend:dev": "cd backend && npm run dev",
     "backend:build": "cd backend && npm run build",
     "backend:start": "cd backend && npm start",
-    "dev": "npm run backend:dev"
+    "dev": "npm run backend:dev",
+    "db:up": "docker compose -f docker-compose.dev.yml up -d",
+    "db:down": "docker compose -f docker-compose.dev.yml down",
+    "db:logs": "docker compose -f docker-compose.dev.yml logs -f sqlserver",
+    "setup:local": "bash ./deploy/setup-local-dev.sh"
   },
   "private": true,
   "dependencies": {
