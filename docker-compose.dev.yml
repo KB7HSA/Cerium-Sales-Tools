@@ -1,0 +1,31 @@
+# Local development — SQL Server only
+# Frontend: npm start (port 4200)
+# Backend:  cd backend && npm run dev (port 3000)
+# Database: docker compose -f docker-compose.dev.yml up -d
+
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    ports:
+      - "1433:1433"
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=${SA_PASSWORD:-YourStrong!Passw0rd}
+      - MSSQL_PID=Developer
+    volumes:
+      - sqldata_dev:/var/opt/mssql
+      - ./db:/db:ro
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$${MSSQL_SA_PASSWORD}\" -C -Q \"SELECT 1\" || exit 1",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 45s
+    restart: unless-stopped
+
+volumes:
+  sqldata_dev:

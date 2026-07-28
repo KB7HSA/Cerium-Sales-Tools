@@ -211,13 +211,20 @@ verify_db_passwords() {
   return 0
 }
 
+COMPOSE_FILE="${COMPOSE_FILE:-${PROJECT_ROOT}/docker-compose.yml}"
+
 compose() {
-  docker compose -f "${PROJECT_ROOT}/docker-compose.yml" --project-directory "${PROJECT_ROOT}" "$@"
+  docker compose -f "${COMPOSE_FILE}" --project-directory "${PROJECT_ROOT}" "$@"
 }
 
 sqlcmd_exec() {
   compose exec -T sqlserver /opt/mssql-tools18/bin/sqlcmd \
     -S localhost -U sa -P "${SA_PASSWORD}" -C "$@"
+}
+
+# Prefer CeriumSalesTools when the database exists (migrations often omit USE).
+sqlcmd_db() {
+  sqlcmd_exec -d CeriumSalesTools "$@"
 }
 
 wait_for_sqlserver() {

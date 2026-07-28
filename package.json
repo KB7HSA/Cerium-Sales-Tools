@@ -3,7 +3,7 @@
   "version": "1.0.2",
   "scripts": {
     "ng": "ng",
-    "start": "ng serve",
+    "start": "ng serve --host 0.0.0.0 --port 4200",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
@@ -11,7 +11,12 @@
     "backend:dev": "cd backend && npm run dev",
     "backend:build": "cd backend && npm run build",
     "backend:start": "cd backend && npm start",
-    "dev": "npm run backend:dev"
+    "dev": "npm run backend:dev",
+    "db:up": "docker compose -f docker-compose.dev.yml up -d",
+    "db:down": "docker compose -f docker-compose.dev.yml down",
+    "db:logs": "docker compose -f docker-compose.dev.yml logs -f sqlserver",
+    "db:init": "COMPOSE_FILE=./docker-compose.dev.yml bash ./deploy/init-database.sh",
+    "setup:local": "bash ./deploy/setup-local-dev.sh"
   },
   "private": true,
   "dependencies": {
